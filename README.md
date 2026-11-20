@@ -26,9 +26,9 @@ into one `index.html`. Works on desktop and mobile.
 - **Anywhere.** Keyboard, gamepad, or a fully customizable touch layout (drag buttons, mirror,
   scale). Procedural music + SFX via Web Audio.
 
-| Diorama command view | Title screen |
+| Diorama command view | Cockpit combat |
 |---|---|
-| ![Diorama](screenshots/diorama.png) | ![Title](screenshots/title.png) |
+| ![Diorama](screenshots/diorama.png) | ![Cockpit combat](screenshots/combat.png) |
 
 ## Controls
 
