@@ -1,0 +1,15 @@
+{
+  "name": "parsec-chronicles-3d",
+  "version": "3.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Parsec Chronicles 3D - self-contained web build + GitHub Pages hosting",
+  "scripts": {
+    "build": "node build.mjs",
+    "publish": "bash publish.sh"
+  },
+  "dependencies": {
+    "esbuild": "^0.28.2",
+    "three": "^0.160.0"
+  }
+}
