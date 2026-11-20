@@ -221,7 +221,7 @@ const MODES={
  battle:{n:'BATTLE',ic:'⚔',obj:'Destroy every hostile ship and the enemy station.',bonus:1,t:[30,45]},
  escort:{n:'ESCORT',ic:'➤',obj:'Protect the cargo freighter until it reaches the green beacon.',bonus:1.15,t:[45,65]},
  hunted:{n:'HUNTED',ic:'◎',obj:'Kill the golden marked ship.',bonus:1.15,t:[30,45]},
- defend:{n:'DEFEND',ic:'▣',obj:'Survive 3 ramming waves on your station.',bonus:1.2,t:[120,180]},
+ defend:{n:'DEFEND',ic:'▣',obj:'Repel 3 assault waves — fighters hunt your squadron, rammers dive the station.',bonus:1.2,t:[120,180]},
  totalwar:{n:'TOTAL WAR',ic:'✹',obj:'Destroy all hostiles. The enemy station has +50% armour.',bonus:1.25,t:[40,60]},
  boss:{n:'BOSS',ic:'☠',obj:'Kill the sector captain, the escort and the station.',bonus:1.5,t:[40,60]},
  hunt:{n:'HUNT',ic:'∞',obj:'Free hunt. Reach the kill target.',bonus:1,t:[30,45]}
@@ -684,7 +684,7 @@ function startMission(lv,hunt){
   const c=mkShip(2,0,PS.x+Math.cos(pa)*190,PS.y+Math.sin(pa)*190+90,pa);c.cargo=true;c.name='Freighter';c.label='FREIGHTER';c.hull='#8a7a4a';c.trail='#ffd27a';c.r=40;
   c.maxHp=c.hp=Math.round((260+lv*9)*(1+sea*.2));c.maxSh=c.sh=Math.round(c.maxHp*.3);c.acc=.05;c.turn=.03;
   M.beacon={x:ES.x,y:ES.y};c.spd=Math.hypot(ES.x-c.x,ES.y-c.y)/(34*60);c.ai=mkAI(c);allies.push(c);M.cargo=c;
-  form(lerp(PS.x,ES.x,.62),lerp(PS.y,ES.y,.62),n);M.spawnT=560;
+  form(lerp(PS.x,ES.x,.62),lerp(PS.y,ES.y,.62),n);M.spawnT=260;
  }
  else if(mode==='hunt'){form(EC.x,EC.y,3);M.spawnT=120;}
  M.tutOn=lv===1&&!hunt&&!save.free&&save.cnt.voy===0;camTX=player.x;camTY=player.y;camX=camTX-W/2;camY=camTY-H/2;
@@ -697,7 +697,7 @@ function edgePoint(){
 }
 function spawnWave(no){
  const cnt=2+Math.min(3,M.lv/25|0)+no,e=edgePoint(),ps=stationOf(0),a=Math.atan2(ps.y-e.y,ps.x-e.x);
- for(let i=0;i<cnt;i++){const col=i%3-1,row=i/3|0,lx=-row*95,ly=col*95;spawnEnemy(M.eIdx+(no===3?1:0),e.x+Math.cos(a)*lx-Math.sin(a)*ly,e.y+Math.sin(a)*lx+Math.cos(a)*ly,a,{ram:true});}
+ for(let i=0;i<cnt;i++){const col=i%3-1,row=i/3|0,lx=-row*95,ly=col*95;spawnEnemy(M.eIdx+(no===3?1:0),e.x+Math.cos(a)*lx-Math.sin(a)*ly,e.y+Math.sin(a)*lx+Math.cos(a)*ly,a,{ram:i%2===0});}
  sfx('warn');
 }
 
@@ -1020,7 +1020,7 @@ function avoid(s,h,inp,ign){
 }
 function aiPick(s,foes){
  const a=s.ai,es=stationOf(1-s.team);
- if(a.ram&&es&&!es.dead)return es;
+ if(a.ram&&es&&!es.dead){let nf=null,nd=1e9;for(const f of foes){if(f.dead)continue;const d=Math.hypot(f.x-s.x,f.y-s.y);if(d<nd){nd=d;nf=f;}}if(nf&&nd<520)return nf;return es;}
  let best=null,bs=1e9;
  for(const f of foes){
   if(f.dead)continue;let d=Math.hypot(f.x-s.x,f.y-s.y);
@@ -1217,7 +1217,7 @@ function stepMode(){
   case'escort':
    if(!m.cargo||m.cargo.dead){finish(false,'FREIGHTER LOST');break;}
    if(Math.hypot(m.cargo.x-m.beacon.x,m.cargo.y-m.beacon.y)<95){finish(true);break;}
-   if(m.spawnT>0&&--m.spawnT===0){const e=edgePoint(),cnt=Math.max(2,2+Math.min(3,m.lv/80|0)),a=Math.atan2(m.cargo.y-e.y,m.cargo.x-e.x);for(let i=0;i<cnt;i++)spawnEnemy(m.eIdx,e.x+(i%3-1)*90,e.y+(i/3|0)*90,a);msg('HOSTILE REINFORCEMENTS',110);sfx('warn');}
+   if(--m.spawnT<=0){m.spawnT=280+(Math.random()*160|0);if(enemies.length<7){const c=m.cargo,bh=Math.atan2(m.beacon.y-c.y,m.beacon.x-c.x),ahead=480+Math.random()*420,lat=(Math.random()<.5?-1:1)*(240+Math.random()*340),B=WORLD_HALF*.95;const ex=clamp(c.x+Math.cos(bh)*ahead-Math.sin(bh)*lat,-B,B),ey=clamp(c.y+Math.sin(bh)*ahead+Math.cos(bh)*lat,-B,B),cnt=2+(m.lv>40&&Math.random()<.5?1:0),a=Math.atan2(c.y-ey,c.x-ex);for(let i=0;i<cnt;i++)spawnEnemy(m.eIdx-(Math.random()<.25?1:0),ex+(i%3-1)*85,ey+(i/3|0)*85,a);msg('HOSTILES INBOUND',90);sfx('warn');}}
    break;
   case'hunted':if(!m.mark||m.mark.dead)finish(true);break;
   case'defend':{
@@ -1237,7 +1237,7 @@ function objText(){
   case'boss':return(m.boss&&!m.boss.dead?'CAPTAIN '+Math.ceil(m.boss.hp/m.boss.maxHp*100)+'%':'CAPTAIN DOWN')+'  ·  ESCORT '+Math.max(0,n-(m.boss&&!m.boss.dead?1:0))+(es?'  ·  STATION '+(es.dead?'DOWN':Math.ceil(es.hp/es.maxHp*100)+'%'):'');
   case'escort':return m.cargo?'FREIGHTER '+Math.ceil(Math.max(0,m.cargo.hp)/m.cargo.maxHp*100)+'%  ·  '+Math.round(Math.hypot(m.cargo.x-m.beacon.x,m.cargo.y-m.beacon.y))+' m TO BEACON':'';
   case'hunted':return m.mark&&!m.mark.dead?'MARKED SHIP '+Math.ceil(m.mark.hp/m.mark.maxHp*100)+'%':'MARKED SHIP DOWN';
-  case'defend':{const ps=stationOf(0);return'WAVE '+Math.max(1,m.wave)+' / 3  ·  RAMMERS '+n+'  ·  STATION '+(ps&&!ps.dead?Math.ceil(ps.hp/ps.maxHp*100)+'%':'LOST');}
+  case'defend':{const ps=stationOf(0);return'WAVE '+Math.max(1,m.wave)+' / 3  ·  HOSTILES '+n+'  ·  STATION '+(ps&&!ps.dead?Math.ceil(ps.hp/ps.maxHp*100)+'%':'LOST');}
   default:return'KILLS '+m.kills+' / '+m.target;
  }
 }
