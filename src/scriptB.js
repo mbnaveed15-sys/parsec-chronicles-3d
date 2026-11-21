@@ -354,11 +354,12 @@ function shipObj(s){
  if(pl&&d.geo.paint&&settings.glow!==false){rim=fresMat(s.trail,1.15,1.5);own.push(rim);const rm=new THREE.Mesh(d.geo.paint,rim);rm.scale.setScalar(1.07);b.add(rm);}
  const fl=[];for(const e of d.eng){const f=new THREE.Mesh(GEO.flame,fm);f.position.set(e[0],e[1],e[2]);b.add(f);fl.push([f,e[3]]);}
  const sm=fresMat(s.team?0xff7a66:0x7de3ff,0,2.4),sh=new THREE.Mesh(GEO.sphMid,sm);sh.scale.set(1.42*d.L,.9,1.42);sh.visible=false;g.add(sh);
+ const bub=new THREE.Mesh(GEO.sphMid,new THREE.MeshBasicMaterial({color:0x7dffd8,transparent:true,opacity:.1,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}));bub.scale.set(2.6,1.9,2.6);bub.visible=false;g.add(bub);
  const br=new THREE.Mesh(GEO.arc,MT.brace);br.visible=false;g.add(br);
  const sl=new THREE.Mesh(GEO.ringThin,MT.slow);sl.visible=false;g.add(sl);
  if((s.marked||s.elite)&&d.geo.paint){const ol=new THREE.Mesh(d.geo.paint,s.marked?MT.gold:MT.elite);ol.scale.setScalar(1.1);b.add(ol);}
  own.push(sm);
- return{o:g,b,fl,sh,br,sl,pm,own,pl,pr:s.prism?{am,gm,fm,rim}:null};
+ return{o:g,b,fl,sh,br,sl,pm,own,pl,bubble:bub,pr:s.prism?{am,gm,fm,rim}:null};
 }
 /* Prism trail: recolour this ship's own engine materials each frame */
 function prismPaint(o,hex){const p=o.pr;if(!p)return;const c=new THREE.Color(hex);p.am.emissive.copy(c);p.fm.color.copy(c).multiplyScalar(1.9);p.gm.color.copy(c).lerp(new THREE.Color(0xffffff),.35).multiplyScalar(2.6);if(p.rim)p.rim.uniforms.col.value.copy(c);}
@@ -370,6 +371,7 @@ function updShip(o,s){
  o.sh.visible=!window.__cineHideHud&&(fr>.01||fx>0);if(o.sh.visible)o.sh.material.uniforms.op.value=fr*.06+fx*.95;
  o.br.visible=s.brace>0;if(o.br.visible){const k=1+Math.sin(frameNo*.5)*.06;o.br.scale.setScalar(k);}
  o.sl.visible=s.slow>0;if(o.sl.visible)o.sl.rotation.y+=.22;
+ if(o.bubble){const guard=s.team===1&&typeof projectorGuard==='function'&&projectorGuard(s);o.bubble.visible=!window.__cineHideHud&&(s.special==='shield'||guard);if(o.bubble.visible)o.bubble.material.opacity=.07+Math.sin(frameNo*.05)*.02+(s.special==='shield'?.04:0);}
 }
 function wreckObj(w){
  const d=w.cargo?designCargo():designShip(w.idx),g=new THREE.Group();
@@ -503,6 +505,13 @@ const beacon=new THREE.Group();
  const tr=new THREE.Mesh(new THREE.TorusGeometry(60,2,8,64).rotateX(PI/2),bm);beacon.add(tr);
  const pm=new THREE.MeshBasicMaterial({color:new THREE.Color(.3,1.3,.5),transparent:true,opacity:.22,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
  const pl=new THREE.Mesh(new THREE.CylinderGeometry(9,9,520,16,1,true),pm);pl.position.y=260;beacon.add(pl);beacon.visible=false;scene.add(beacon);}
+
+/* ---------- mines and recon relay nodes (3D parity) ---------- */
+const minePool=[];
+{const coreGeo=new THREE.OctahedronGeometry(7,0),ringGeo=new THREE.TorusGeometry(13,1.2,6,24).rotateX(PI/2);
+ for(let i=0;i<40;i++){const g=new THREE.Group(),mat=new THREE.MeshBasicMaterial({color:0x6a7078,transparent:true,opacity:.85});const core=new THREE.Mesh(coreGeo,mat);const ring=new THREE.Mesh(ringGeo,mat);ring.rotation.x=.5;g.add(core,ring);g.visible=false;scene.add(g);minePool.push({g,mat,core,ring});}}
+const scanPool=[];
+{for(let i=0;i<3;i++){const g=new THREE.Group(),mat=new THREE.MeshBasicMaterial({color:0x7de3ff,transparent:true,opacity:.75,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});const ring=new THREE.Mesh(new THREE.TorusGeometry(26,1.6,8,48).rotateX(PI/2),mat);ring.position.y=8;const col=new THREE.Mesh(new THREE.CylinderGeometry(3,10,240,12,1,true),mat);col.position.y=120;const core=new THREE.Mesh(new THREE.OctahedronGeometry(8,0),mat);core.position.y=8;g.add(ring,col,core);g.visible=false;scene.add(g);scanPool.push({g,mat,ring,core});}}
 
 /* ---------- instanced effects ---------- */
 function inst(geo,mat,n){const m=new THREE.InstancedMesh(geo,mat,n);m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);m.frustumCulled=false;m.setColorAt(0,C.setRGB(1,1,1));m.count=0;scene.add(m);return m;}
@@ -691,6 +700,8 @@ function render(){
  const ck=!!window.cockpitOn&&player&&!player.dead;const szr=renderer.getDrawingBufferSize(new THREE.Vector2());const mr=ck?0:12*szr.y/1080;tiltH.uniforms.maxR.value=mr;tiltV.uniforms.maxR.value=mr;pMat.uniforms.sc.value=szr.y/(2*Math.tan((ck?70:32)*Math.PI/360));
  sync(maps.ship,ships,shipObj,updShip);sync(maps.st,stations,stationObj,updStation);sync(maps.pl,gravityWells,planetObj,updPlanet);
  sync(maps.rk,rocks,rockObj,updRock);sync(maps.fl,flotsams,flotObj,updFlot);sync(maps.pu,powerups,powObj,updPow);sync(maps.wr,wrecks,wreckObj,updWreck);
+ for(let i=0;i<minePool.length;i++){const o=minePool[i],m=typeof mines!=='undefined'?mines[i]:null;if(!m){o.g.visible=false;continue;}const armed=m.arm<=0;o.g.visible=true;o.g.position.set(m.x,7,m.y);o.g.rotation.y=frameNo*.02+i;o.g.scale.setScalar(armed?1+Math.sin(frameNo*.2+i)*.08:1);o.mat.color.setHex(armed?0xff5a5a:0x6a7078);o.mat.opacity=armed?.85:.5;}
+ const sn=(M.scanNodes||[]);for(let i=0;i<scanPool.length;i++){const o=scanPool[i],n=sn[i];if(!n){o.g.visible=false;continue;}o.g.visible=true;o.g.position.set(n.x,0,n.y);o.mat.color.setHex(n.done?0x6fe08a:0x7de3ff);o.g.rotation.y=frameNo*.01+i;o.core.rotation.y=frameNo*.03;o.ring.scale.setScalar(1+Math.sin(frameNo*.06+i)*.06);}
  effects();
  wellMat.uniforms.t.value=frameNo*.016;
  hemi.intensity=HEMI+(M.flash||0)*5;
@@ -729,7 +740,7 @@ function preview(el,idx,cols){
  }catch(e){pvFail=true;return false;}
 }
 
-window.R3D={design:designShip,on:settings.gfx!=='classic',failed:false,ready:true,render,resize(){curW=-1;},w2s:w2sB,s2w:s2wB,preview};
+window.R3D={design:designShip,on:settings.gfx!=='classic',failed:false,ready:true,render,resize(){curW=-1;},w2s:w2sB,s2w:s2wB,preview,stats(){return{mines:minePool.filter(o=>o.g.visible).length,nodes:scanPool.filter(o=>o.g.visible).length,bubbles:typeof ships!=='undefined'?ships.filter(s=>s.special==='shield'||(s.team===1&&typeof projectorGuard==='function'&&projectorGuard(s))).length:0};}};
 try{r3dReady();}catch(e){}
 }catch(e){if(window.console)console.warn('Parsec: 3D renderer unavailable, using classic 2D.',e);fail();}
 })();

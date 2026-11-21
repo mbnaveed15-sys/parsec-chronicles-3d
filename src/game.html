@@ -264,9 +264,17 @@ textarea{min-height:11em;font-family:ui-monospace,Consolas,monospace;font-size:.
 body.hc{--dim:#c9d6e0;--tx:#ffffff;--ln:rgba(255,255,255,.4)}
 body.hc #ui .btn{border-color:rgba(255,255,255,.45)}
 body.hc #ui .panel{background:rgba(6,12,20,.92)}
+#gameCanvas.cb-deut,#glCanvas.cb-deut{filter:url(#cbDeut)}
+#gameCanvas.cb-prot,#glCanvas.cb-prot{filter:url(#cbProt)}
+#gameCanvas.cb-trit,#glCanvas.cb-trit{filter:url(#cbTrit)}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs>
+<filter id="cbDeut" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix" values="0.367322 0.860646 -0.227968 0 0 0.280085 0.672501 0.047413 0 0 -0.011820 0.042940 0.968881 0 0 0 0 0 1 0"/></filter>
+<filter id="cbProt" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix" values="0.152286 1.052583 -0.204868 0 0 0.114503 0.786281 0.099216 0 0 -0.003882 -0.048116 1.051998 0 0 0 0 0 1 0"/></filter>
+<filter id="cbTrit" color-interpolation-filters="linearRGB"><feColorMatrix type="matrix" values="1.255528 -0.076749 -0.178779 0 0 -0.078411 0.930809 0.147602 0 0 0.004733 0.691367 0.303900 0 0 0 0 0 1 0"/></filter>
+</defs></svg>
 <div id="app">
 <canvas id="glCanvas"></canvas>
 <canvas id="gameCanvas"></canvas>
@@ -430,7 +438,7 @@ const LS={
 const isTouch=!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
 var touchOn=isTouch,settings=null,audioSet=null,save=null,slotIdx=-1,SOFT_GL=false,SOFT_GPU='',SOFT_AUTO=false,SOFT_PREV='';
 function loadSettings(){
- settings=Object.assign({glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistClimb:true,assistFlak:true,assistBrace:true,assistRoll:true,hideAssisted:false,hc:false,lang:'en',gfx:isTouch?'low':'high',res:'1080',binds:{fire:'Space',lock:'KeyE',brace:'KeyF',flak:'KeyG',a1:'Digit7',a2:'Digit8'}},LS.get('pc_settings')||{});
+ settings=Object.assign({glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistClimb:true,assistFlak:true,assistBrace:true,assistRoll:true,hideAssisted:false,hc:false,lang:'en',cb:'none',gfx:isTouch?'low':'high',res:'1080',binds:{fire:'Space',lock:'KeyE',brace:'KeyF',flak:'KeyG',a1:'Digit7',a2:'Digit8'}},LS.get('pc_settings')||{});
  if(!/^(high|low|classic)$/.test(settings.gfx))settings.gfx='high';
  if(!/^(1080|native|720)$/.test(settings.res))settings.res='1080';
  try{document.body.classList.toggle('hc',!!settings.hc);}catch(e){}
@@ -961,7 +969,7 @@ function damage(t,amt,src,o){
  if(t.kind==='ship'&&projectorGuard(t))amt*=.55;
  if(t.isPlayer&&M&&M.dmgTaken)amt*=M.dmgTaken;
  if(t.isPlayer&&M.done&&M.win)return;
- if(src&&src.isPlayer){M.dealt+=amt;M.hitCount=(M.hitCount||0)+1;}if(t.isPlayer){M.taken+=amt;if(src&&src.x!==undefined&&M.hits.length<6)M.hits.push({a:Math.atan2(src.y-t.y,src.x-t.x),t:40});}
+ if(src&&src.isPlayer){M.dealt+=amt;M.hitCount=(M.hitCount||0)+1;if(M.mode==='range')M.rdps=(M.rdps||0)*.92+amt*.08;}if(t.isPlayer){M.taken+=amt;if(src&&src.x!==undefined&&M.hits.length<6)M.hits.push({a:Math.atan2(src.y-t.y,src.x-t.x),t:40});}
  if(t.kind==='ship'){
   if(t.brace>0)amt*=.5;
   const st=stationOf(t.team);if(st&&!st.dead&&Math.hypot(t.x-st.x,t.y-st.y)<st.aura)amt*=.65;
@@ -1749,7 +1757,9 @@ function stepMode(){
    if(m.detected>=100){m.detected=0;const e=edgePoint();for(let i=0;i<2;i++)spawnEnemy(m.eIdx,e.x+i*70,e.y,Math.atan2(player.y-e.y,player.x-e.x));msg('DETECTED — INTERCEPTORS INBOUND',110);sfx('warn');}
    break;}
   case'range':
-   if(enemies.length<4&&m.t%120===0){const e=spawnEnemy(0,player.x+rand(-320,320),player.y+rand(-320,320),rand(TAU),{noSpecial:true});if(e){e.ai.reload=1e9;e.dm=0;e.maxHp=e.hp=140;e.label='DRONE';}}
+   if(enemies.length<3&&m.t%90===0)rangeSpawn();
+   for(const e of enemies){e.vx=e.vy=0;e.thr=0;}
+   if(m.t%90===0){const p=player;p.plasma=p.plasmaMax;p.msl=p.mslMax;p.heat=0;p.vheat=0;p.over=false;p.vover=0;if(p.singMax)p.sing=p.singMax;else p.sing=Math.max(p.sing||0,1);p.ab1cd=0;p.ab2cd=0;}
    break;
  }
 }
@@ -1762,7 +1772,7 @@ function objText(){
   case'hunted':return m.mark&&!m.mark.dead?'MARKED SHIP '+Math.ceil(m.mark.hp/m.mark.maxHp*100)+'%':'MARKED SHIP DOWN';
   case'defend':{const ps=stationOf(0);return'WAVE '+Math.max(1,m.wave)+' / 3  ·  HOSTILES '+n+'  ·  STATION '+(ps&&!ps.dead?Math.ceil(ps.hp/ps.maxHp*100)+'%':'LOST');}
   case'recon':return'RELAYS '+((m.scanned||0))+' / 3  ·  DETECTION '+Math.round(m.detected||0)+'%';
-  case'range':return'PRACTICE · DRONES '+enemies.length+' · F9 CLEAN SHOT';
+  case'range':return'PRACTICE · DPS '+Math.round(m.rdps||0)+' · DRONES '+enemies.length+' · F9 CLEAN SHOT';
   default:return'KILLS '+m.kills+' / '+m.target;
  }
 }
@@ -1847,7 +1857,8 @@ function resize(){
  if(window.R3D&&R3D.resize){try{R3D.resize();}catch(e){}}
  layoutTouch();
 }
-function applyGfx(){if(window.R3D&&R3D.failed){if(settings.gfx!=='classic'){settings.gfx='classic';saveSettings();try{document.documentElement.lang=settings.lang||'en';}catch(e){}}}else if(window.R3D){R3D.on=settings.gfx!=='classic';}document.documentElement.style.setProperty('--fs',settings.text);}
+function applyGfx(){if(window.R3D&&R3D.failed){if(settings.gfx!=='classic'){settings.gfx='classic';saveSettings();try{document.documentElement.lang=settings.lang||'en';}catch(e){}}}else if(window.R3D){R3D.on=settings.gfx!=='classic';}document.documentElement.style.setProperty('--fs',settings.text);
+ if(cv){const cl=settings.cb&&settings.cb!=='none'?({'deuter':'cb-deut','protan':'cb-prot','tritan':'cb-trit'}[settings.cb]||''):'';for(const el of [cv,$('glCanvas')]){if(!el)continue;el.classList.remove('cb-deut','cb-prot','cb-trit');if(cl)el.classList.add(cl);}}}
 function w2s(x,y,z){
  if(U3){const p=R3D.w2s(x,y,z||0);SX=p.x;SY=p.y;}
  else{SX=x-camX;SY=H/2+(y-camY-H/2)*TILT-(z||0)*ALT_PX;}
@@ -2093,6 +2104,11 @@ function drawStation2D(st){
  for(let i=0;i<3;i++){const a=turA(i),tx=Math.cos(a)*30,ty=Math.sin(a)*30;if(st.turrets[i].dead){c.fillStyle='#15181d';c.beginPath();c.arc(tx,ty,5,0,TAU);c.fill();continue;}const ta=st.turrets[i].ang;c.strokeStyle='#15181d';c.lineWidth=4;c.beginPath();c.moveTo(tx,ty);c.lineTo(tx+Math.cos(ta)*16,ty+Math.sin(ta)*16);c.stroke();c.fillStyle='#2a3038';c.beginPath();c.arc(tx,ty,6,0,TAU);c.fill();}
  c.restore();
 }
+function rangeSpawn(){
+ const c=(M&&M.rangeCenter)||{x:player.x,y:player.y};enemies.length=0;
+ const ds=[160,320,480];
+ for(let i=0;i<3;i++){const a=-Math.PI/2+i*TAU/3,e=spawnEnemy(0,c.x+Math.cos(a)*ds[i],c.y+Math.sin(a)*ds[i],a+Math.PI,{noSpecial:true});if(e){e.ai.reload=1e9;e.dm=0;e.spd=0;e.turn=0;e.maxHp=e.hp=200;e.label=ds[i]+'m';}}
+}
 function drawMine2D(m){
  const c=ctx;w2s(m.x,m.y,0);if(!onScr(60))return;const armed=m.arm<=0;
  c.save();c.translate(SX,SY);c.rotate(M.t*.02);
@@ -2106,6 +2122,7 @@ function drawShipW(s){
  c.fillStyle='rgba(0,0,0,.28)';c.beginPath();c.ellipse(gx+10,gy+24,s.r*.9,s.r*.42,0,0,TAU);c.fill();
  if(s.special==='shield'){c.strokeStyle='rgba(125,255,216,.4)';c.lineWidth=1.5;c.beginPath();c.arc(gx,gy-20,34+Math.sin(M.t*.06)*2,0,TAU);c.stroke();}
  else if(s.team===1&&projectorGuard(s)){c.strokeStyle='rgba(125,255,216,.22)';c.lineWidth=1;c.beginPath();c.arc(gx,gy-16,s.r*1.5,0,TAU);c.stroke();}
+ if(M.mode==='range'&&!s.isPlayer){c.fillStyle='#bfe9ff';c.font='700 8px Orbitron';c.textAlign='center';c.fillText(Math.round(Math.hypot(s.x-player.x,s.y-player.y))+' m',gx,gy-34);}
  c.save();c.translate(SX,SY);c.scale(1,TILT);c.rotate(s.ang);c.scale(s.r,s.r);
  if(s.isPlayer&&settings.glow!==false){c.shadowColor=s.trail;c.shadowBlur=14;}
  if(s.cargo)drawCargo2D(c,s.thr);else drawShip2D(c,s.idx,s.flash>0?'#ffffff':s.hull,s.trail,s.thr,s.bank+(s.roll>0?(1-s.roll/20)*TAU:0),s.marked);
@@ -2568,7 +2585,7 @@ const SCREENS={
   const bindRow=(a,l)=>'<div class="set" data-n="'+l.toLowerCase()+'"><span>'+l+'</span><button class="btn sm" data-a="bind" data-v="'+a+'">'+(UI.rebind===a?'PRESS A KEY':keyName(settings.binds&&settings.binds[a]))+'</button></div>';
   const G=[
    ['audio','Comms','<h3>Comms / Audio</h3>'+sl('a','music','Music volume',0,1,.05)+sl('a','sfx','SFX volume',0,1,.05)],
-   ['display','Optics','<h3>Optics / Display</h3>'+'<div class="set" data-n="preset quality performance"><span>Preset</span><div class="seg"><button class="btn sm" data-a="preset" data-v="quality">Quality</button><button class="btn sm" data-a="preset" data-v="balanced">Balanced</button><button class="btn sm" data-a="preset" data-v="performance">Performance</button></div></div>'+seg('gfx','Graphics',[['high','High 3D'],['low','Low 3D'],['classic','Classic 2D']])+(SOFT_GL?'<p class="dim sml" style="color:#ffb96a">Software graphics detected'+(SOFT_AUTO?' — auto-switched to Classic 2D this session':'')+' ('+SOFT_GPU.slice(0,64)+'). Enable hardware acceleration in your browser for smooth 3D.</p>':'')+(window.R3D&&R3D.failed?'<p class="dim sml">3D unavailable on this device — running Classic 2D.</p>':'')+seg('res','Resolution',[['1080','1080p'],['native','Native'],['720','720p']])+'<div class="set" data-n="renderer"><span>Renderer</span><b style="flex:1;text-align:left;font-weight:400" class="dim">'+rendererLabel()+'</b></div>'+sl('s','hud','HUD size',.7,1.6,.05)+sl('s','shake','Screen shake',0,1.5,.05)+sl('s','text','Text size',.8,1.4,.05)+seg('glow','Player glow outline',[[true,'On'],[false,'Off']])+seg('hc','High contrast UI',[[true,'On'],[false,'Off']])+seg('lang','Language',[['en','English'],['ur','اردو']])+'<div class="row" style="margin-top:.7em"><button class="btn sm warn" data-a="resetcfg">Reset all settings</button></div>'],
+   ['display','Optics','<h3>Optics / Display</h3>'+'<div class="set" data-n="preset quality performance"><span>Preset</span><div class="seg"><button class="btn sm" data-a="preset" data-v="quality">Quality</button><button class="btn sm" data-a="preset" data-v="balanced">Balanced</button><button class="btn sm" data-a="preset" data-v="performance">Performance</button></div></div>'+seg('gfx','Graphics',[['high','High 3D'],['low','Low 3D'],['classic','Classic 2D']])+(SOFT_GL?'<p class="dim sml" style="color:#ffb96a">Software graphics detected'+(SOFT_AUTO?' — auto-switched to Classic 2D this session':'')+' ('+SOFT_GPU.slice(0,64)+'). Enable hardware acceleration in your browser for smooth 3D.</p>':'')+(window.R3D&&R3D.failed?'<p class="dim sml">3D unavailable on this device — running Classic 2D.</p>':'')+seg('res','Resolution',[['1080','1080p'],['native','Native'],['720','720p']])+'<div class="set" data-n="renderer"><span>Renderer</span><b style="flex:1;text-align:left;font-weight:400" class="dim">'+rendererLabel()+'</b></div>'+sl('s','hud','HUD size',.7,1.6,.05)+sl('s','shake','Screen shake',0,1.5,.05)+sl('s','text','Text size',.8,1.4,.05)+seg('glow','Player glow outline',[[true,'On'],[false,'Off']])+seg('hc','High contrast UI',[[true,'On'],[false,'Off']])+seg('cb','Colour-blind palette',[['none','Off'],['deuter','Deuteranopia'],['protan','Protanopia'],['tritan','Tritanopia']])+seg('lang','Language',[['en','English'],['ur','اردو']])+'<div class="row" style="margin-top:.7em"><button class="btn sm warn" data-a="resetcfg">Reset all settings</button></div>'],
    ['flight','Flight','<h3>Flight Control</h3>'+sl('s','turn','Turn speed',.6,1.6,.05)+sl('s','thrust','Thrust power',.6,1.6,.05)+'<h3 style="margin-top:.6em">Bindings</h3>'+bindRow('fire','Fire')+bindRow('lock','Lock target')+bindRow('brace','Brace')+bindRow('flak','Flak')+bindRow('a1','Ability 1')+bindRow('a2','Ability 2')+'<p class="dim sml">Click a binding, then press the new key.</p>'],
    ['autopilot','Autopilot','<h3>Autopilot</h3>'+seg('assist','Pilot assist',[[true,'On'],[false,'Off']])+(settings.assist||q?seg('assistClimb','Auto-climb obstacles',[[true,'On'],[false,'Off']])+seg('assistFlak','Auto-flak plasma',[[true,'On'],[false,'Off']])+seg('assistBrace','Auto-brace (shield)',[[true,'On'],[false,'Off']])+seg('assistRoll','Auto-roll dodge',[[true,'On'],[false,'Off']])+seg('hideAssisted','Hide assisted buttons',[[true,'On'],[false,'Off']]):'<p class="dim sml">Turn Pilot assist on to configure its individual behaviours.</p>')],
    ['controls','Bindings','<h3>Control Bindings</h3>'+seg('land','Force landscape',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.6em"><button class="btn sm" data-a="layout">Touch layout editor</button><button class="btn sm" data-a="fs">Fullscreen</button></div><p class="dim sml" style="margin-top:.7em">Key bindings are listed in the Manual (H).</p>']
@@ -2758,7 +2775,11 @@ const ACT={
  home(){leaveMission();show('hangar');},
  tab(v){UI.tab=v;show('shop');},
  bind(v){UI.rebind=v;toast('Press a key for '+v);refresh();},
- range(){leaveMission();state='menu';launchMission(1,true);const o=document.getElementById('mintro');if(o)o.remove();M.mode='range';M.hunt=false;M.target=9999;enemies.length=0;for(let i=0;i<4;i++){const e=spawnEnemy(0,player.x+rand(-260,260),player.y+rand(-260,260),rand(TAU),{noSpecial:true});if(e){e.ai.reload=1e9;e.dm=0;e.maxHp=e.hp=140;e.label='DRONE';}}msg('PRACTICE RANGE — DRONES RESPAWN',110);},
+ range(){
+  leaveMission();state='menu';launchMission(1,true);const o=document.getElementById('mintro');if(o)o.remove();
+  M.mode='range';M.hunt=false;M.target=9999;M.rangeCenter={x:player.x,y:player.y};M.rdps=0;rangeSpawn();msg('PRACTICE RANGE — AMMO REFILLS · F9 CLEAN SHOT',110);
+ },
+ rangeReset(){if(!M||M.mode!=='range')return;player.x=M.rangeCenter.x;player.y=M.rangeCenter.y;player.vx=player.vy=0;M.rdps=0;rangeSpawn();msg('RANGE RESET',60);},
  wmod(v){const i=+v;if(hasWmod(i))return;const cost=wmodCost(i);if(!save.free&&dGold(save)<cost){sfx('deny');toast('Not enough credits');return;}if(!save.wmods)save.wmods={};if(!save.wmods[save.diff])save.wmods[save.diff]={};if(!save.free)dGoldAdd(save,-cost);save.wmods[save.diff][i]=1;persist();sfx('buy');toast(WEAPONS[i].n+' mod installed');refresh();},
  settab(v){UI.setTab=v;UI.setQ='';refresh();},
  buyup(k){const u=UPG[k],du=dUp(save);if(!u||du[k]>=DMAX[save.diff]||upLock(k))return;if(!spend(upCost(k)))return;du[k]++;persist();sfx('buy');deedPing();refresh();},
