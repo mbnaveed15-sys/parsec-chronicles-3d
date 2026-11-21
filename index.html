@@ -260,6 +260,9 @@ textarea{min-height:11em;font-family:ui-monospace,Consolas,monospace;font-size:.
 #ui::-webkit-scrollbar-thumb:hover{background:rgba(125,227,255,.4)}
 #ui::-webkit-scrollbar-track{background:transparent}
 @media (prefers-reduced-motion:reduce){.scr{animation:none}.setgroup>h3::before,.help h3::before{animation:none}}
+body.hc{--dim:#c9d6e0;--tx:#ffffff;--ln:rgba(255,255,255,.4)}
+body.hc #ui .btn{border-color:rgba(255,255,255,.45)}
+body.hc #ui .panel{background:rgba(6,12,20,.92)}
 </style>
 </head>
 <body>
@@ -426,17 +429,18 @@ const LS={
 const isTouch=!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
 var touchOn=isTouch,settings=null,audioSet=null,save=null,slotIdx=-1,SOFT_GL=false,SOFT_GPU='',SOFT_AUTO=false,SOFT_PREV='';
 function loadSettings(){
- settings=Object.assign({glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistClimb:true,assistFlak:true,assistBrace:true,assistRoll:true,hideAssisted:false,gfx:isTouch?'low':'high',res:'1080'},LS.get('pc_settings')||{});
+ settings=Object.assign({glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistClimb:true,assistFlak:true,assistBrace:true,assistRoll:true,hideAssisted:false,hc:false,lang:'en',gfx:isTouch?'low':'high',res:'1080',binds:{fire:'Space',lock:'KeyE',brace:'KeyF',flak:'KeyG',a1:'Digit7',a2:'Digit8'}},LS.get('pc_settings')||{});
  if(!/^(high|low|classic)$/.test(settings.gfx))settings.gfx='high';
  if(!/^(1080|native|720)$/.test(settings.res))settings.res='1080';
+ try{document.body.classList.toggle('hc',!!settings.hc);}catch(e){}
  audioSet=Object.assign({music:.55,sfx:.8},LS.get('pc_audio')||{});
  /* detect software WebGL (hardware acceleration off, SwiftShader, WARP) and fall back once */
  try{const c=document.createElement('canvas'),g=c.getContext('webgl2')||c.getContext('webgl');if(g){const d=g.getExtension('WEBGL_debug_renderer_info');SOFT_GPU=d?String(g.getParameter(d.UNMASKED_RENDERER_WEBGL)||''):'';SOFT_GL=/SwiftShader|Basic Render Driver|llvmpipe|Software|WARP|Microsoft Basic/i.test(SOFT_GPU);}}catch(e){SOFT_GL=false;}
  if(SOFT_GL&&settings.gfx!=='classic'&&!LS.get('pc_force3d')){SOFT_AUTO=true;SOFT_PREV=settings.gfx;settings.gfx='classic';}
  if(SOFT_AUTO)setTimeout(function(){try{toast('Software graphics — switched to Classic 2D. Turn on hardware acceleration in your browser for 3D.')}catch(e){}},1500);
 }
-function saveSettings(){let o=settings;if(SOFT_AUTO&&settings.gfx==='classic'&&!LS.get('pc_force3d')){o=Object.assign({},settings);o.gfx=SOFT_PREV||'high';}LS.set('pc_settings',o);LS.set('pc_audio',audioSet);}
-function newSave(name){const s={v:2,name:name||'Pilot',gold:{cadet:0,pilot:0,ace:0},up:{},prog:{campaign:{cadet:{},pilot:{},ace:{}}},diff:'cadet',ach:{},hulls:{},trails:{},trims:{},hull:{},trail:{},trim:{},sq:{},sqCap:{},ship:{},ships:{},best:{},mods:{},gear:{},lore:{},loadout:[0],vulcanAuto:false,contracts:{},climb:0,memorial:0,squadXP:0,squadLvl:0,cnt:{kills:0,gold:0,wins:0,voy:0,ram:0,boss:0,sectors:0,hunt:0,elite:0,flaw:0,wEsc:0,wHun:0,wDef:0,wTot:0,wPil:0,wAce:0,bAce:0},touch:{mirror:false,scale:1,stick:true,pos:{}}};initGear(s);for(const d of DRANKS){s.ships[d]=[0];s.hulls[d]=[0];s.trails[d]=[0];s.trims[d]=[0];s.ship[d]=0;s.hull[d]=0;s.trail[d]=0;s.trim[d]=0;s.sq[d]=0;s.sqCap[d]=0;s.best[d]=0;}return s;}
+function saveSettings(){let o=settings;if(SOFT_AUTO&&settings.gfx==='classic'&&!LS.get('pc_force3d')){o=Object.assign({},settings);o.gfx=SOFT_PREV||'high';}LS.set('pc_settings',o);LS.set('pc_audio',audioSet);try{document.body.classList.toggle('hc',!!settings.hc);document.documentElement.lang=settings.lang||'en';}catch(e){}}
+function newSave(name){const s={v:2,name:name||'Pilot',gold:{cadet:0,pilot:0,ace:0},up:{},prog:{campaign:{cadet:{},pilot:{},ace:{}}},diff:'cadet',ach:{},hulls:{},trails:{},trims:{},hull:{},trail:{},trim:{},sq:{},sqCap:{},ship:{},ships:{},best:{},mods:{},wmods:{},gear:{},lore:{},loadout:[0],vulcanAuto:false,contracts:{},climb:0,memorial:0,squadXP:0,squadLvl:0,cnt:{kills:0,gold:0,wins:0,voy:0,ram:0,boss:0,sectors:0,hunt:0,elite:0,flaw:0,wEsc:0,wHun:0,wDef:0,wTot:0,wPil:0,wAce:0,bAce:0},touch:{mirror:false,scale:1,stick:true,pos:{}}};initGear(s);for(const d of DRANKS){s.ships[d]=[0];s.hulls[d]=[0];s.trails[d]=[0];s.trims[d]=[0];s.ship[d]=0;s.hull[d]=0;s.trail[d]=0;s.trim[d]=0;s.sq[d]=0;s.sqCap[d]=0;s.best[d]=0;s.wmods[d]={};}return s;}
 function initGear(s){if(!s.gear)s.gear={};for(const d of DRANKS){const g=s.gear[d]||(s.gear[d]=UPK.reduce((o,k)=>(o[k]=0,o),{weapons:0,hull:0,engines:0,cap:0,target:0,arc:0,squad:0,wing:0}));const cap=DMAX[d];for(const k of UPK)g[k]=clamp((+g[k])|0,0,cap);}}
 function fixLoadout(s,d){
  const src=Array.isArray(d&&d.loadout)?d.loadout:null,out=[];
@@ -486,6 +490,7 @@ function sanitize(d){
   s.trail[r]=pick(d.trail&&d.trail[r],Number.isInteger(d.trail&&d.trail[r])?s.trails[r]:arrList(d.trail&&d.trail[r],TRAILS.length));
   s.trim[r]=pick(d.trim&&d.trim[r],Number.isInteger(d.trim&&d.trim[r])?s.trims[r]:arrList(d.trim&&d.trim[r],TRIMS.length));
   s.best[r]=Math.max.apply(null,s.ships[r]);
+  s.wmods[r]={};const wm=d.wmods&&d.wmods[r]||{};for(const k in wm){const i=+k;if(i>=0&&i<WEAPONS.length&&wm[k])s.wmods[r][i]=1;}
   const md=d.mods||{};s.mods[r]={};
   for(const k in md){const i=+k;if(i>=0&&i<SHIPS.length&&Array.isArray(md[k]&&md[k][r]))s.mods[r][i]=md[k][r].filter(v=>Number.isInteger(v)&&v>=0&&v<MODS.length);}
   }
@@ -641,6 +646,8 @@ addEventListener('keydown',e=>{
  if(/^(Space|Arrow|Tab)/.test(e.code)&&state==='play')e.preventDefault();
  if(e.repeat)return;
  keys[e.code]=true;audioInit();
+ if(UI.rebind){const act=UI.rebind;UI.rebind=null;settings.binds=settings.binds||{};settings.binds[act]=e.code;saveSettings();toast('BOUND '+act.toUpperCase()+' → '+e.code);refresh();e.preventDefault();return;}
+ if(state==='play'){const B=settings.binds||{};if(B.lock&&e.code===B.lock){toggleLock();return;}if(B.brace&&e.code===B.brace){playerBrace();return;}if(B.flak&&e.code===B.flak){playerFlak();return;}if(B.a1&&e.code===B.a1){useAbility(1);return;}if(B.a2&&e.code===B.a2){useAbility(2);return;}}
  if(state==='cine'){skipCine();return;}
  const menu=state!=='play'&&UI.cur;
  if(menu){
@@ -773,7 +780,7 @@ function readInput(){
  IN.turn=((k.KeyD||k.ArrowRight)?1:0)-((k.KeyA||k.ArrowLeft)?1:0);
  IN.thrust=((k.KeyW||k.ArrowUp)?1:0)-((k.KeyS||k.ArrowDown)?1:0);
  IN.pitch=cockpitOn?((k.KeyW||k.ArrowUp)?1:0)-((k.KeyS||k.ArrowDown)?1:0):0;
- IN.fire=!!k.Space||T.fire;IN.brake=!!(k.ShiftLeft||k.ShiftRight)||T.brake;IN.burn=!!k.KeyQ||T.burn;IN.climb=!!k.KeyR||T.climb;
+ IN.fire=!!k[(settings.binds&&settings.binds.fire)||'Space']||T.fire;IN.brake=!!(k.ShiftLeft||k.ShiftRight)||T.brake;IN.burn=!!k.KeyQ||T.burn;IN.climb=!!k.KeyR||T.climb;
  IN.dir=false;
  let sx=0,sy=0;
  if(T.son){sx=T.sx;sy=T.sy;}
@@ -942,11 +949,14 @@ function spawnWave(no){
 }
 
 /* ---------------- DAMAGE ---------------- */
+function hasWmod(i){return !!(save&&save.wmods&&save.wmods[save.diff]&&save.wmods[save.diff][i]);}
+function wmodCost(i){return 900+i*250;}
 function dtMul(t,dt){if(!dt)return 1;if(t.kind==='ship'){if(dt==='laser'&&t.sh>0)return 1.2;if(dt==='ion'&&t.sh>0)return .82;if(dt==='plasma')return 1.08;if(dt==='kinetic')return .94;}if(t.kind==='station'){if(dt==='ion')return 1.25;if(dt==='missile')return .8;}return 1;}
 function projectorGuard(t){if(t.team!==1)return false;for(const e of enemies){if(e.dead||e.special!=='shield')continue;if(Math.hypot(e.x-t.x,e.y-t.y)<340)return true;}return false;}
 function damage(t,amt,src,o){
  if(t.dead||!(amt>0))return;o=o||0;
  if(o.dt)amt*=dtMul(t,o.dt);
+ if(o.dt&&src&&src.isPlayer){const wi={laser:0,ion:1,plasma:2,vulcan:3,msl:4}[o.dt];if(wi!=null&&hasWmod(wi))amt*=1.12;}
  if(t.kind==='ship'&&projectorGuard(t))amt*=.55;
  if(t.isPlayer&&M&&M.dmgTaken)amt*=M.dmgTaken;
  if(t.isPlayer&&M.done&&M.win)return;
@@ -1737,6 +1747,9 @@ function stepMode(){
    m.detected=clamp((m.detected||0)+(seen?1.1:-.7),0,100);
    if(m.detected>=100){m.detected=0;const e=edgePoint();for(let i=0;i<2;i++)spawnEnemy(m.eIdx,e.x+i*70,e.y,Math.atan2(player.y-e.y,player.x-e.x));msg('DETECTED — INTERCEPTORS INBOUND',110);sfx('warn');}
    break;}
+  case'range':
+   if(enemies.length<4&&m.t%120===0){const e=spawnEnemy(0,player.x+rand(-320,320),player.y+rand(-320,320),rand(TAU),{noSpecial:true});if(e){e.ai.reload=1e9;e.dm=0;e.maxHp=e.hp=140;e.label='DRONE';}}
+   break;
  }
 }
 function objText(){
@@ -1748,6 +1761,7 @@ function objText(){
   case'hunted':return m.mark&&!m.mark.dead?'MARKED SHIP '+Math.ceil(m.mark.hp/m.mark.maxHp*100)+'%':'MARKED SHIP DOWN';
   case'defend':{const ps=stationOf(0);return'WAVE '+Math.max(1,m.wave)+' / 3  ·  HOSTILES '+n+'  ·  STATION '+(ps&&!ps.dead?Math.ceil(ps.hp/ps.maxHp*100)+'%':'LOST');}
   case'recon':return'RELAYS '+((m.scanned||0))+' / 3  ·  DETECTION '+Math.round(m.detected||0)+'%';
+  case'range':return'PRACTICE · DRONES '+enemies.length+' · F9 CLEAN SHOT';
   default:return'KILLS '+m.kills+' / '+m.target;
  }
 }
@@ -1832,7 +1846,7 @@ function resize(){
  if(window.R3D&&R3D.resize){try{R3D.resize();}catch(e){}}
  layoutTouch();
 }
-function applyGfx(){if(window.R3D&&R3D.failed){if(settings.gfx!=='classic'){settings.gfx='classic';saveSettings();}}else if(window.R3D){R3D.on=settings.gfx!=='classic';}document.documentElement.style.setProperty('--fs',settings.text);}
+function applyGfx(){if(window.R3D&&R3D.failed){if(settings.gfx!=='classic'){settings.gfx='classic';saveSettings();try{document.documentElement.lang=settings.lang||'en';}catch(e){}}}else if(window.R3D){R3D.on=settings.gfx!=='classic';}document.documentElement.style.setProperty('--fs',settings.text);}
 function w2s(x,y,z){
  if(U3){const p=R3D.w2s(x,y,z||0);SX=p.x;SY=p.y;}
  else{SX=x-camX;SY=H/2+(y-camY-H/2)*TILT-(z||0)*ALT_PX;}
@@ -2317,11 +2331,13 @@ function drawPreviews(){
 }
 
 /* ---------------- MENUS (DOM overlays) ---------------- */
-const UI={cur:'',arg:null,ret:'title',tab:'up',sea:0,confirm:-1,pvH:-1,pvT:-1,pvR:-1,dk:-1};
+const UI={cur:'',arg:null,ret:'title',tab:'up',sea:0,confirm:-1,pvH:-1,pvT:-1,pvR:-1,dk:-1,rebind:null};
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),1900);}
 const HUBNAME={hangar:1,shop:1,cosm:1,deeds:1,sectors:1,contracts:1,settings:1,help:1};
+const LANG={en:{hangar:'Hangar',shop:'Shop',cosm:'Cosmetics',deeds:'Deeds',campaign:'Campaign',contracts:'Contracts',settings:'Systems',help:'Manual',launch:'Launch',practice:'Practice',hunt:'Hunt',continue:'Continue'},ur:{hangar:'ہینگر',shop:'دکان',cosm:'ظاہری شکل',deeds:'کارنامے',campaign:'مہم',contracts:'معاہدے',settings:'نظام',help:'ہدایت نامہ',launch:'شروع کریں',practice:'مشق',hunt:'شکار',continue:'جاری رکھیں'}};
+function TR(k){const l=settings&&settings.lang||'en';return(LANG[l]&&LANG[l][k])||LANG.en[k]||k;}
 function hubNav(cur){
- const items=[['hangar','Hangar'],['shop','Shop'],['cosm','Cosmetics'],['deeds','Deeds'],['sectors','Campaign'],['contracts','Contracts'],['settings','Systems'],['help','Manual']];
+ const items=[['hangar',TR('hangar')],['shop',TR('shop')],['cosm',TR('cosm')],['deeds',TR('deeds')],['sectors',TR('campaign')],['contracts',TR('contracts')],['settings',TR('settings')],['help',TR('help')]];
  return '<div class="hubnav">'+items.map(function(it){return '<button class="btn sm'+(it[0]===cur?' on':'')+'" data-a="nav" data-v="'+it[0]+'">'+it[1]+'</button>';}).join('')+'</div>';
 }
 function fitScrolls(){
@@ -2416,7 +2432,7 @@ const SCREENS={
   '<div class="kv"><span>Next mission</span><b>'+((r-1)/50+1|0)+'-'+((r-1)%50+1)+' · '+SEAS[(r-1)/50|0].n+'</b></div>'+
   '<div class="kv"><span>Difficulty</span><b>enemy ×'+DIFFS[s.diff].e+' · reward ×'+DIFFS[s.diff].r+'</b></div><div class="row">'+d+'</div><span class="dim sml">Each difficulty keeps its own upgrades, ships, mods and unlocks.</span>'+
   (s.free?'<span class="tag g">Free Roam — progress is not saved</span>':'')+
-  '<div class="row" style="margin-top:.5em;gap:.5em"><button class="btn primary" data-a="cont">Continue<small>Mission '+((nextLv()-1)/50+1|0)+'-'+((nextLv()-1)%50+1)+'</small></button><button class="btn" data-a="hunt">Hunt<small>Free hunt</small></button>'+(reachedOf(s)>=500?'<button class="btn" data-a="ngplus">New Game+<small>Reset, keep cosmetics</small></button>':'')+'</div>'+
+  '<div class="row" style="margin-top:.5em;gap:.5em"><button class="btn primary" data-a="cont">Continue<small>Mission '+((nextLv()-1)/50+1|0)+'-'+((nextLv()-1)%50+1)+'</small></button><button class="btn" data-a="hunt">Hunt<small>Free hunt</small></button><button class="btn" data-a="range">Practice<small>Weapon range</small></button>'+(reachedOf(s)>=500?'<button class="btn" data-a="ngplus">New Game+<small>Reset, keep cosmetics</small></button>':'')+'</div>'+
   '</div></div></div>'+
   '<div class="panel" style="max-width:980px"><div class="row"><h3 style="flex:1">Squadron</h3><span class="tag">SQ LV '+(s.squadLvl||1)+'</span><span class="tag">'+sqh+' / '+sqc+' ready</span></div><div class="chips" style="margin:.35em 0 .25em">'+(dots||'<span>NO WINGS</span>')+'</div>'+(sqc===0?'<span class="dim sml">Upgrade Wing in the Shop to field escort ships.</span>':sqMiss>0?'<button class="btn sm gold'+(!s.free&&dGold(s)<sqFee?' warn':'')+'" data-a="rebuild">Rebuild wing · ◈ '+fmtNum(sqFee)+'</button> <span class="dim sml">lost pilots cost credits to replace</span>':'<span class="dim sml">All wings ready.'+(s.memorial?' · Memorial '+s.memorial:'')+'</span>')+'</div>'+
   '</div>';
@@ -2465,7 +2481,14 @@ const SCREENS={
  },
  shop(){
   const t=UI.tab,s=save,r=reached(),du=dUp(s);
-  let h='<div class="scr shopscr">'+hdr('Shop · '+DIFFS[s.diff].n)+'<span class="dim sml">Gear, ships and unlocks are separate on '+DIFFS[s.diff].n+'. Tech ceiling '+DMAX[s.diff]+' per track.</span><div class="tabs"><button class="btn sm'+(t==='up'?' on':'')+'" data-a="tab" data-v="up">Upgrades</button><button class="btn sm'+(t==='dock'?' on':'')+'" data-a="tab" data-v="dock">Dockyard</button><button class="btn sm'+(t==='mods'?' on':'')+'" data-a="tab" data-v="mods">Ship Mods</button></div>';
+  let h='<div class="scr shopscr">'+hdr('Shop · '+DIFFS[s.diff].n)+'<span class="dim sml">Gear, ships and unlocks are separate on '+DIFFS[s.diff].n+'. Tech ceiling '+DMAX[s.diff]+' per track.</span><div class="tabs"><button class="btn sm'+(t==='up'?' on':'')+'" data-a="tab" data-v="up">Upgrades</button><button class="btn sm'+(t==='dock'?' on':'')+'" data-a="tab" data-v="dock">Dockyard</button><button class="btn sm'+(t==='mods'?' on':'')+'" data-a="tab" data-v="mods">Ship Mods</button><button class="btn sm'+(t==='wmod'?' on':'')+'" data-a="tab" data-v="wmod">Weapon Mods</button></div>';
+  if(t==='wmod'){
+   h+='<div class="grid g3" style="max-width:1100px">';
+   for(let i=0;i<WEAPONS.length;i++){const own=hasWmod(i),cost=wmodCost(i);
+    h+='<div class="panel col"><h3 style="margin:0 0 .3em">'+WEAPONS[i].n+' MOD</h3><p class="dim sml">Permanent +12% damage with '+WEAPONS[i].n+'.</p><button class="btn '+(own?'':'primary')+'" '+(own?'disabled':'data-a="wmod" data-v="'+i+'"')+'>'+(own?'INSTALLED':'INSTALL · ◈ '+fmtNum(cost))+'</button></div>';
+   }
+   return h+'</div></div></div>';
+  }
   if(t==='up'){
    h+='<div class="ugrid">';
    const cap=DMAX[s.diff];
@@ -2540,10 +2563,12 @@ const SCREENS={
   const sl=(o,k,label,min,max,step)=>{const obj=o==='a'?audioSet:settings;return'<label class="set" data-n="'+label.toLowerCase()+'"><span>'+label+'</span><input type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+obj[k]+'" data-s="'+k+'" data-o="'+o+'"><b>'+Math.round(obj[k]*100)+'%</b></label>';};
   const seg=(k,label,opts)=>'<div class="set" data-n="'+label.toLowerCase()+'"><span>'+label+'</span><div class="seg">'+opts.map(o=>'<button class="btn sm'+(String(settings[k])===String(o[0])?' on':'')+'" data-a="set" data-k="'+k+'" data-v="'+o[0]+'">'+o[1]+'</button>').join('')+'</div></div>';
   const q=(UI.setQ||'').trim().toLowerCase(),tab=UI.setTab||'audio';
+  const keyName=c=>String(c||'').replace('Key','').replace('Digit','').replace('Numpad','NP');
+  const bindRow=(a,l)=>'<div class="set" data-n="'+l.toLowerCase()+'"><span>'+l+'</span><button class="btn sm" data-a="bind" data-v="'+a+'">'+(UI.rebind===a?'PRESS A KEY':keyName(settings.binds&&settings.binds[a]))+'</button></div>';
   const G=[
    ['audio','Comms','<h3>Comms / Audio</h3>'+sl('a','music','Music volume',0,1,.05)+sl('a','sfx','SFX volume',0,1,.05)],
-   ['display','Optics','<h3>Optics / Display</h3>'+'<div class="set" data-n="preset quality performance"><span>Preset</span><div class="seg"><button class="btn sm" data-a="preset" data-v="quality">Quality</button><button class="btn sm" data-a="preset" data-v="balanced">Balanced</button><button class="btn sm" data-a="preset" data-v="performance">Performance</button></div></div>'+seg('gfx','Graphics',[['high','High 3D'],['low','Low 3D'],['classic','Classic 2D']])+(SOFT_GL?'<p class="dim sml" style="color:#ffb96a">Software graphics detected'+(SOFT_AUTO?' — auto-switched to Classic 2D this session':'')+' ('+SOFT_GPU.slice(0,64)+'). Enable hardware acceleration in your browser for smooth 3D.</p>':'')+(window.R3D&&R3D.failed?'<p class="dim sml">3D unavailable on this device — running Classic 2D.</p>':'')+seg('res','Resolution',[['1080','1080p'],['native','Native'],['720','720p']])+'<div class="set" data-n="renderer"><span>Renderer</span><b style="flex:1;text-align:left;font-weight:400" class="dim">'+rendererLabel()+'</b></div>'+sl('s','hud','HUD size',.7,1.6,.05)+sl('s','shake','Screen shake',0,1.5,.05)+sl('s','text','Text size',.8,1.4,.05)+seg('glow','Player glow outline',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.7em"><button class="btn sm warn" data-a="resetcfg">Reset all settings</button></div>'],
-   ['flight','Flight','<h3>Flight Control</h3>'+sl('s','turn','Turn speed',.6,1.6,.05)+sl('s','thrust','Thrust power',.6,1.6,.05)],
+   ['display','Optics','<h3>Optics / Display</h3>'+'<div class="set" data-n="preset quality performance"><span>Preset</span><div class="seg"><button class="btn sm" data-a="preset" data-v="quality">Quality</button><button class="btn sm" data-a="preset" data-v="balanced">Balanced</button><button class="btn sm" data-a="preset" data-v="performance">Performance</button></div></div>'+seg('gfx','Graphics',[['high','High 3D'],['low','Low 3D'],['classic','Classic 2D']])+(SOFT_GL?'<p class="dim sml" style="color:#ffb96a">Software graphics detected'+(SOFT_AUTO?' — auto-switched to Classic 2D this session':'')+' ('+SOFT_GPU.slice(0,64)+'). Enable hardware acceleration in your browser for smooth 3D.</p>':'')+(window.R3D&&R3D.failed?'<p class="dim sml">3D unavailable on this device — running Classic 2D.</p>':'')+seg('res','Resolution',[['1080','1080p'],['native','Native'],['720','720p']])+'<div class="set" data-n="renderer"><span>Renderer</span><b style="flex:1;text-align:left;font-weight:400" class="dim">'+rendererLabel()+'</b></div>'+sl('s','hud','HUD size',.7,1.6,.05)+sl('s','shake','Screen shake',0,1.5,.05)+sl('s','text','Text size',.8,1.4,.05)+seg('glow','Player glow outline',[[true,'On'],[false,'Off']])+seg('hc','High contrast UI',[[true,'On'],[false,'Off']])+seg('lang','Language',[['en','English'],['ur','اردو']])+'<div class="row" style="margin-top:.7em"><button class="btn sm warn" data-a="resetcfg">Reset all settings</button></div>'],
+   ['flight','Flight','<h3>Flight Control</h3>'+sl('s','turn','Turn speed',.6,1.6,.05)+sl('s','thrust','Thrust power',.6,1.6,.05)+'<h3 style="margin-top:.6em">Bindings</h3>'+bindRow('fire','Fire')+bindRow('lock','Lock target')+bindRow('brace','Brace')+bindRow('flak','Flak')+bindRow('a1','Ability 1')+bindRow('a2','Ability 2')+'<p class="dim sml">Click a binding, then press the new key.</p>'],
    ['autopilot','Autopilot','<h3>Autopilot</h3>'+seg('assist','Pilot assist',[[true,'On'],[false,'Off']])+(settings.assist||q?seg('assistClimb','Auto-climb obstacles',[[true,'On'],[false,'Off']])+seg('assistFlak','Auto-flak plasma',[[true,'On'],[false,'Off']])+seg('assistBrace','Auto-brace (shield)',[[true,'On'],[false,'Off']])+seg('assistRoll','Auto-roll dodge',[[true,'On'],[false,'Off']])+seg('hideAssisted','Hide assisted buttons',[[true,'On'],[false,'Off']]):'<p class="dim sml">Turn Pilot assist on to configure its individual behaviours.</p>')],
    ['controls','Bindings','<h3>Control Bindings</h3>'+seg('land','Force landscape',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.6em"><button class="btn sm" data-a="layout">Touch layout editor</button><button class="btn sm" data-a="fs">Fullscreen</button></div><p class="dim sml" style="margin-top:.7em">Key bindings are listed in the Manual (H).</p>']
   ];
@@ -2731,6 +2756,9 @@ const ACT={
  next(){const lv=M.lv+1;leaveMission();show('brief',{lv});},
  home(){leaveMission();show('hangar');},
  tab(v){UI.tab=v;show('shop');},
+ bind(v){UI.rebind=v;toast('Press a key for '+v);refresh();},
+ range(){leaveMission();state='menu';launchMission(1,true);const o=document.getElementById('mintro');if(o)o.remove();M.mode='range';M.hunt=false;M.target=9999;enemies.length=0;for(let i=0;i<4;i++){const e=spawnEnemy(0,player.x+rand(-260,260),player.y+rand(-260,260),rand(TAU),{noSpecial:true});if(e){e.ai.reload=1e9;e.dm=0;e.maxHp=e.hp=140;e.label='DRONE';}}msg('PRACTICE RANGE — DRONES RESPAWN',110);},
+ wmod(v){const i=+v;if(hasWmod(i))return;const cost=wmodCost(i);if(!save.free&&dGold(save)<cost){sfx('deny');toast('Not enough credits');return;}if(!save.wmods)save.wmods={};if(!save.wmods[save.diff])save.wmods[save.diff]={};if(!save.free)dGoldAdd(save,-cost);save.wmods[save.diff][i]=1;persist();sfx('buy');toast(WEAPONS[i].n+' mod installed');refresh();},
  settab(v){UI.setTab=v;UI.setQ='';refresh();},
  buyup(k){const u=UPG[k],du=dUp(save);if(!u||du[k]>=DMAX[save.diff]||upLock(k))return;if(!spend(upCost(k)))return;du[k]++;persist();sfx('buy');deedPing();refresh();},
  rebuild(){const cap=wingCap();if(!save||save.free)return;if((save.sq[save.diff]|0)>=cap){toast('Squadron at full strength');return;}const fee=rebuildFee();if(!spend(fee))return;save.sq[save.diff]=(save.sq[save.diff]|0)+1;persist();sfx('buy');toast('Wing rebuilt');refresh();},
@@ -2783,6 +2811,8 @@ var lastT=0,acc=0;
 function frame(t){
  requestAnimationFrame(frame);
  const dt=Math.min(250,t-lastT);lastT=t;
+ window.__perf=(window.__perf||16)*.95+dt*.05;
+ if(state==='play'&&window.__perf>27&&settings.gfx==='high'&&!SOFT_AUTO){settings.gfx='low';saveSettings();applyGfx();toast('Auto quality: low (frame time)');}
  pollPad();
  if(state==='play'&&M){
   acc+=dt;let n=0;
