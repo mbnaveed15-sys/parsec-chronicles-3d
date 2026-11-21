@@ -90,8 +90,9 @@ button{font-family:inherit;color:inherit}
 .setbar{position:sticky;top:0;z-index:3;display:flex;flex-direction:column;gap:.5em;padding:.55em .6em;margin:-.2em 0 .5em;background:rgba(7,13,22,.94);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--ln);border-radius:10px}
 .setsearch{font-size:.95em;padding:.5em .7em}
 .setgroup{margin-top:.2em}
-.setgrid{display:grid;grid-template-columns:1fr 1fr;gap:.1em 1.8em;align-items:start}
-@media (max-width:760px){.setgrid{grid-template-columns:1fr}}
+.setcols{display:grid;grid-template-columns:1fr 1fr;gap:0 1.8em;height:calc(100vh - 250px);min-height:240px;overflow:hidden;width:100%}
+.setcol{overflow-y:auto;min-height:0;padding-right:6px}
+@media (max-width:760px){.setcols{grid-template-columns:1fr;height:auto;min-height:0}.setcol{overflow:visible}}
 /* boot sequences */
 #bootseq{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,#0b1626,#04080f 72%);font-family:Orbitron,sans-serif;color:#cfe6f5;transition:opacity .4s}
 #bootseq.out{opacity:0}
@@ -228,10 +229,17 @@ textarea{min-height:11em;font-family:ui-monospace,Consolas,monospace;font-size:.
 .dgrid{display:grid;gap:.7em;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:.5em}
 @media (max-width:720px){.dgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:480px){.dgrid{grid-template-columns:1fr}}
+.dockcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6em;width:100%;max-width:1180px;height:calc(100vh - 250px);min-height:260px}
+.dockcol{display:flex;flex-direction:column;min-height:0;overflow:hidden;background:rgba(10,18,30,.5);border:1px solid var(--ln);border-radius:12px;padding:.6em .65em}
+.dockcol>h3{flex:none;margin:0 0 .3em}
+.dscroll{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:.55em;padding-right:4px}
+.dscroll>.card{flex:0 0 auto}
+.cscroll>.csw{flex:0 0 auto}
+@media (max-width:820px){.dockcols{grid-template-columns:1fr;height:auto;min-height:0}.dockcol{max-height:60vh}}
 .card.sc .pv{aspect-ratio:auto;height:96px;border-radius:6px}
 .chips{display:flex;gap:.35em;flex-wrap:wrap;font-size:.6em;color:var(--dim)}
 .chips span{border:1px solid var(--ln);border-radius:5px;padding:.14em .45em;font-family:Orbitron,sans-serif;letter-spacing:.03em;white-space:nowrap}
-.ugrid{display:grid;gap:.55em;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));width:100%;max-width:980px}
+.ugrid{display:grid;gap:.55em;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));width:100%;max-width:980px;max-height:calc(100vh - 260px);overflow-y:auto;padding-right:4px}
 #ui{scrollbar-width:thin;scrollbar-color:rgba(125,227,255,.3) transparent}
 #ui::-webkit-scrollbar{width:9px}
 #ui::-webkit-scrollbar-thumb{background:rgba(125,227,255,.22);border-radius:6px}
@@ -1998,13 +2006,8 @@ const SCREENS={
   (s.free?'<span class="tag g">Free Roam — progress is not saved</span>':'')+'</div></div></div>'+
   '<div class="panel" style="max-width:980px"><div class="row"><h3 style="flex:1">Squadron</h3><span class="tag">'+sqh+' / '+sqc+' ready</span></div><div class="chips" style="margin:.35em 0 .25em">'+(dots||'<span>NO WINGS</span>')+'</div>'+(sqc===0?'<span class="dim sml">Upgrade Wing in the Shop to field escort ships.</span>':sqMiss>0?'<button class="btn sm gold'+(!s.free&&dGold(s)<sqFee?' warn':'')+'" data-a="rebuild">Rebuild wing · ◈ '+fmtNum(sqFee)+'</button> <span class="dim sml">lost pilots cost credits to replace</span>':'<span class="dim sml">All wings ready.</span>')+'</div>'+
   '<div class="menu" style="max-width:980px">'+
-  '<button class="btn primary" data-a="cont">Continue<small>Mission '+((nextLv()-1)/50+1|0)+'-'+((nextLv()-1)%50+1)+' · '+DIFFS[s.diff].n+'</small></button>'+'<button class="btn" data-a="nav" data-v="sectors">Campaign<small>10 sectors · 500 missions</small></button>'+
-  '<button class="btn" data-a="hunt">Hunt<small>Endless free hunt</small></button>'+
-  '<button class="btn" data-a="nav" data-v="shop">Shop<small>Upgrades · Dockyard · Mods</small></button>'+
-  '<button class="btn" data-a="nav" data-v="cosm">Cosmetics<small>Hull colours · engine trails</small></button>'+
-  '<button class="btn" data-a="nav" data-v="deeds">Deeds<small>'+Object.keys(s.ach).length+' / '+DEEDS.length+' earned</small></button>'+
-  '<button class="btn" data-a="nav" data-v="settings">Settings<small>Audio · graphics · controls</small></button>'+
-  '<button class="btn" data-a="nav" data-v="help">Help<small>Flight manual</small></button></div></div>';
+  '<button class="btn primary" data-a="cont">Continue<small>Mission '+((nextLv()-1)/50+1|0)+'-'+((nextLv()-1)%50+1)+' · '+DIFFS[s.diff].n+'</small></button>'+
+  '<button class="btn" data-a="hunt">Hunt<small>Endless free hunt</small></button></div></div>';
  },
  sectors(){
   let h='<div class="scr">'+hdr('Sector Map · '+DIFFS[save.diff].n)+'<div class="grid g2" style="max-width:980px">';
@@ -2056,16 +2059,19 @@ const SCREENS={
    h+='</div>';
   }else if(t==='dock'){
    const shipList=dList(s,'ships'),curShip=dGet(s,'ship',0);
-   for(let tr=0;tr<5;tr++){
-    h+='<div class="panel" style="padding:.7em .8em"><h3>'+TIERS[tr]+'</h3><div class="dgrid">';
-    for(let j=0;j<3;j++){
-     const c=SHIPS[tr*3+j],own=shipList.includes(c.i),cur=curShip===c.i,dl=diffLock(c),lock=!own&&(r<c.at||!!dl),why=!own&&dl?DIFFS[DRANKS[c.rank||0]].n.toUpperCase():('M'+c.at);
-     h+='<div class="card sc'+(cur?' sel':'')+(lock?' lock':'')+'"><canvas class="pv" data-idx="'+c.i+'" width="312" height="192"></canvas><div class="row" style="gap:.3em"><h3 style="flex:1;font-size:.86em">'+c.n+'</h3><span class="tag">'+ROLES[c.role]+'</span></div>'+
+   h+='<div class="dockcols">';
+   for(let rl=0;rl<3;rl++){
+    h+='<div class="dockcol"><h3>'+ROLES[rl]+'</h3><div class="dscroll">';
+    for(const c of SHIPS)if(c.role===rl){
+     const own=shipList.includes(c.i),cur=curShip===c.i,dl=diffLock(c),lock=!own&&(r<c.at||!!dl),why=!own&&dl?DIFFS[DRANKS[c.rank||0]].n.toUpperCase():('M'+c.at);
+     h+='<div class="card sc'+(cur?' sel':'')+(lock?' lock':'')+'"><canvas class="pv" data-idx="'+c.i+'" width="312" height="192"></canvas><div class="row" style="gap:.3em"><h3 style="flex:1;font-size:.86em">'+c.n+'</h3><span class="tag">Mk '+['I','II','III','IV','V'][c.tier]+'</span></div>'+
       '<div class="chips"><span>H '+c.hp+'</span><span>D '+c.dmg+'</span><span>S '+c.spd+'</span></div>'+
       (cur?'<button class="btn sm on dis">In service</button>':own?'<button class="btn sm" data-a="useship" data-v="'+c.i+'">Fly this ship</button>':lock?'<button class="btn sm dis" title="'+why+'">🔒 '+why+'</button>':'<button class="btn sm'+(!s.free&&dGold(s)<c.cost?' warn':' gold')+'" data-a="buyship" data-v="'+c.i+'">Buy · ◈ '+fmtNum(c.cost)+'</button>')+'</div>';
     }
     h+='</div></div>';
    }
+   h+='</div>';
+
   }else{
    const c=SHIPS[dGet(s,'ship',0)],own=(s.mods[s.diff]&&s.mods[s.diff][dGet(s,'ship',0)])||[];
    h+='<div class="panel"><div class="row"><div style="flex:0 0 200px;max-width:40%"><canvas class="pv" data-idx="'+c.i+'" width="312" height="192"></canvas></div><div class="col" style="flex:1"><h3>Mods for '+c.n+'</h3><span class="dim sml">Mods are fitted to one hull and stay with it. Switch ships in the Dockyard to fit another.</span></div></div><div class="ugrid" style="margin-top:.8em">';
@@ -2125,20 +2131,21 @@ const SCREENS={
    ['autopilot','Autopilot','<h3>Autopilot</h3>'+seg('assist','Pilot assist',[[true,'On'],[false,'Off']])+(settings.assist||q?seg('assistClimb','Auto-climb obstacles',[[true,'On'],[false,'Off']])+seg('assistFlak','Auto-flak plasma',[[true,'On'],[false,'Off']])+seg('assistBrace','Auto-brace (shield)',[[true,'On'],[false,'Off']])+seg('assistRoll','Auto-roll dodge',[[true,'On'],[false,'Off']])+seg('hideAssisted','Hide assisted buttons',[[true,'On'],[false,'Off']]):'<p class="dim sml">Turn Pilot assist on to configure its individual behaviours.</p>')],
    ['controls','Bindings','<h3>Control Bindings</h3>'+seg('land','Force landscape',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.6em"><button class="btn sm" data-a="layout">Touch layout editor</button><button class="btn sm" data-a="fs">Fullscreen</button></div><p class="dim sml" style="margin-top:.7em">Key bindings are listed in the Manual (H).</p>']
   ];
-  let body='';
+  let c1='',c2='',k=0;
   if(q){
    for(const g of G){
     const rows=g[2].replace(/<h3>.*?<\/h3>/g,'').split(/(?=<label class="set"|<div class="set")/).filter(r=>r.indexOf('data-n="')>=0&&r.toLowerCase().indexOf(q)>=0);
-    if(rows.length)body+='<div class="setgroup"><h3>'+g[1]+'</h3>'+rows.join('')+'</div>';
+    if(rows.length){const html='<div class="setgroup"><h3>'+g[1]+'</h3>'+rows.join('')+'</div>';if(k++%2)c2+=html;else c1+=html;}
    }
-   if(!body)body='<p class="dim setempty">No setting matches “'+esc(UI.setQ)+'”.</p>';
+   if(!c1&&!c2)c1='<p class="dim setempty">No setting matches “'+esc(UI.setQ)+'”.</p>';
   }else{
-   body=G.map(function(g){return '<div class="setgroup">'+g[2]+'</div>';}).join('');
+   for(const g of G){const html='<div class="setgroup">'+g[2]+'</div>';if(k++%2)c2+=html;else c1+=html;}
   }
+  const body='<div class="setcols"><div class="setcol">'+c1+'</div><div class="setcol">'+c2+'</div></div>';
   const tabs='';
   return'<div class="scr">'+hdr('Ship Systems')+'<div class="panel col" style="max-width:1040px;gap:.1em">'+
   '<div class="setbar"><input type="text" class="setsearch" id="setq" placeholder="Search settings — try “turn”, “flak”, “hud”…" value="'+esc(UI.setQ||'')+'" autocomplete="off">'+tabs+'</div>'+
-  '<div class="setgrid">'+body+'</div></div></div>';
+  body+'</div></div>';
  },
  layout(){
   const t=save.touch;
