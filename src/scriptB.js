@@ -447,8 +447,8 @@ function stationObj(st){
  return{o:g,ring,tur,au,bl,dish:dishG,own};
 }
 function updStation(o,st){
- o.ring.rotation.y=-st.rot;o.dish.rotation.y=st.rot*2.2;for(let i=0;i<3;i++)o.tur[i].rotation.y=-st.turrets[i].ang;
- o.au.material.opacity=window.__cineHideHud?0:(.1+Math.sin(frameNo*.05)*.03);o.au.visible=!window.__cineHideHud;o.bl.emissiveIntensity=frameNo%70<12?4.5:.35;
+ o.ring.rotation.y=-st.rot;o.dish.rotation.y=st.rot*2.2;for(let i=0;i<3;i++){o.tur[i].rotation.y=-st.turrets[i].ang;o.tur[i].visible=!st.turrets[i].dead;}
+ o.au.material.opacity=window.__cineHideHud?0:(.1+Math.sin(frameNo*.05)*.03);o.au.visible=!window.__cineHideHud&&!st.genDead;o.bl.emissiveIntensity=frameNo%70<12?4.5:.35;
 }
 /* black hole: dark core, glowing rim, rotating accretion disk */
 function blackHoleObj(g){
