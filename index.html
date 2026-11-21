@@ -859,10 +859,11 @@ function spawnEnemy(idx,x,y,ang,o){
  s.ai=mkAI(s,o.ram);if(!o.boss&&!o.marked&&!o.ram&&M.lv>5&&Math.random()<.1+M.sea*.015){s.elite=true;s.maxHp=s.hp=Math.round(s.maxHp*1.6);s.maxSh=s.sh=Math.round(s.maxHp*.3);s.dm*=1.25;s.label='ELITE';s.hull='#5a2a6a';s.trail='#c87dff';s.ai.reload*=.85;}enemies.push(s);return s;
 }
 function mkStation(team,x,y,mul){
- const lv=M.lv,sc=team?M.eHull:(1+M.sea*.28),hp=Math.round((260+lv*14)*sc*(mul||1));
- return{kind:'station',team,x,y,z:0,vx:0,vy:0,r:46,hp,maxHp:hp,aura:Math.min(240,170+lv*.14),atk:Math.min(650,380+lv*.5),
+ const lv=M.lv,sc=team?M.eHull:(1+M.sea*.28),hp=Math.round((420+lv*5)*sc*(mul||1));
+ return{kind:'station',team,x,y,z:0,vx:0,vy:0,r:46,hp,maxHp:hp,aura:Math.min(300,175+lv*.25),atk:Math.min(720,390+lv*.7),
+  burst:4+(lv>=150?1:0)+(lv>=300?1:0),tcd:Math.round(Math.max(66,105-lv*.07)),
   turrets:[0,1,2].map(i=>({ang:turA(i),cd:60+i*30,burst:0,bt:0})),rot:0,dead:false,flash:0,dAcc:0,dCrit:false,
-  burn:(1.2+lv*.02)*(team?M.eDmg:1+M.sea*.11),tdmg:(3+lv*.04)*(team?M.eDmg:1+M.sea*.11)};
+  burn:(1.2+lv*.015)*(team?M.eDmg:1+M.sea*.11),tdmg:(3+lv*.03)*(team?M.eDmg:1+M.sea*.11)};
 }
 
 /* ---------------- MISSION SETUP ---------------- */
@@ -1419,8 +1420,8 @@ function stepStations(){
    if(!tg){tu.ang+=.008;tu.burst=0;continue;}
    const a=turA(i),tx=st.x+Math.cos(a)*30,ty=st.y+Math.sin(a)*30,dd=Math.hypot(tg.x-tx,tg.y-ty),tt=dd/10;
    const des=Math.atan2(tg.y+tg.vy*tt-ty,tg.x+tg.vx*tt-tx),df=angDiff(tu.ang,des);tu.ang+=clamp(df,-.07,.07);
-   if(tu.burst>0){if(--tu.bt<=0){tu.bt=6;tu.burst--;shoot('turret',st.team,st,tx+Math.cos(tu.ang)*14,ty+Math.sin(tu.ang)*14,Math.min(.5,tg.z),tu.ang+rand(-.03,.03),10,72,st.tdmg,st.team?'#ff6a5a':'#7dffd8',4);sfxAt('laser',tx,ty);if(tu.burst===0)tu.cd=105+i*17;}}
-   else if(tu.cd<=0&&Math.abs(df)<.25&&!M.done){tu.burst=4;tu.bt=0;}
+   if(tu.burst>0){if(--tu.bt<=0){tu.bt=6;tu.burst--;shoot('turret',st.team,st,tx+Math.cos(tu.ang)*14,ty+Math.sin(tu.ang)*14,Math.min(.5,tg.z),tu.ang+rand(-.03,.03),10,72,st.tdmg,st.team?'#ff6a5a':'#7dffd8',4);sfxAt('laser',tx,ty);if(tu.burst===0)tu.cd=(st.tcd||105)+i*17;}}
+   else if(tu.cd<=0&&Math.abs(df)<.25&&!M.done){tu.burst=st.burst||4;tu.bt=0;}
   }
  }
 }
