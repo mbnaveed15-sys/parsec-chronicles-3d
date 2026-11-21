@@ -360,7 +360,7 @@ const MODES={
  boss:{n:'BOSS',ic:'☠',obj:'Kill the sector captain, the escort and the station.',bonus:1.5,t:[40,60]},
  hunt:{n:'HUNT',ic:'∞',obj:'Free hunt. Reach the kill target.',bonus:1,t:[30,45]}
 };
-const WEAPONS=[{n:'LASER',c:'#7de3ff'},{n:'ION',c:'#c87dff'},{n:'PLASMA',c:'#ff7043'},{n:'VULCAN',c:'#ffd700'},{n:'MISSILE',c:'#ffb36b'},{n:'SING',c:'#b06bff'},{n:'FLAK',c:'#ffd76b'}];
+const WEAPONS=[{n:'LASER',c:'#7de3ff'},{n:'ION',c:'#c87dff'},{n:'PLASMA',c:'#ff7043'},{n:'VULCAN',c:'#ffd700'},{n:'MISSILE',c:'#ffb36b'},{n:'SING',c:'#b06bff'}];
 const PWR=['medkit','plasma','boost','damage','shield','gold'];
 const PWRC={medkit:'#6fe08a',plasma:'#ff7043',boost:'#7de3ff',damage:'#ff5a5a',shield:'#5aa0ff',gold:'#ffd700',sing:'#b06bff',msl:'#ffb36b'};
 const FLOC={gold:'#ffd700',health:'#6fe08a',fuel:'#5aa0ff'};
@@ -1183,8 +1183,7 @@ function playerWeapons(p){
    if(w===1&&p.cd[1]<=0){fireBolt(p,1);p.cd[1]=Math.round(52*p.cdm);}
    else if(w===2&&p.cd[2]<=0){if(p.plasma>0){fireBolt(p,2);p.plasma--;p.cd[2]=Math.round(70*p.cdm);}else{p.cd[2]=30;sfx('deny');msg('PLASMA EMPTY — DOCK TO RESTOCK',70);}}
    else if(w===3)fireVulcan(p);
-   else if(w===4&&p.cd[4]<=0){if(p.msl>0){fireMissile(p);p.msl--;p.cd[4]=Math.round(105*p.cdm);}else{sfx('deny');msg('MISSILE RACK EMPTY — DOCK TO REARM',90);p.cd[4]=40;}}
-   else if(w===6&&p.flakCd<=0)fireFlak(p,p.ang);
+   else if(w===4&&p.cd[4]<=0){if(p.msl>0){fireMissile(p);p.msl--;p.cd[4]=Math.round(105*p.cdm);}else{sfx('deny');msg('MISSILE RACK EMPTY — DOCK OR FIND RELOADS',90);p.cd[4]=40;}}
   }
  }
  if(w===5&&press)fireSing();
@@ -2168,13 +2167,13 @@ function drawHUD(){
   else if(wi===3){f=p.vover>0?1:p.vheat/75;sub=p.vover>0?'COOLING':save.vulcanAuto?'AUTO':'';}
   else if(wi===4){f=p.cd[4]/105;sub=p.msl+' / '+p.mslMax;}
   else if(wi===5){f=p.singCd/420;sub=p.sing+' / 3';}
-  else{f=p.flakCd/500;sub=p.flakCd>0?((p.flakCd/60).toFixed(1)+'s'):'SPREAD';}
+  else{f=0;sub='';}
   c.fillStyle='#d8e6f2';c.font='600 8px "Exo 2"';c.fillText(sub,x+19.5,wy+17);
   c.fillStyle='rgba(255,255,255,.1)';c.fillRect(x+4,wy+23,31,2);
   c.fillStyle=wi===3?(p.vover>0?'#ff5a4a':'#ffd700'):w.c;c.fillRect(x+4,wy+23,31*(wi===4?clamp(p.msl/(p.mslMax||1),0,1):wi===3?f:1-f),2);
  }
  const mini=(x,label,f,col)=>{c.fillStyle='rgba(10,18,30,.6)';rr(c,x,wy+32,66,13,3);c.fill();c.fillStyle=col;c.globalAlpha=.3+.7*(f>=1?1:0);rr(c,x+2,wy+34,62*clamp(f,0,1),9,2);c.fill();c.globalAlpha=1;c.fillStyle='#ffffff';c.font='700 7px Orbitron';c.textAlign='center';c.fillText(label,x+33,wy+39);};
- mini(10,'FLAK',1-p.flakCd/500,'#ffd700');mini(80,'BRACE',p.brace>0?1:1-p.braceCd/600,'#ff9a3c');
+ mini(10,'FLAK AUTO',1-p.flakCd/500,settings.assistFlak?'#ffd700':'#5d522f');mini(80,'BRACE',p.brace>0?1:1-p.braceCd/600,'#ff9a3c');
  if(save.vulcanAuto){c.fillStyle='rgba(10,18,30,.6)';rr(c,150,wy+32,70,13,3);c.fill();c.fillStyle='#7de3ff';c.font='700 7px Orbitron';c.textAlign='center';c.fillText('VULCAN AUTO',185,wy+39);}
  let by=wy+50;c.textAlign='left';c.font='700 8px Orbitron';
  const tagl=(t,col)=>{c.fillStyle=col;c.fillText(t,12,by);by+=11;};
@@ -2484,9 +2483,9 @@ const SCREENS={
   '<tr><td style="color:#c87dff">ION</td><td>Fast bolt that slows the target. Bends in gravity.</td></tr>'+
   '<tr><td style="color:#ff7043">PLASMA</td><td>Slow heavy bolt that burns over time. Limited charges, restocked by docking.</td></tr>'+
   '<tr><td style="color:#ffd700">VULCAN</td><td>Bullet stream, best inside 380 m. Overheats. V lets it fire by itself.</td></tr>'+
-  '<tr><td style="color:#ffb36b">MISSILE</td><td>Guided warhead: homes on your lock or the nearest hostile, 26+ damage with a small splash. Rack holds 4 per sortie and rearms while you dock. Carry it in a loadout slot.</td></tr>'+
-  '<tr><td style="color:#ffd700">FLAK</td><td>9-pellet spread on a long cooldown. Shoots down plasma.</td></tr>'+
-  '<tr><td style="color:#b06bff">SING</td><td>Singularity bomb: a 215 m well that drags ships in and grinds them — allies take 25%. One charge a mission once you have broken a captain; rare purple pickups add charges. Key 6. Captains, elites and bosses can throw one back at you.</td></tr></table>'+
+  '<tr><td style="color:#ffb36b">MISSILE</td><td>Guided warhead: homes on your lock or the nearest hostile, 26+ damage with a small splash. Rack holds 4 per sortie and rearms while you dock or from missile pickups. Carry it in a loadout slot.</td></tr>'+
+  '<tr><td style="color:#b06bff">SING</td><td>Singularity bomb: a 215 m well that drags ships in and grinds them — allies take 25%. One charge a mission once you have broken a captain; rare purple pickups add charges. Captains, elites and bosses can throw one back at you.</td></tr></table>'+
+  '<p><b>Flak</b> is a point-defence countermeasure, not a slot weapon: it bursts automatically at incoming plasma when the assist is on, or on G. Nine pellets, 8 s cooldown.</p>'+
   '<p>Shots auto-aim at targets inside your <b>fire arc</b> (widen it with the Fire Arc upgrade). A ghost diamond shows where ion and plasma will land. Targeting upgrades add critical hits, shown in gold.</p>'+
   '<h3 id="sec-stations">Stations</h3><p>Each side may hold a station with three turrets. Its <b>defense field</b> (the ring) burns enemy ships inside it and reduces damage to friends inside by 35%. Park inside your own ring to <b>dock</b>: hull repairs, shields recharge and plasma restocks.</p>'+
   '<h3 id="sec-missions">Missions</h3><table>'+
