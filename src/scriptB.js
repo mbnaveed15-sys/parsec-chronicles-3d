@@ -349,7 +349,7 @@ function shipObj(s){
  const pl=!!s.isPlayer&&!s.cargo,pm=paintMat(s.hull,pl).clone(),own=[pm];
  let am=accMat(acc),gm=glowMat(s.trail),fm=flameMat(s.trail,pl),rim=null;
  if(s.prism){am=am.clone();gm=gm.clone();fm=fm.clone();own.push(am,gm,fm);}
- mk(d.geo.paint,pm,true);mk(d.geo.trim,trimMat(s.hull),true);mk(d.geo.metal,MT.metal,true);mk(d.geo.dark,MT.dark,true);mk(d.geo.glass,MT.glass,false);mk(d.geo.accent,am,false);mk(d.geo.glow,gm,false);
+ mk(d.geo.paint,pm,true);mk(d.geo.trim,trimMat(s.trim||s.hull),true);mk(d.geo.metal,MT.metal,true);mk(d.geo.dark,MT.dark,true);mk(d.geo.glass,MT.glass,false);mk(d.geo.accent,am,false);mk(d.geo.glow,gm,false);
  /* player glow outline in the trail colour, so you never mix yourself up with enemies */
  if(pl&&d.geo.paint&&settings.glow!==false){rim=fresMat(s.trail,1.15,1.5);own.push(rim);const rm=new THREE.Mesh(d.geo.paint,rim);rm.scale.setScalar(1.07);b.add(rm);}
  const fl=[];for(const e of d.eng){const f=new THREE.Mesh(GEO.flame,fm);f.position.set(e[0],e[1],e[2]);b.add(f);fl.push([f,e[3]]);}
@@ -663,10 +663,10 @@ function preview(el,idx,cols){
    const pc=new THREE.PerspectiveCamera(30,416/256,.1,50);pc.position.set(0,2.5,4.9);pc.lookAt(0,-.05,0);
    const holder=new THREE.Group();sc.add(holder);pv={r,sc,pc,holder,c};
   }
-  const key=idx+cols.hull+(cols.prism?'prism':cols.trail)+(settings.glow!==false?'g':'');let o=pvObjs.get(key);
+  const key=idx+cols.hull+(cols.trim||'')+(cols.prism?'prism':cols.trail)+(settings.glow!==false?'g':'');let o=pvObjs.get(key);
   if(!o){
    if(pvObjs.size>40){for(const x of pvObjs.values())for(const d of x.own)d.dispose();pvObjs.clear();}
-   o=shipObj({idx,hull:cols.hull,trail:cols.trail,isPlayer:true,prism:!!cols.prism,team:0,cargo:false,marked:false});pvObjs.set(key,o);
+   o=shipObj({idx,hull:cols.hull,trail:cols.trail,trim:cols.trim,isPlayer:true,prism:!!cols.prism,team:0,cargo:false,marked:false});pvObjs.set(key,o);
    for(const f of o.fl)f[0].scale.set(.7,f[1],f[1]);
   }
   pv.holder.clear();pv.holder.add(o.o);if(o.pr)prismPaint(o,cols.trail);

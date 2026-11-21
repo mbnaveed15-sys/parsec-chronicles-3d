@@ -166,6 +166,14 @@ textarea{min-height:11em;font-family:ui-monospace,Consolas,monospace;font-size:.
 @keyframes scrIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 @keyframes ledPulse{0%,100%{opacity:.4}50%{opacity:1}}
 /* compact commerce grids */
+.cosgrid{display:grid;gap:.7em;grid-template-columns:minmax(220px,320px) minmax(0,1fr) minmax(0,1.1fr);align-items:start;width:100%;max-width:1180px;margin-top:.2em}
+.cosm-pv{display:flex;flex-direction:column;gap:.45em;min-width:0}
+.cosm-pv .pv{width:100%;aspect-ratio:13/8;height:auto}
+.cosm-col{padding:.65em .75em}
+.cosm-col h3{margin:0 0 .15em;font-size:.82em}
+.cosm-right{display:flex;flex-direction:column;gap:.7em;min-width:0}
+@media (max-width:840px){.cosgrid{grid-template-columns:1fr 1fr}.cosgrid>.cosm-pv{grid-column:1/-1;max-width:360px}}
+@media (max-width:560px){.cosgrid{grid-template-columns:1fr}.cosgrid>.cosm-pv{max-width:none}}
 .cgrid{display:grid;gap:.45em;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));width:100%;margin-top:.5em}
 .csw{display:flex;flex-direction:column;gap:.3em;padding:.4em;border:1px solid var(--ln);border-radius:10px;background:rgba(10,18,30,.62);position:relative;min-width:0}
 .csw .sw{aspect-ratio:auto;height:28px;border-radius:6px;box-shadow:inset 0 -6px 10px rgba(0,0,0,.3),inset 0 4px 7px rgba(255,255,255,.1)}
@@ -262,6 +270,8 @@ const HULLS=[['Steel','#7a8898',0,0],['Void','#2c3240',250,0],['Crimson','#d0283
  ['Neon Lime','#9cff2e',400,25],['Electric Blue','#1e90ff',450,40],['Hot Pink','#ff3ca8',500,60],['Sunburst','#ffc21a',550,80],['Toxic Green','#3dff6e',650,120],['Royal Violet','#7b3cff',750,160],['Pearl White','#f2f4f8',850,200],['Cobalt','#0047ff',950,250],['Tangerine','#ff8a1e',1100,300],['Chrome','#d8dee6',1500,400,'chrome']].map(a=>({n:a[0],c:a[1],cost:a[2],at:a[3],fin:a[4]||'',rank:(a[3]>=250||a[2]>=900)?2:(a[3]>=25||a[2]>=550)?1:0}));
 const TRAILS=[['Cyan','#7de3ff',0,0],['Solar','#ff9040',200,0],['Fusion','#6fd07a',300,0],['Warp','#c87dff',400,0],['Starlight','#e8f4ff',250,25],['Comet','#ff5a5a',300,50],['Ion Stream','#5aa0ff',350,75],['Solar Flare','#ffd700',450,100],['Verdant','#7dffa8',500,150],['Nebula','#ff8ad8',600,200],
  ['Ice','#a8f0ff',400,30],['White-hot','#ffffff',450,60],['Inferno','#ff3a10',550,90],['Ultraviolet','#9d4dff',650,130],['Emerald','#00ff88',750,180],['Toxic','#c6ff00',850,240],['Plasma Pink','#ff2ea6',1000,320],['Prism','#ff5ad8',1500,400,1]].map(a=>({n:a[0],c:a[1],cost:a[2],at:a[3],rb:!!a[4],rank:(a[3]>=240||a[2]>=900)?2:(a[3]>=25||a[2]>=550)?1:0}));
+/* Trim = accent/panel colour on the hull. 'Auto' follows the paint colour (c:''). */
+const TRIMS=[['Auto','',0,0],['Gunmetal','#5a6470',0,0],['Chrome','#dfe6ee',0,0],['Crimson','#c0303a',200,0],['Amber','#e0a020',250,0],['Teal','#14b8a6',300,25],['Violet','#8a5cf0',350,50],['Gold','#ffd166',450,90],['Ice','#a8e0ff',500,120],['Rose','#ff5a8a',650,180],['Emerald','#3ddc84',700,220],['Obsidian','#14171c',800,260]].map(a=>({n:a[0],c:a[1],cost:a[2],at:a[3],rank:(a[3]>=240||a[2]>=700)?2:(a[3]>=25||a[2]>=350)?1:0}));
 /* Prism trail: 36 fixed rainbow steps so colour caches stay small */
 const PRISM=(()=>{const o=[];for(let i=0;i<36;i++){const h=i/36,f=n=>{const k=(n+h*12)%12,v=.5-.5*Math.max(-1,Math.min(k-3,9-k,1));return Math.round(v*255).toString(16).padStart(2,'0');};o.push('#'+f(0)+f(8)+f(4));}return o;})();
 function prismHex(t){return PRISM[((t/3)|0)%36];}
@@ -358,7 +368,7 @@ function loadSettings(){
  audioSet=Object.assign({music:.55,sfx:.8},LS.get('pc_audio')||{});
 }
 function saveSettings(){LS.set('pc_settings',settings);LS.set('pc_audio',audioSet);}
-function newSave(name){const s={v:1,name:name||'Pilot',gold:{cadet:0,pilot:0,ace:0},up:{},prog:{campaign:{cadet:{},pilot:{},ace:{}}},diff:'cadet',ach:{},hulls:{},trails:{},hull:{},trail:{},ship:{},ships:{},best:{},mods:{},gear:{},lore:{},vulcanAuto:false,cnt:{kills:0,gold:0,wins:0,voy:0,ram:0,boss:0,sectors:0,hunt:0,elite:0,flaw:0,wEsc:0,wHun:0,wDef:0,wTot:0,wPil:0,wAce:0,bAce:0},touch:{mirror:false,scale:1,stick:true,pos:{}}};initGear(s);for(const d of DRANKS){s.ships[d]=[0];s.hulls[d]=[0];s.trails[d]=[0];s.ship[d]=0;s.hull[d]=0;s.trail[d]=0;s.best[d]=0;}return s;}
+function newSave(name){const s={v:1,name:name||'Pilot',gold:{cadet:0,pilot:0,ace:0},up:{},prog:{campaign:{cadet:{},pilot:{},ace:{}}},diff:'cadet',ach:{},hulls:{},trails:{},trims:{},hull:{},trail:{},trim:{},ship:{},ships:{},best:{},mods:{},gear:{},lore:{},vulcanAuto:false,cnt:{kills:0,gold:0,wins:0,voy:0,ram:0,boss:0,sectors:0,hunt:0,elite:0,flaw:0,wEsc:0,wHun:0,wDef:0,wTot:0,wPil:0,wAce:0,bAce:0},touch:{mirror:false,scale:1,stick:true,pos:{}}};initGear(s);for(const d of DRANKS){s.ships[d]=[0];s.hulls[d]=[0];s.trails[d]=[0];s.trims[d]=[0];s.ship[d]=0;s.hull[d]=0;s.trail[d]=0;s.trim[d]=0;s.best[d]=0;}return s;}
 function initGear(s){if(!s.gear)s.gear={};for(const d of DRANKS){const g=s.gear[d]||(s.gear[d]=UPK.reduce((o,k)=>(o[k]=0,o),{weapons:0,hull:0,engines:0,cap:0,target:0,arc:0,squad:0,wing:0}));const cap=DMAX[d];for(const k of UPK)g[k]=clamp((+g[k])|0,0,cap);}}
 function migrate(s,d){
  /* v1 saves stored one global loadout. Copy it into Ace as a retired-veteran head start,
@@ -367,10 +377,10 @@ function migrate(s,d){
  const u=d&&d.up||{},old=UPK.reduce((o,k)=>(o[k]=clamp((+u[k])|0,0,UPG[k].max),o),{});
  const lim=UPK.reduce((o,k)=>(o[k]=Math.min(old[k],DMAX.cadet),o),{});
  s.gear={cadet:Object.assign({},lim),pilot:Object.assign({},lim),ace:Object.assign({},old)};
- const ships=(Array.isArray(d&&d.ships)?d.ships:[0]).filter(i=>i>=0&&i<SHIPS.length),hulls=(Array.isArray(d&&d.hulls)?d.hulls:[0]).filter(i=>i>=0&&i<HULLS.length),trails=(Array.isArray(d&&d.trails)?d.trails:[0]).filter(i=>i>=0&&i<TRAILS.length);
- s.ships={cadet:[0],pilot:[0],ace:ships};s.hulls={cadet:[0],pilot:[0],ace:hulls};s.trails={cadet:[0],pilot:[0],ace:trails};
+ const ships=(Array.isArray(d&&d.ships)?d.ships:[0]).filter(i=>i>=0&&i<SHIPS.length),hulls=(Array.isArray(d&&d.hulls)?d.hulls:[0]).filter(i=>i>=0&&i<HULLS.length),trails=(Array.isArray(d&&d.trails)?d.trails:[0]).filter(i=>i>=0&&i<TRAILS.length),trims=(Array.isArray(d&&d.trims)?d.trims:[0]).filter(i=>i>=0&&i<TRIMS.length);
+ s.ships={cadet:[0],pilot:[0],ace:ships};s.hulls={cadet:[0],pilot:[0],ace:hulls};s.trails={cadet:[0],pilot:[0],ace:trails};s.trims={cadet:[0],pilot:[0],ace:trims};
  const pick=(v,list)=>list.includes(v)?v:list[0];
- s.ship={cadet:0,pilot:0,ace:pick(d&&d.ship,ships)};s.hull={cadet:0,pilot:0,ace:pick(d&&d.hull,hulls)};s.trail={cadet:0,pilot:0,ace:pick(d&&d.trail,trails)};
+ s.ship={cadet:0,pilot:0,ace:pick(d&&d.ship,ships)};s.hull={cadet:0,pilot:0,ace:pick(d&&d.hull,hulls)};s.trail={cadet:0,pilot:0,ace:pick(d&&d.trail,trails)};s.trim={cadet:0,pilot:0,ace:pick(d&&d.trim,trims)};
  s.best={};for(const r of DRANKS)s.best[r]=Math.max.apply(null,s.ships[r]);
  s.mods={};const src=d&&d.mods||{};for(const r of DRANKS){s.mods[r]={};for(const k in src){const i=+k;if(i>=0&&i<SHIPS.length&&Array.isArray(src[k]))s.mods[r][i]=r==='ace'?src[k].filter(v=>Number.isInteger(v)&&v>=0&&v<MODS.length):[];}}
 }
@@ -387,15 +397,17 @@ function sanitize(d){
  const pick=(v,a)=>Array.isArray(a)&&a.includes(v)?v:(Array.isArray(a)&&a[0]!==undefined?a[0]:0);
  const legacy=!(d&&d.gear);
  if(!legacy){
-  s.ships={};s.hulls={};s.trails={};s.ship={};s.hull={};s.trail={};s.best={};s.mods={};
+  s.ships={};s.hulls={};s.trails={};s.trims={};s.ship={};s.hull={};s.trail={};s.trim={};s.best={};s.mods={};
   for(const r of DRANKS){
   s.gear[r]={};const g=d.gear&&d.gear[r]||{};for(const k of UPK)s.gear[r][k]=clamp((+g[k])|0,0,DMAX[r]);
   s.ships[r]=list(d.ships&&d.ships[r],SHIPS.length);
   s.hulls[r]=list(d.hulls&&d.hulls[r],HULLS.length);
   s.trails[r]=list(d.trails&&d.trails[r],TRAILS.length);
+  s.trims[r]=list(d.trims&&d.trims[r],TRIMS.length);
   s.ship[r]=pick(d.ship&&d.ship[r],Number.isInteger(d.ship&&d.ship[r])?s.ships[r]:arrList(d.ship&&d.ship[r],SHIPS.length));
   s.hull[r]=pick(d.hull&&d.hull[r],Number.isInteger(d.hull&&d.hull[r])?s.hulls[r]:arrList(d.hull&&d.hull[r],HULLS.length));
   s.trail[r]=pick(d.trail&&d.trail[r],Number.isInteger(d.trail&&d.trail[r])?s.trails[r]:arrList(d.trail&&d.trail[r],TRAILS.length));
+  s.trim[r]=pick(d.trim&&d.trim[r],Number.isInteger(d.trim&&d.trim[r])?s.trims[r]:arrList(d.trim&&d.trim[r],TRIMS.length));
   s.best[r]=Math.max.apply(null,s.ships[r]);
   const md=d.mods||{};s.mods[r]={};
   for(const k in md){const i=+k;if(i>=0&&i<SHIPS.length&&Array.isArray(md[k]&&md[k][r]))s.mods[r][i]=md[k][r].filter(v=>Number.isInteger(v)&&v>=0&&v<MODS.length);}
@@ -408,7 +420,7 @@ function sanitize(d){
  if(d.touch&&typeof d.touch==='object'){s.touch.mirror=!!d.touch.mirror;s.touch.scale=clamp(+d.touch.scale||1,.6,1.6);s.touch.stick=d.touch.stick!==false;if(d.touch.pos)for(const k in d.touch.pos){const p=d.touch.pos[k];if(Array.isArray(p)&&p.length===2)s.touch.pos[k]=[clamp(+p[0]||0,0,1),clamp(+p[1]||0,0,1)];}}
  return s;
 }
-function freeSave(){const s=newSave('FREE ROAM');s.free=true;s.gold={cadet:9999999,pilot:9999999,ace:9999999};for(const r of DRANKS){s.ships[r]=SHIPS.map(x=>x.i);s.hulls[r]=HULLS.map((x,i)=>i);s.trails[r]=TRAILS.map((x,i)=>i);s.ship[r]=14;s.best[r]=14;s.gear[r]=UPK.reduce((o,k)=>(o[k]=DMAX[r],o),{});for(const x of SHIPS)(s.mods[r][x.i]||(s.mods[r][x.i]=[])).push(0,1,2,3);}return s;}
+function freeSave(){const s=newSave('FREE ROAM');s.free=true;s.gold={cadet:9999999,pilot:9999999,ace:9999999};for(const r of DRANKS){s.ships[r]=SHIPS.map(x=>x.i);s.hulls[r]=HULLS.map((x,i)=>i);s.trails[r]=TRAILS.map((x,i)=>i);s.trims[r]=TRIMS.map((x,i)=>i);s.ship[r]=14;s.best[r]=14;s.trim[r]=0;s.gear[r]=UPK.reduce((o,k)=>(o[k]=DMAX[r],o),{});for(const x of SHIPS)(s.mods[r][x.i]||(s.mods[r][x.i]=[])).push(0,1,2,3);}return s;}
 function persist(){if(save&&!save.free&&slotIdx>=0)LS.set('pc_save_'+slotIdx,save);}
 function starsOf(lv,diff){const o=save.prog.campaign[diff||save.diff][lv];return o?o.stars:0;}
 function reached(){if(save.free)return 500;let m=0;const o=save.prog.campaign[save.diff];for(const k in o)if(o[k].stars>0&&+k>m)m=+k;return Math.min(500,m+1);}
@@ -701,7 +713,7 @@ function mkShip(idx,team,x,y,ang){
 }
 function mkPlayer(x,y,ang){
  const u=dUp(save),sh=dGet(save,'ship',0),c=SHIPS[sh],mods=(save.mods[save.diff]&&save.mods[save.diff][sh])||[],s=mkShip(sh,0,x,y,ang);
- s.isPlayer=true;s.hull=HULLS[dGet(save,'hull',0)].c;s.trail=TRAILS[dGet(save,'trail',0)].c;s.prism=!!TRAILS[dGet(save,'trail',0)].rb;
+ s.isPlayer=true;s.hull=HULLS[dGet(save,'hull',0)].c;s.trail=TRAILS[dGet(save,'trail',0)].c;s.trim=TRIMS[dGet(save,'trim',0)].c;s.prism=!!TRAILS[dGet(save,'trail',0)].rb;
  s.maxHp=s.hp=Math.round((c.hp+u.hull*20)*(mods.includes(0)?1.1:1));s.maxSh=s.sh=Math.round(c.hp*.4+u.hull*12);
  s.spd=Math.min(11,(c.spd+u.engines*.3)*(mods.includes(1)?1.06:1));s.acc0=.16*(1+u.engines*.04);s.turn0=.055;
  s.dm=c.dmg/10*(mods.includes(2)?1.08:1);s.wl=u.weapons;s.heatMax=100+u.engines*25;s.plasmaMax=s.plasma=5+u.cap;
@@ -1852,13 +1864,14 @@ function drawPreviews(){
   const r=el.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight||r.right<0||r.left>window.innerWidth||r.width<4)continue;
   const idx=+el.dataset.idx,cols={hull:el.dataset.hull||HULLS[dGet(save,'hull',0)].c,trail:el.dataset.trail||TRAILS[dGet(save,'trail',0)].c};
   cols.prism=el.dataset.prism==='1'||(!el.dataset.trail&&!!TRAILS[dGet(save,'trail',0)].rb);if(cols.prism)cols.trail=prismHex(performance.now()/16);
+  cols.trim=el.dataset.trim!==undefined?el.dataset.trim:TRIMS[dGet(save,'trim',0)].c;
   let ok=false;if(use3){try{ok=R3D.preview(el,idx,cols);}catch(e){ok=false;}}
   if(!ok){const x=el.getContext('2d'),w=el.width,h=el.height;x.setTransform(1,0,0,1,0,0);x.clearRect(0,0,w,h);x.save();x.translate(w/2,h/2);x.scale(1,TILT);x.rotate(performance.now()*.0006+idx);const sc=h*.3*(.72+.25*SHIPS[idx].sc);x.scale(sc,sc);drawShip2D(x,idx,cols.hull,cols.trail,.6,0,false);x.restore();}
  }
 }
 
 /* ---------------- MENUS (DOM overlays) ---------------- */
-const UI={cur:'',arg:null,ret:'title',tab:'up',sea:0,confirm:-1,pvH:-1,pvT:-1};
+const UI={cur:'',arg:null,ret:'title',tab:'up',sea:0,confirm:-1,pvH:-1,pvT:-1,pvR:-1};
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),1900);}
 const HUBNAME={hangar:1,shop:1,cosm:1,deeds:1,sectors:1,settings:1,help:1};
 function hubNav(cur){
@@ -2003,21 +2016,32 @@ const SCREENS={
   return h+'</div>';
  },
  cosm(){
-  const s=save,r=reached(), HL=dList(s,'hulls'),TL=dList(s,'trails'),curH=dGet(s,'hull',0),curT=dGet(s,'trail',0);
-  const ph=UI.pvH>=0&&HULLS[UI.pvH]?UI.pvH:-1,pt=UI.pvT>=0&&TRAILS[UI.pvT]?UI.pvT:-1,hi=ph>=0?ph:curH,ti=pt>=0?pt:curT;
-  const sw=(o,kind)=>kind==='hull'?(o.fin==='chrome'?'linear-gradient(135deg,#ffffff,#9aa4b0 35%,#f4f8fc 55%,#5a6470 80%,#d8dee6)':'linear-gradient(135deg,'+shade(o.c,.25)+','+o.c+' 55%,'+shade(o.c,-.5)+')'):(o.rb?'linear-gradient(90deg,#ff4040,#ffd700,#40ff70,#40c8ff,#a040ff,#ff40c0)':'radial-gradient(circle at 30% 50%,#fff,'+o.c+' 40%,rgba(0,0,0,.2) 100%)');
+  const s=save,r=reached(), HL=dList(s,'hulls'),TL=dList(s,'trails'),RL=dList(s,'trims'),curH=dGet(s,'hull',0),curT=dGet(s,'trail',0),curR=dGet(s,'trim',0);
+  const ph=UI.pvH>=0&&HULLS[UI.pvH]?UI.pvH:-1,pt=UI.pvT>=0&&TRAILS[UI.pvT]?UI.pvT:-1,pr=UI.pvR>=0&&TRIMS[UI.pvR]?UI.pvR:-1,hi=ph>=0?ph:curH,ti=pt>=0?pt:curT,ri=pr>=0?pr:curR;
+  const sw=(o,kind)=>{
+   if(kind==='hull')return o.fin==='chrome'?'linear-gradient(135deg,#ffffff,#9aa4b0 35%,#f4f8fc 55%,#5a6470 80%,#d8dee6)':'linear-gradient(135deg,'+shade(o.c,.25)+','+o.c+' 55%,'+shade(o.c,-.5)+')';
+   if(kind==='trail')return o.rb?'linear-gradient(90deg,#ff4040,#ffd700,#40ff70,#40c8ff,#a040ff,#ff40c0)':'radial-gradient(circle at 30% 50%,#fff,'+o.c+' 40%,rgba(0,0,0,.2) 100%)';
+   return o.c?'linear-gradient(135deg,'+shade(o.c,.35)+','+o.c+' 60%,'+shade(o.c,-.45)+')':'repeating-linear-gradient(45deg,#3a4048,#3a4048 5px,#2b313a 5px,#2b313a 10px)';
+  };
   const item=(o,i,kind,list,cur,pvi)=>{const own=list.includes(i),on=cur===i,dl=diffLock(o),lock=!own&&(r<o.at||!!dl),pvon=pvi===i;
    const whyShort=dl?DIFFS[DRANKS[o.rank||0]].n.toUpperCase():('M'+o.at),whyLong=dl||('Unlocks at mission '+o.at);
    const actv=on?'<span class="cst on">Applied</span>':own?'<button class="cst act" data-a="use'+kind+'" data-v="'+i+'">Apply</button>':lock?'<span class="cst lk" title="'+whyLong+'">🔒 '+whyShort+'</span>':'<button class="cst buy'+((!s.free&&dGold(s)<o.cost)?' warn':'')+'" data-a="buy'+kind+'" data-v="'+i+'">◈ '+fmtNum(o.cost)+'</button>';
    return'<div class="csw'+(on?' sel':'')+(lock?' lock':'')+(pvon?' prov':'')+'"><div class="sw" data-a="pv'+kind+'" data-v="'+i+'" title="Tap to preview" style="cursor:pointer;background:'+sw(o,kind)+'"></div><b title="'+o.n+'">'+o.n+'</b>'+actv+'</div>';};
    const act=(o,i,kind,list)=>{const own=list.includes(i),dl=diffLock(o),lock=!own&&(r<o.at||!!dl),why=dl||('Mission '+o.at);return own?'<button class="btn sm primary" data-a="use'+kind+'" data-v="'+i+'">Apply '+o.n+'</button>':lock?'<button class="btn sm dis">'+o.n+' · 🔒 '+why+'</button>':'<button class="btn sm gold'+(!s.free&&dGold(s)<o.cost?' warn':'')+'" data-a="buy'+kind+'" data-v="'+i+'">Buy '+o.n+' · ◈ '+fmtNum(o.cost)+'</button>';};
-  const pvTag='<span class="tag" style="color:var(--gold);border-color:var(--gold)">Preview</span> ';
-  let h='<div class="scr">'+hdr('Cosmetics · '+DIFFS[s.diff].n)+'<div class="panel"><div class="row"><div style="flex:0 0 300px;max-width:100%"><canvas class="pv" data-idx="'+dGet(s,'ship',0)+'" data-hull="'+HULLS[hi].c+'" data-trail="'+TRAILS[ti].c+'"'+(TRAILS[ti].rb?' data-prism="1"':'')+' width="416" height="256"></canvas></div><div class="col" style="flex:1;min-width:180px"><h3>'+SHIPS[dGet(s,'ship',0)].n+'</h3>'+
-   '<div class="kv"><span>Hull colour</span><b>'+(ph>=0?pvTag:'')+HULLS[hi].n+'</b></div><div class="kv"><span>Engine trail</span><b>'+(pt>=0?pvTag:'')+TRAILS[ti].n+'</b></div>'+
-   ((ph>=0||pt>=0)?'<div class="row" style="margin-top:.4em">'+(ph>=0?act(HULLS[ph],ph,'hull',HL):'')+(pt>=0?act(TRAILS[pt],pt,'trail',TL):'')+'<button class="btn sm" data-a="pvreset">Reset preview</button></div>':'<span class="dim sml">Tap any swatch to preview it on your ship before buying.</span>')+
-   '</div></div></div>';
-  h+='<div class="panel"><h3>Hull colours</h3><div class="cgrid">'+HULLS.map((o,i)=>item(o,i,'hull',HL,curH,ph)).join('')+'</div></div>';
-  h+='<div class="panel"><h3>Engine trails</h3><div class="cgrid">'+TRAILS.map((o,i)=>item(o,i,'trail',TL,curT,pt)).join('')+'</div></div>';
+  const pvTag='<span class="tag" style="color:var(--gold);border-color:var(--gold)">PREVIEW</span> ';
+  const anyPv=ph>=0||pt>=0||pr>=0;
+  let h='<div class="scr">'+hdr('Cosmetics · '+DIFFS[s.diff].n)+'<div class="cosgrid">';
+  h+='<div class="panel cosm-pv"><canvas class="pv" data-idx="'+dGet(s,'ship',0)+'" data-hull="'+HULLS[hi].c+'" data-trail="'+TRAILS[ti].c+'" data-trim="'+TRIMS[ri].c+'"'+(TRAILS[ti].rb?' data-prism="1"':'')+' width="416" height="256"></canvas>'+
+   '<h3>'+SHIPS[dGet(s,'ship',0)].n+'</h3>'+
+   '<div class="kv"><span>Paint</span><b>'+(ph>=0?pvTag:'')+HULLS[hi].n+'</b></div>'+
+   '<div class="kv"><span>Thrust</span><b>'+(pt>=0?pvTag:'')+TRAILS[ti].n+'</b></div>'+
+   '<div class="kv"><span>Trim</span><b>'+(pr>=0?pvTag:'')+TRIMS[ri].n+'</b></div>'+
+   (anyPv?'<div class="row" style="margin-top:.4em">'+(ph>=0?act(HULLS[ph],ph,'hull',HL):'')+(pt>=0?act(TRAILS[pt],pt,'trail',TL):'')+(pr>=0?act(TRIMS[pr],pr,'trim',RL):'')+'<button class="btn sm" data-a="pvreset">Reset</button></div>':'<span class="dim sml">Tap a swatch to preview it on your ship before buying.</span>')+
+   '</div>';
+  h+='<div class="panel cosm-col"><h3>Paint</h3><div class="cgrid">'+HULLS.map((o,i)=>item(o,i,'hull',HL,curH,ph)).join('')+'</div></div>';
+  h+='<div class="col cosm-right"><div class="panel cosm-col"><h3>Thrust</h3><div class="cgrid">'+TRAILS.map((o,i)=>item(o,i,'trail',TL,curT,pt)).join('')+'</div></div>'+
+   '<div class="panel cosm-col"><h3>Trim</h3><div class="cgrid">'+TRIMS.map((o,i)=>item(o,i,'trim',RL,curR,pr)).join('')+'</div></div></div>';
+  h+='</div>';
   return h+'</div>';
  },
  deeds(){
@@ -2145,7 +2169,7 @@ function showEnd(){
 }
 
 const ACT={
- nav(v){if(v==='settings'||v==='help')UI.ret=UI.cur;UI.confirm=-1;UI.pvH=UI.pvT=-1;show(v);},
+ nav(v){if(v==='settings'||v==='help')UI.ret=UI.cur;UI.confirm=-1;UI.pvH=UI.pvT=UI.pvR=-1;show(v);},
  back(){
   const c=UI.cur;UI.confirm=-1;
   if(c==='layout'){editLayout=false;persist();show('settings');layoutTouch();return;}
@@ -2193,10 +2217,13 @@ const ACT={
  buyhull(v){const i=+v,o=HULLS[i],L=dList(save,'hulls');if(!o||L.includes(i)||reached()<o.at||diffLock(o))return;if(!spend(o.cost))return;L.push(i);dSet(save,'hull',i);UI.pvH=-1;persist();sfx('buy');toast(o.n+' applied');deedPing();refresh();},
  usehull(v){const i=+v;if(dList(save,'hulls').includes(i)){dSet(save,'hull',i);UI.pvH=-1;persist();refresh();}},
  buytrail(v){const i=+v,o=TRAILS[i],L=dList(save,'trails');if(!o||L.includes(i)||reached()<o.at||diffLock(o))return;if(!spend(o.cost))return;L.push(i);dSet(save,'trail',i);UI.pvT=-1;persist();sfx('buy');toast(o.n+' applied');deedPing();refresh();},
+ buytrim(v){const i=+v,o=TRIMS[i],L=dList(save,'trims');if(!o||L.includes(i)||reached()<o.at||diffLock(o))return;if(!spend(o.cost))return;L.push(i);dSet(save,'trim',i);UI.pvR=-1;persist();sfx('buy');toast(o.n+' applied');deedPing();refresh();},
  pvhull(v){const i=+v;UI.pvH=(UI.pvH===i||i===dGet(save,'hull',0))?-1:i;refresh();},
  pvtrail(v){const i=+v;UI.pvT=(UI.pvT===i||i===dGet(save,'trail',0))?-1:i;refresh();},
- pvreset(){UI.pvH=UI.pvT=-1;refresh();},
+ pvtrim(v){const i=+v;UI.pvR=(UI.pvR===i||i===dGet(save,'trim',0))?-1:i;refresh();},
+ pvreset(){UI.pvH=UI.pvT=UI.pvR=-1;refresh();},
  usetrail(v){const i=+v;if(dList(save,'trails').includes(i)){dSet(save,'trail',i);UI.pvT=-1;persist();refresh();}},
+ usetrim(v){const i=+v;if(dList(save,'trims').includes(i)){dSet(save,'trim',i);UI.pvR=-1;persist();refresh();}},
  set(v,el){const k=el.dataset.k;settings[k]=v==='true'?true:v==='false'?false:v;saveSettings();applyGfx();resize();refresh();},
  preset(v){const P={quality:{gfx:'high',res:isTouch?'1080':'native',shake:1,glow:true},balanced:{gfx:'high',res:'1080',shake:1,glow:true},performance:{gfx:'low',res:'720',shake:.3,glow:false}}[v];if(!P)return;Object.assign(settings,P);saveSettings();applyGfx();resize();refresh();toast('Preset: '+v.charAt(0).toUpperCase()+v.slice(1));},
  resetcfg(){Object.assign(settings,{glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistClimb:true,assistFlak:true,assistBrace:true,assistRoll:true,hideAssisted:false,gfx:isTouch?'low':'high',res:'1080'});Object.assign(audioSet,{music:.55,sfx:.8});saveSettings();applyGfx();setVol();resize();refresh();toast('Settings reset to defaults');},
