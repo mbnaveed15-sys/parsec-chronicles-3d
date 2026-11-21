@@ -823,7 +823,7 @@ function mkShip(idx,team,x,y,ang){
  const c=SHIPS[idx];
  return{kind:'ship',idx,team,role:c.role,tier:c.tier,name:c.n,x,y,z:0,vx:0,vy:0,ang:ang||0,bank:0,pitch:0,r:c.r,
   maxHp:c.hp,hp:c.hp,maxSh:Math.round(c.hp*.3),sh:Math.round(c.hp*.3),shT:999,shF:0,dm:c.dmg/10,spd:c.spd,acc:.16,turn:.05,
-  wep:0,cd:[0,0,0,0],charge:0,plasma:5,plasmaMax:5,heat:0,heatMax:100,over:false,vheat:0,vover:0,vt:0,vfired:false,flakCd:0,
+  wep:0,cd:[0,0,0,0,0,0],charge:0,plasma:5,plasmaMax:5,heat:0,heatMax:100,over:false,vheat:0,vover:0,vt:0,vfired:false,flakCd:0,
   slow:0,burn:0,burnT:0,burnDmg:0,burnBy:null,brace:0,braceCd:0,thr:0,ab:false,flash:0,dead:false,ramT:0,ramB:0,ramRes:1,
   roll:0,rollCd:0,rollDir:1,elite:false,lbuf:0,fireWas:false,chargeT:40,lcdMax:20,lcdLast:20,wl:0,crit:0,critM:1.5,cdm:1,arc:25*DEG,boost:0,dbuff:0,dAcc:0,dCrit:false,pid:Math.random()*100|0,
   isPlayer:false,cargo:false,boss:false,marked:false,label:'',hull:'#b23a30',trail:'#ff7a50',ai:null,msl:0,mslMax:0,mrestock:0,sing:0,singCd:0};
