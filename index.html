@@ -603,7 +603,7 @@ const IN={turn:0,thrust:0,fire:false,brake:false,burn:false,climb:false,pitch:0,
 const T={fire:false,burn:false,climb:false,brake:false,sx:0,sy:0,son:false,sid:-1,cx:0,cy:0,float:false};
 const PAD={prev:[],p:null};
 var TEL=null,editLayout=false,MAPR={x:0,y:0,w:0,h:0},dragT=null;
-const TB=[['fire','FIRE',.9,.74,86],['burner','BURN',.775,.87,62],['climb','CLIMB',.79,.585,60],['weapon','WPN',.925,.47,56],['flak','FLAK',.665,.9,56],['shield','SHLD',.68,.7,56],['aim','AIM',.925,.29,50],['vulcan','VULC',.82,.36,50],['roll','ROLL',.57,.84,52],['pause','II',.5,.08,42],['cockpit','COCKPIT',.7,.15,50]];
+const TB=[['fire','FIRE',.9,.74,86],['burner','BURN',.775,.87,62],['climb','CLIMB',.79,.585,60],['weapon','WPN',.925,.47,56],['flak','FLAK',.665,.9,56],['shield','SHLD',.68,.7,56],['aim','AIM',.925,.29,50],['vulcan','VULC',.82,.36,50],['roll','ROLL',.57,.84,52],['pause','II',.5,.08,42],['cockpit','COCKPIT',.7,.15,50],['ab1','FLR',.57,.62,50],['ab2','OVR',.57,.47,50]];
 const STICK=[.15,.72,150];
 function touchCfg(){return(save&&save.touch)||{mirror:false,scale:1,stick:true,pos:{}};}
 /* pointer position in app CSS pixels (handles the forced-landscape rotation) */
@@ -656,6 +656,7 @@ addEventListener('keydown',e=>{
    case'KeyE':toggleLock();break;case'KeyF':playerBrace();break;case'KeyZ':playerRoll(-1);break;case'KeyX':playerRoll(1);break;case'KeyM':bigMap=!bigMap;break;
    case'KeyH':openHelp();break;case'Escape':case'KeyP':pauseGame();break;
    case'Digit1':case'Digit2':case'Digit3':case'Digit4':case'Digit5':case'Digit6':setWeapon(+e.code.slice(5)-1);break;
+   case'Digit7':useAbility(1);break;case'Digit8':useAbility(2);break;
   }
  }else if(state==='pause'&&(e.code==='Escape'||e.code==='KeyP')){ACT.resume();}
  else if(e.code==='Escape'){const b=document.querySelector('#ui [data-a=back]');if(b)b.click();}
@@ -746,6 +747,7 @@ function tpress(id,v){
   case'shield':T.brake=v;if(v)playerBrace();break;
   case'weapon':if(v)cycleWeapon(1);break;case'roll':if(v)playerRoll(0);break;case'flak':if(v)playerFlak();break;
   case'aim':if(v)toggleLock();break;case'vulcan':if(v)toggleVulcan();break;case'cockpit':if(v)toggleCockpit();break;
+  case'ab1':if(v)useAbility(1);break;case'ab2':if(v)useAbility(2);break;
  }
 }
 function pollPad(){
@@ -754,7 +756,7 @@ function pollPad(){
  const e=[];for(let i=0;i<17;i++){const v=!!(p.buttons[i]&&p.buttons[i].pressed);e[i]=v&&!PAD.prev[i];PAD.prev[i]=v;}
  if(e.some(Boolean))audioInit();
  if(state==='play'){
-  if(e[1])playerFlak();if(e[2])toggleVulcan();if(e[3])toggleLock();if(e[4])cycleWeapon(-1);if(e[5])cycleWeapon(1);if(e[9])pauseGame();if(e[11])playerBrace();if(e[14])playerRoll(-1);if(e[15])playerRoll(1);
+  if(e[1])playerFlak();if(e[2])toggleVulcan();if(e[3])toggleLock();if(e[4])cycleWeapon(-1);if(e[5])cycleWeapon(1);if(e[6])useAbility(1);if(e[13])useAbility(2);if(e[9])pauseGame();if(e[11])playerBrace();if(e[14])playerRoll(-1);if(e[15])playerRoll(1);
  }else{
   if(state==='cine'){if(e[0]||e[9])skipCine();return;}
   if(e[9]&&state==='pause'){ACT.resume();return;}
@@ -782,7 +784,7 @@ function readInput(){
 }
 
 /* ---------------- GAME STATE ---------------- */
-var rocks=[],stations=[],gravityWells=[],allies=[],enemies=[],player=null,flotsams=[],powerups=[],projectiles=[],beams=[],particles=[],textParticles=[],wrecks=[],ships=[],team0=[];
+var rocks=[],stations=[],gravityWells=[],allies=[],enemies=[],player=null,flotsams=[],powerups=[],projectiles=[],beams=[],particles=[],textParticles=[],wrecks=[],ships=[],team0=[],mines=[];
 var M=null,state='menu',WORLD_HALF=1600,camX=0,camY=0,camTX=0,camTY=0,camLX=0,camLY=0,shake=0;var cockpitOn=false;
 var W=1280,H=720,VS=1,cw=1280,ch=720,ROT=false,bigMap=false,lockT=null,missionId=0,LX=0,LY=0,QA_MODE=null;
 const ppool=[],jpool=[],PIN={turn:0,thrust:0,brake:false,burn:false,climb:false,pitch:0};
@@ -823,7 +825,7 @@ function mkShip(idx,team,x,y,ang){
  const c=SHIPS[idx];
  return{kind:'ship',idx,team,role:c.role,tier:c.tier,name:c.n,x,y,z:0,vx:0,vy:0,ang:ang||0,bank:0,pitch:0,r:c.r,
   maxHp:c.hp,hp:c.hp,maxSh:Math.round(c.hp*.3),sh:Math.round(c.hp*.3),shT:999,shF:0,dm:c.dmg/10,spd:c.spd,acc:.16,turn:.05,
-  wep:0,cd:[0,0,0,0,0,0],charge:0,plasma:5,plasmaMax:5,heat:0,heatMax:100,over:false,vheat:0,vover:0,vt:0,vfired:false,flakCd:0,
+  wep:0,cd:[0,0,0,0,0,0],charge:0,plasma:5,plasmaMax:5,heat:0,heatMax:100,over:false,vheat:0,vover:0,vt:0,vfired:false,flakCd:0,ab1cd:0,ab2cd:0,oc:0,special:null,
   slow:0,burn:0,burnT:0,burnDmg:0,burnBy:null,brace:0,braceCd:0,thr:0,ab:false,flash:0,dead:false,ramT:0,ramB:0,ramRes:1,
   roll:0,rollCd:0,rollDir:1,elite:false,lbuf:0,fireWas:false,chargeT:40,lcdMax:20,lcdLast:20,wl:0,crit:0,critM:1.5,cdm:1,arc:25*DEG,boost:0,dbuff:0,dAcc:0,dCrit:false,pid:Math.random()*100|0,
   isPlayer:false,cargo:false,boss:false,marked:false,label:'',hull:'#b23a30',trail:'#ff7a50',ai:null,msl:0,mslMax:0,mrestock:0,sing:0,singCd:0};
@@ -856,7 +858,12 @@ function spawnEnemy(idx,x,y,ang,o){
  s.dm=c.dmg/10*M.eDmg*.5;s.wl=c.tier;s.spd=c.spd*.82;s.turn=.042;s.acc=.13;
  s.hull=o.marked?'#b8902a':o.boss?'#7a1f24':'#b23a30';s.trail=o.marked?'#ffd700':'#ff7a50';
  s.boss=!!o.boss;s.marked=!!o.marked;s.label=o.name||'';if(o.boss)s.r*=1.25;
- s.ai=mkAI(s,o.ram);if(!o.boss&&!o.marked&&!o.ram&&M.lv>5&&Math.random()<.1+M.sea*.015){s.elite=true;s.maxHp=s.hp=Math.round(s.maxHp*1.6);s.maxSh=s.sh=Math.round(s.maxHp*.3);s.dm*=1.25;s.label='ELITE';s.hull='#5a2a6a';s.trail='#c87dff';s.ai.reload*=.85;}enemies.push(s);return s;
+ s.ai=mkAI(s,o.ram);
+ if(!o.boss&&!o.marked&&!o.ram&&!o.noSpecial){
+  if(M.lv>=9&&Math.random()<.28){const rr=Math.random();s.special=rr<.4?'shield':rr<.72?'mine':'carrier';s.label=s.special.toUpperCase();s.maxHp=s.hp=Math.round(s.maxHp*1.15);s.maxSh=s.sh=Math.round(s.maxHp*.35);s.ai.reload*=.9;}
+  else if(M.lv>5&&Math.random()<.1+M.sea*.015){s.elite=true;s.maxHp=s.hp=Math.round(s.maxHp*1.6);s.maxSh=s.sh=Math.round(s.maxHp*.3);s.dm*=1.25;s.label='ELITE';s.hull='#5a2a6a';s.trail='#c87dff';s.ai.reload*=.85;}
+ }
+ enemies.push(s);return s;
 }
 function mkStation(team,x,y,mul){
  const lv=M.lv,sc=team?M.eHull:(1+M.sea*.28),hp=Math.round((420+lv*5)*sc*(mul||1));
@@ -871,7 +878,7 @@ function mkStation(team,x,y,mul){
 function startMission(lv,hunt){
  lv=clamp(lv|0,1,500);
  const sea=(lv-1)/50|0,m=(lv-1)%50+1,mode=QA_MODE||(hunt?'hunt':modeFor(m)),D=DIFFS[save.diff],rng=mulberry32(lv*7919+13);
- rocks=[];stations=[];gravityWells=[];allies=[];enemies=[];flotsams=[];powerups=[];wrecks=[];ships=[];team0=[];
+ rocks=[];stations=[];gravityWells=[];allies=[];enemies=[];flotsams=[];powerups=[];wrecks=[];ships=[];team0=[];mines=[];
  for(const p of projectiles)jpool.push(p);projectiles=[];for(const p of particles)ppool.push(p);particles=[];beams=[];textParticles=[];
  lockT=null;bigMap=false;shake=0;camLX=camLY=0;
  WORLD_HALF=Math.min(1600+lv*5,3600);const WH=WORLD_HALF;
@@ -930,8 +937,12 @@ function spawnWave(no){
 }
 
 /* ---------------- DAMAGE ---------------- */
+function dtMul(t,dt){if(!dt)return 1;if(t.kind==='ship'){if(dt==='laser'&&t.sh>0)return 1.2;if(dt==='ion'&&t.sh>0)return .82;if(dt==='plasma')return 1.08;if(dt==='kinetic')return .94;}if(t.kind==='station'){if(dt==='ion')return 1.25;if(dt==='missile')return .8;}return 1;}
+function projectorGuard(t){if(t.team!==1)return false;for(const e of enemies){if(e.dead||e.special!=='shield')continue;if(Math.hypot(e.x-t.x,e.y-t.y)<340)return true;}return false;}
 function damage(t,amt,src,o){
  if(t.dead||!(amt>0))return;o=o||0;
+ if(o.dt)amt*=dtMul(t,o.dt);
+ if(t.kind==='ship'&&projectorGuard(t))amt*=.55;
  if(t.isPlayer&&M.done&&M.win)return;
  if(src&&src.isPlayer)M.dealt+=amt;if(t.isPlayer){M.taken+=amt;if(src&&src.x!==undefined&&M.hits.length<6)M.hits.push({a:Math.atan2(src.y-t.y,src.x-t.x),t:40});}
  if(t.kind==='ship'){
@@ -996,7 +1007,7 @@ function kill(t,src,o){
 }
 
 /* ---------------- WEAPONS ---------------- */
-function wd(s,base,per){return(base+per*s.wl)*s.dm*(s.dbuff>0?1.5:1);}
+function wd(s,base,per){return(base+per*s.wl)*s.dm*(s.dbuff>0?1.5:1)*(s.oc>0?1.35:1);}
 function lead(s,t,sp){const d=Math.hypot(t.x-s.x,t.y-s.y),tt=sp>1e6?0:d/sp;LX=t.x+(t.vx||0)*tt;LY=t.y+(t.vy||0)*tt;}
 function inArc(s,t,range,arc){
  const dx=t.x-s.x,dy=t.y-s.y,d=Math.hypot(dx,dy);if(d>range+t.r)return-1;
@@ -1155,6 +1166,13 @@ function toggleCockpit(){
  toast(cockpitOn?'COCKPIT — R/F THROTTLE · W/S PITCH · A/D TURN':'DIORAMA VIEW');sfx('click');
 }
 function cycleSub(){if(!lockT||lockT.kind!=='station'){msg('LOCK A STATION FIRST',50);return;}const seq=['auto',0,1,2,'gen'],cur=lockT.sub===undefined?'auto':lockT.sub,i=seq.indexOf(cur);lockT.sub=seq[(i+1)%seq.length];msg('FOCUS: '+(lockT.sub==='auto'?'AUTO':lockT.sub==='gen'?'GENERATOR':'TURRET '+(lockT.sub+1)),60);sfx('click');}
+function useAbility(n){
+ const p=player;if(!p||p.dead||state!=='play')return;
+ if(n===2&&(!save||save.free||((save.cnt&&save.cnt.wins)||0)<3)){sfx('deny');msg('ABILITY 2 LOCKED — WIN 3 MISSIONS',70);return;}
+ const cd=n===1?'ab1cd':'ab2cd';if(p[cd]>0){sfx('deny');return;}
+ if(n===1){let hits=0;for(const q of projectiles){if(q.dead||q.type!=='msl'||q.team===p.team)continue;if(Math.hypot(q.x-p.x,q.y-p.y)<260){q.dead=true;hits++;burst(q.x,q.y,q.z,10,'#ffd700',1.8,22,3);}}p.ab1cd=720;msg(hits?'FLARES — '+hits+' MISSILE'+(hits>1?'S':'')+' SPOILED':'FLARES OUT',60);sfx('flak');}
+ else{p.oc=420;p.ab2cd=1080;msg('OVERCHARGE — WEAPONS HOT',60);sfx('power');}
+}
 function playerFlak(){
  const p=player;if(!p||p.dead||state!=='play')return;if(p.flakCd>0){sfx('deny');return;}
  const pl=nearPlasma(p,420),t=pl?null:autoTarget(p,420);
@@ -1216,6 +1234,7 @@ function autoDefend(){
 function playerStep(){
  const p=player,inp=PIN;
  autoDefend();
+ if(p.ab1cd>0)p.ab1cd--;if(p.ab2cd>0)p.ab2cd--;if(p.oc>0)p.oc--;
  p.turn=p.turn0*settings.turn;p.acc=p.acc0*settings.thrust;
  if(cockpitOn){inp.turn=IN.turn;inp.pitch=IN.pitch;if(keys.KeyR)cockpitThrottle=clamp(cockpitThrottle+.022,0,1);if(keys.KeyF)cockpitThrottle=clamp(cockpitThrottle-.03,0,1);if(TEL&&TEL.thr)TEL.thr.value=Math.round(cockpitThrottle*100);inp.thrust=IN.brake?0:cockpitThrottle;inp.brake=IN.brake;inp.burn=IN.burn;inp.climb=false;if(p.boost>0)p.boost--;if(p.dbuff>0)p.dbuff--;stepShip(p,inp);playerWeapons(p);if(lockT&&(lockT.dead||Math.hypot(lockT.x-p.x,lockT.y-p.y)>2200))lockT=null;return;}
  let turn=IN.turn,thr=IN.thrust;
@@ -1356,6 +1375,8 @@ function aiPick(s,foes){
 function aiStep(s){
  const a=s.ai,inp=a.inp;inp.turn=0;inp.thrust=0;inp.brake=false;inp.burn=false;inp.climb=false;
  for(let i=0;i<6;i++)if(s.cd[i]>0)s.cd[i]--;
+ if(s.special==='carrier'){s.bayT=(s.bayT||240)-1;if(s.bayT<=0&&enemies.length<22){s.bayT=420;const d=spawnEnemy(0,s.x+rand(-50,50),s.y+rand(-50,50),s.ang,{noSpecial:true,hull:.4});if(d){d.maxHp=d.hp=Math.round(d.maxHp*.5);d.r*=.8;d.special='drone';d.label='DRONE';}}}
+ if(s.special==='mine'){s.mineT=(s.mineT||160)-1;if(s.mineT<=0&&mines.length<40){s.mineT=220;mines.push({x:s.x,y:s.y,team:s.team,arm:90,r:20,life:1500,owner:s});}}
  if(s.flakCd>0)s.flakCd--;
  if(s.vover>0){if(--s.vover<=0)s.vheat=0;}else if(s.vheat>0&&!s.vfired)s.vheat-=.3;
  s.vfired=false;
@@ -1453,6 +1474,14 @@ function stepStations(){
 }
 
 /* ---------------- PROJECTILES & FX ---------------- */
+function stepMines(){
+ for(let i=mines.length-1;i>=0;i--){
+  const m=mines[i];if(m.arm>0)m.arm--;m.life--;
+  let boom=m.life<=0;
+  if(!boom&&m.arm<=0)for(const s of ships){if(s.dead||s.team===m.team)continue;if(Math.hypot(s.x-m.x,s.y-m.y)<m.r+s.r){boom=true;break;}}
+  if(boom){explode(m.x,m.y,.15,30,false);for(const s of ships){if(s.dead||s.team===m.team)continue;const d=Math.hypot(s.x-m.x,s.y-m.y);if(d<118)damage(s,55*(1-d/150),m.owner,{acc:true});}mines.splice(i,1);}
+ }
+}
 function stepProjectiles(){
  for(let i=projectiles.length-1;i>=0;i--){
   const p=projectiles[i];
@@ -1485,7 +1514,7 @@ function stepProjectiles(){
     if(p.type==='vulcan'&&Math.hypot(p.x-p.x0,p.y-p.y0)>380)d*=.35;
     if(p.type==='ion')s.slow=160+((p.owner&&p.owner.wl)||0)*3;
     if(p.type==='plasma'){s.burn=5;s.burnT=20;s.burnDmg=p.burn;s.burnBy=p.owner;}
-    damage(s,d,p.owner,{crit:p.crit,acc:p.type==='vulcan'});
+    damage(s,d,p.owner,{crit:p.crit,acc:p.type==='vulcan',dt:p.type});
     if(p.type==='msl'){burst(s.x,s.y,s.z,16,'#ffb36b',2.5,30,4);for(const o of foes){if(o===s||o.dead)continue;if(Math.hypot(o.x-s.x,o.y-s.y)<74)damage(o,p.dmg*.45,p.owner,{acc:true});}}
     break;
    }
@@ -1715,7 +1744,7 @@ function tick(){
  if(player&&!player.dead)playerStep();
  for(const a of allies){if(a.dead)continue;aiStep(a);stepShip(a,a.ai.inp);}
  for(let i=0;i<enemies.length;i++){const e=enemies[i];if(e.dead)continue;aiStep(e);stepShip(e,e.ai.inp);}
- collide();stepStations();stepProjectiles();stepSing();stepFx();stepPickups();stepWeather();
+ collide();stepStations();stepProjectiles();stepMines();stepSing();stepFx();stepPickups();stepWeather();
  compact(allies);compact(enemies);compact(rocks);
  stepMode();
  /* objective lives in pause; flash it briefly on change + periodic reminder */
@@ -2030,9 +2059,19 @@ function drawStation2D(st){
  for(let i=0;i<3;i++){const a=turA(i),tx=Math.cos(a)*30,ty=Math.sin(a)*30;if(st.turrets[i].dead){c.fillStyle='#15181d';c.beginPath();c.arc(tx,ty,5,0,TAU);c.fill();continue;}const ta=st.turrets[i].ang;c.strokeStyle='#15181d';c.lineWidth=4;c.beginPath();c.moveTo(tx,ty);c.lineTo(tx+Math.cos(ta)*16,ty+Math.sin(ta)*16);c.stroke();c.fillStyle='#2a3038';c.beginPath();c.arc(tx,ty,6,0,TAU);c.fill();}
  c.restore();
 }
+function drawMine2D(m){
+ const c=ctx;w2s(m.x,m.y,0);if(!onScr(60))return;const armed=m.arm<=0;
+ c.save();c.translate(SX,SY);c.rotate(M.t*.02);
+ c.strokeStyle=armed?'#ff5a5a':'#8a8f96';c.lineWidth=1.5;c.globalAlpha=armed?(.55+Math.sin(M.t*.2)*.25):.4;
+ c.beginPath();c.arc(0,0,9,0,TAU);c.stroke();
+ for(let i=0;i<6;i++){const a=i*TAU/6;c.beginPath();c.moveTo(Math.cos(a)*9,Math.sin(a)*9);c.lineTo(Math.cos(a)*14,Math.sin(a)*14);c.stroke();}
+ c.globalAlpha=1;c.fillStyle=armed?'#ff6a5a':'#6a7078';c.beginPath();c.arc(0,0,3,0,TAU);c.fill();c.restore();
+}
 function drawShipW(s){
  const c=ctx;w2s(s.x,s.y,0);const gx=SX,gy=SY;w2s(s.x,s.y,s.z);if(!onScr(s.r*3))return;
  c.fillStyle='rgba(0,0,0,.28)';c.beginPath();c.ellipse(gx+10,gy+24,s.r*.9,s.r*.42,0,0,TAU);c.fill();
+ if(s.special==='shield'){c.strokeStyle='rgba(125,255,216,.4)';c.lineWidth=1.5;c.beginPath();c.arc(gx,gy-20,34+Math.sin(M.t*.06)*2,0,TAU);c.stroke();}
+ else if(s.team===1&&projectorGuard(s)){c.strokeStyle='rgba(125,255,216,.22)';c.lineWidth=1;c.beginPath();c.arc(gx,gy-16,s.r*1.5,0,TAU);c.stroke();}
  c.save();c.translate(SX,SY);c.scale(1,TILT);c.rotate(s.ang);c.scale(s.r,s.r);
  if(s.isPlayer&&settings.glow!==false){c.shadowColor=s.trail;c.shadowBlur=14;}
  if(s.cargo)drawCargo2D(c,s.thr);else drawShip2D(c,s.idx,s.flash>0?'#ffffff':s.hull,s.trail,s.thr,s.bank+(s.roll>0?(1-s.roll/20)*TAU:0),s.marked);
@@ -2045,6 +2084,7 @@ function drawWorld2D(){
  for(const g of gravityWells)drawPlanet2D(g);
  for(const st of stations)if(!st.dead)drawStation2D(st);
  for(const r of rocks)if(!r.dead)drawRock2D(r);
+ for(const m of mines)drawMine2D(m);
  for(const f of flotsams){w2s(f.x,f.y,.05);if(!onScr(20))continue;c.save();c.translate(SX,SY);c.rotate(f.rot);c.fillStyle=FLOC[f.type];c.shadowColor=FLOC[f.type];c.shadowBlur=8;c.fillRect(-4,-4,8,8);c.restore();}
  for(const u of powerups){w2s(u.x,u.y,.15+Math.sin(u.bob)*.04);if(!onScr(30))continue;const col=PWRC[u.type];c.strokeStyle=col;c.lineWidth=2;c.shadowColor=col;c.shadowBlur=14;c.beginPath();c.arc(SX,SY,13,0,TAU);c.stroke();c.fillStyle=rgba(col,.35);c.fill();c.shadowBlur=0;c.fillStyle='#fff';c.font='700 11px Orbitron';c.textAlign='center';c.textBaseline='middle';c.fillText(u.type==='medkit'?'✚':u.type==='msl'?'M':u.type==='sing'?'S':u.type[0].toUpperCase(),SX,SY+1);}
  for(const w of wrecks){w2s(w.x,w.y,w.z);if(!onScr(60))continue;c.save();c.globalAlpha=clamp(w.life/w.max*1.4,0,1);c.translate(SX,SY);c.scale(1,TILT);c.rotate(w.ang);c.scale(w.r,w.r);if(w.cargo)drawCargo2D(c,0);else drawShip2D(c,w.idx,'#2e2a26','#000000',0,w.tx,false);c.restore();}
@@ -2211,6 +2251,7 @@ function drawHUD(){
  }
  const mini=(x,label,f,col)=>{c.fillStyle='rgba(10,18,30,.6)';rr(c,x,wy+32,66,13,3);c.fill();c.fillStyle=col;c.globalAlpha=.3+.7*(f>=1?1:0);rr(c,x+2,wy+34,62*clamp(f,0,1),9,2);c.fill();c.globalAlpha=1;c.fillStyle='#ffffff';c.font='700 7px Orbitron';c.textAlign='center';c.fillText(label,x+33,wy+39);};
  mini(10,'FLAK AUTO',1-p.flakCd/500,settings.assistFlak?'#ffd700':'#5d522f');mini(80,'BRACE',p.brace>0?1:1-p.braceCd/600,'#ff9a3c');
+ mini(230,'FLARE 7',1-(p.ab1cd||0)/720,'#ffd166');mini(300,'OVRCHG 8',(!save||save.free||((save.cnt&&save.cnt.wins)||0)>=3)?1-(p.ab2cd||0)/1080:.0,'#b06bff');
  if(save.vulcanAuto){c.fillStyle='rgba(10,18,30,.6)';rr(c,150,wy+32,70,13,3);c.fill();c.fillStyle='#7de3ff';c.font='700 7px Orbitron';c.textAlign='center';c.fillText('VULCAN AUTO',185,wy+39);}
  let by=wy+50;c.textAlign='left';c.font='700 8px Orbitron';
  const tagl=(t,col)=>{c.fillStyle=col;c.fillText(t,12,by);by+=11;};
