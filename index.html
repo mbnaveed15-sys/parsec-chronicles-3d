@@ -189,14 +189,15 @@ textarea{min-height:11em;font-family:ui-monospace,Consolas,monospace;font-size:.
 @keyframes scrIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 @keyframes ledPulse{0%,100%{opacity:.4}50%{opacity:1}}
 /* compact commerce grids */
-.cosgrid{display:grid;gap:.7em;grid-template-columns:minmax(220px,320px) minmax(0,1fr) minmax(0,1.1fr);align-items:start;width:100%;max-width:1180px;margin-top:.2em}
+.cosgrid{display:grid;gap:.7em;grid-template-columns:minmax(190px,300px) minmax(0,1fr);align-items:start;width:100%;max-width:1180px;margin-top:.2em}
+.cosm-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.05fr);gap:.7em;align-items:start;min-width:0}
 .cosm-pv{display:flex;flex-direction:column;gap:.45em;min-width:0}
 .cosm-pv .pv{width:100%;aspect-ratio:13/8;height:auto}
-.cosm-col{padding:.65em .75em}
+.cosm-col{padding:.65em .75em;min-width:0}
 .cosm-col h3{margin:0 0 .15em;font-size:.82em}
 .cosm-right{display:flex;flex-direction:column;gap:.7em;min-width:0}
-@media (max-width:840px){.cosgrid{grid-template-columns:1fr 1fr}.cosgrid>.cosm-pv{grid-column:1/-1;max-width:360px}}
-@media (max-width:560px){.cosgrid{grid-template-columns:1fr}.cosgrid>.cosm-pv{max-width:none}}
+@media (max-width:760px){.cosm-cols{grid-template-columns:1fr}}
+@media (max-width:480px){.cosgrid{grid-template-columns:minmax(120px,38%) minmax(0,1fr)}.cosm-col{padding:.5em .55em}.cosm-col .cgrid{grid-template-columns:repeat(auto-fill,minmax(64px,1fr))}}
 .shopgrid{display:grid;grid-template-columns:minmax(220px,320px) minmax(0,1fr);gap:.8em;align-items:start;width:100%;max-width:1180px;margin-top:.2em}
 .shop-side{display:flex;flex-direction:column;gap:.45em;min-width:0}
 .shop-side .pv{width:100%;aspect-ratio:13/8;height:auto}
@@ -225,8 +226,10 @@ textarea{min-height:11em;font-family:ui-monospace,Consolas,monospace;font-size:.
 .cst.act{color:#eaffff;border-color:rgba(125,227,255,.5);cursor:pointer;background:rgba(20,50,70,.5)}
 .cst.on{color:var(--grn);border-color:rgba(111,224,138,.5)}
 .cst.lk{color:var(--dim);font-size:.48em;border-style:dashed}
-.dgrid{display:grid;gap:.55em;grid-template-columns:repeat(auto-fill,minmax(198px,1fr));margin-top:.5em}
-.card.sc .pv{aspect-ratio:auto;height:56px;border-radius:6px}
+.dgrid{display:grid;gap:.7em;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:.5em}
+@media (max-width:720px){.dgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:480px){.dgrid{grid-template-columns:1fr}}
+.card.sc .pv{aspect-ratio:auto;height:96px;border-radius:6px}
 .chips{display:flex;gap:.35em;flex-wrap:wrap;font-size:.6em;color:var(--dim)}
 .chips span{border:1px solid var(--ln);border-radius:5px;padding:.14em .45em;font-family:Orbitron,sans-serif;letter-spacing:.03em;white-space:nowrap}
 .ugrid{display:grid;gap:.55em;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));width:100%;max-width:980px}
@@ -2074,9 +2077,9 @@ const SCREENS={
    '<div class="kv"><span>Trim</span><b>'+(pr>=0?pvTag:'')+TRIMS[ri].n+'</b></div>'+
    (anyPv?'<div class="row" style="margin-top:.4em">'+(ph>=0?act(HULLS[ph],ph,'hull',HL):'')+(pt>=0?act(TRAILS[pt],pt,'trail',TL):'')+(pr>=0?act(TRIMS[pr],pr,'trim',RL):'')+'<button class="btn sm" data-a="pvreset">Reset</button></div>':'<span class="dim sml">Colours apply to your whole squadron. Tap a swatch to preview.</span>')+
    '</div>';
-  h+='<div class="panel cosm-col"><h3>Paint</h3><div class="cgrid">'+HULLS.map((o,i)=>item(o,i,'hull',HL,curH,ph)).join('')+'</div></div>';
+  h+='<div class="cosm-cols"><div class="panel cosm-col"><h3>Paint</h3><div class="cgrid">'+HULLS.map((o,i)=>item(o,i,'hull',HL,curH,ph)).join('')+'</div></div>';
   h+='<div class="col cosm-right"><div class="panel cosm-col"><h3>Thrust</h3><div class="cgrid">'+TRAILS.map((o,i)=>item(o,i,'trail',TL,curT,pt)).join('')+'</div></div>'+
-   '<div class="panel cosm-col"><h3>Trim</h3><div class="cgrid">'+TRIMS.map((o,i)=>item(o,i,'trim',RL,curR,pr)).join('')+'</div></div></div>';
+   '<div class="panel cosm-col"><h3>Trim</h3><div class="cgrid">'+TRIMS.map((o,i)=>item(o,i,'trim',RL,curR,pr)).join('')+'</div></div></div></div>';
   h+='</div>';
   return h+'</div>';
  },
