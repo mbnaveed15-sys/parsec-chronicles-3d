@@ -2166,6 +2166,7 @@ function drawHUD(){
  }
  const mini=(x,label,f,col)=>{c.fillStyle='rgba(10,18,30,.6)';rr(c,x,wy+32,66,13,3);c.fill();c.fillStyle=col;c.globalAlpha=.3+.7*(f>=1?1:0);rr(c,x+2,wy+34,62*clamp(f,0,1),9,2);c.fill();c.globalAlpha=1;c.fillStyle='#ffffff';c.font='700 7px Orbitron';c.textAlign='center';c.fillText(label,x+33,wy+39);};
  mini(10,'FLAK',1-p.flakCd/500,'#ffd700');mini(80,'BRACE',p.brace>0?1:1-p.braceCd/600,'#ff9a3c');
+ if(save.vulcanAuto){c.fillStyle='rgba(10,18,30,.6)';rr(c,150,wy+32,70,13,3);c.fill();c.fillStyle='#7de3ff';c.font='700 7px Orbitron';c.textAlign='center';c.fillText('VULCAN AUTO',185,wy+39);}
  let by=wy+50;c.textAlign='left';c.font='700 8px Orbitron';
  const tagl=(t,col)=>{c.fillStyle=col;c.fillText(t,12,by);by+=11;};
  if(m.docked)tagl('⚓ DOCKED — REPAIRING','#6fe08a');
