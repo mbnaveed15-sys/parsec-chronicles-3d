@@ -89,7 +89,7 @@ button{font-family:inherit;color:inherit}
 .setbar{position:sticky;top:0;z-index:3;display:flex;flex-direction:column;gap:.5em;padding:.55em .6em;margin:-.2em 0 .5em;background:rgba(7,13,22,.94);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--ln);border-radius:10px}
 .setsearch{font-size:.95em;padding:.5em .7em}
 .setgroup{margin-top:.2em}
-.setcols{display:grid;grid-template-columns:1fr 1fr;gap:0 1.8em;height:calc(100vh - 250px);min-height:240px;overflow:hidden;width:100%}
+.setcols{display:grid;grid-template-columns:1fr 1fr;gap:0 1.8em;height:calc(100vh - 234px);min-height:110px;overflow:hidden;width:100%}
 .setcol{overflow-y:auto;min-height:0;padding-right:6px}
 @media (max-width:760px){.setcols{grid-template-columns:1fr;height:auto;min-height:0}.setcol{overflow:visible}}
 /* boot sequences */
@@ -228,17 +228,19 @@ textarea{min-height:11em;font-family:ui-monospace,Consolas,monospace;font-size:.
 .dgrid{display:grid;gap:.7em;grid-template-columns:repeat(3,minmax(0,1fr));margin-top:.5em}
 @media (max-width:720px){.dgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:480px){.dgrid{grid-template-columns:1fr}}
-.dockcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6em;width:100%;max-width:1180px;height:calc(100vh - 250px);min-height:260px}
+.dockcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6em;width:100%;max-width:1180px;height:calc(100vh - 160px);min-height:110px}
 .dockcol{display:flex;flex-direction:column;min-height:0;overflow:hidden;background:rgba(10,18,30,.5);border:1px solid var(--ln);border-radius:12px;padding:.6em .65em}
 .dockcol>h3{flex:none;margin:0 0 .3em}
 .dscroll{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:.55em;padding-right:4px}
 .dscroll>.card{flex:0 0 auto}
 .cscroll>.csw{flex:0 0 auto}
 @media (max-width:820px){.dockcols{grid-template-columns:1fr;height:auto;min-height:0}.dockcol{max-height:60vh}}
+/* shop: columns scale to the viewport height and scroll internally */
+.scr.shopscr>.dockcols{height:calc(100vh - 160px)}
 .card.sc .pv{aspect-ratio:auto;height:96px;border-radius:6px}
 .chips{display:flex;gap:.35em;flex-wrap:wrap;font-size:.6em;color:var(--dim)}
 .chips span{border:1px solid var(--ln);border-radius:5px;padding:.14em .45em;font-family:Orbitron,sans-serif;letter-spacing:.03em;white-space:nowrap}
-.ugrid{display:grid;gap:.55em;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));width:100%;max-width:980px;max-height:calc(100vh - 260px);overflow-y:auto;padding-right:4px}
+.ugrid{display:grid;gap:.55em;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));width:100%;max-width:980px;max-height:calc(100vh - 160px);overflow-y:auto;padding-right:4px}
 #ui{scrollbar-width:thin;scrollbar-color:rgba(125,227,255,.3) transparent}
 #ui::-webkit-scrollbar{width:9px}
 #ui::-webkit-scrollbar-thumb{background:rgba(125,227,255,.22);border-radius:6px}
@@ -2002,11 +2004,11 @@ const SCREENS={
   '<div class="kv"><span>Squadron</span><b>'+squadHealthy()+' / '+wingCap()+' ready</b></div><div class="kv"><span>Tech ceiling</span><b>'+DMAX[s.diff]+' / track</b></div>'+
   '<div class="kv"><span>Next mission</span><b>'+((r-1)/50+1|0)+'-'+((r-1)%50+1)+' · '+SEAS[(r-1)/50|0].n+'</b></div>'+
   '<div class="kv"><span>Difficulty</span><b>enemy ×'+DIFFS[s.diff].e+' · reward ×'+DIFFS[s.diff].r+'</b></div><div class="row">'+d+'</div><span class="dim sml">Each difficulty keeps its own upgrades, ships, mods and unlocks.</span>'+
-  (s.free?'<span class="tag g">Free Roam — progress is not saved</span>':'')+'</div></div></div>'+
+  (s.free?'<span class="tag g">Free Roam — progress is not saved</span>':'')+
+  '<div class="row" style="margin-top:.5em;gap:.5em"><button class="btn primary" data-a="cont">Continue<small>Mission '+((nextLv()-1)/50+1|0)+'-'+((nextLv()-1)%50+1)+'</small></button><button class="btn" data-a="hunt">Hunt<small>Free hunt</small></button></div>'+
+  '</div></div></div>'+
   '<div class="panel" style="max-width:980px"><div class="row"><h3 style="flex:1">Squadron</h3><span class="tag">'+sqh+' / '+sqc+' ready</span></div><div class="chips" style="margin:.35em 0 .25em">'+(dots||'<span>NO WINGS</span>')+'</div>'+(sqc===0?'<span class="dim sml">Upgrade Wing in the Shop to field escort ships.</span>':sqMiss>0?'<button class="btn sm gold'+(!s.free&&dGold(s)<sqFee?' warn':'')+'" data-a="rebuild">Rebuild wing · ◈ '+fmtNum(sqFee)+'</button> <span class="dim sml">lost pilots cost credits to replace</span>':'<span class="dim sml">All wings ready.</span>')+'</div>'+
-  '<div class="menu" style="max-width:980px">'+
-  '<button class="btn primary" data-a="cont">Continue<small>Mission '+((nextLv()-1)/50+1|0)+'-'+((nextLv()-1)%50+1)+' · '+DIFFS[s.diff].n+'</small></button>'+
-  '<button class="btn" data-a="hunt">Hunt<small>Endless free hunt</small></button></div></div>';
+  '</div>';
  },
  sectors(){
   let h='<div class="scr">'+hdr('Sector Map · '+DIFFS[save.diff].n)+'<div class="grid g2" style="max-width:980px">';
@@ -2048,7 +2050,7 @@ const SCREENS={
  },
  shop(){
   const t=UI.tab,s=save,r=reached(),du=dUp(s);
-  let h='<div class="scr">'+hdr('Shop · '+DIFFS[s.diff].n)+'<span class="dim sml">Gear, ships and unlocks are separate on '+DIFFS[s.diff].n+'. Tech ceiling '+DMAX[s.diff]+' per track.</span><div class="tabs"><button class="btn sm'+(t==='up'?' on':'')+'" data-a="tab" data-v="up">Upgrades</button><button class="btn sm'+(t==='dock'?' on':'')+'" data-a="tab" data-v="dock">Dockyard</button><button class="btn sm'+(t==='mods'?' on':'')+'" data-a="tab" data-v="mods">Ship Mods</button></div>';
+  let h='<div class="scr shopscr">'+hdr('Shop · '+DIFFS[s.diff].n)+'<span class="dim sml">Gear, ships and unlocks are separate on '+DIFFS[s.diff].n+'. Tech ceiling '+DMAX[s.diff]+' per track.</span><div class="tabs"><button class="btn sm'+(t==='up'?' on':'')+'" data-a="tab" data-v="up">Upgrades</button><button class="btn sm'+(t==='dock'?' on':'')+'" data-a="tab" data-v="dock">Dockyard</button><button class="btn sm'+(t==='mods'?' on':'')+'" data-a="tab" data-v="mods">Ship Mods</button></div>';
   if(t==='up'){
    h+='<div class="ugrid">';
    const cap=DMAX[s.diff];
