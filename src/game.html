@@ -1068,7 +1068,7 @@ function collide(){
   for(const r of rocks){if(r.dead||Math.abs(s.z-(r.z||0))>(r.moon?.65:.35))continue;if(Math.abs(r.x-s.x)>r.r+s.r)continue;const imp=bump(s,r.x,r.y,r.r*.9);if(imp)crash(s,imp,r);if(s.dead)break;}
   if(s.dead)continue;
   for(const st of stations){
-   if(st.dead||Math.abs(s.z-(st.z||0))>.8)continue;const d=Math.hypot(st.x-s.x,st.y-s.y);if(d>st.r+s.r)continue;
+   if(st.dead||st.team===s.team||Math.abs(s.z-(st.z||0))>.8)continue;const d=Math.hypot(st.x-s.x,st.y-s.y);if(d>st.r+s.r)continue;
    if(s.ai&&s.ai.ram&&st.team!==s.team){damage(st,s.maxHp*.4+15,s,0);kill(s,null,{noCount:true});break;}
    const imp=bump(s,st.x,st.y,st.r*.85);if(imp)crash(s,imp,null);
   }
@@ -1077,7 +1077,7 @@ function collide(){
  for(let i=0;i<n;i++){
   const a=ships[i];if(a.dead)continue;
   for(let j=i+1;j<n;j++){
-   const b=ships[j];if(b.dead)continue;
+   const b=ships[j];if(b.dead||(a.team===0&&b.team===0))continue;
    const dx=b.x-a.x,dy=b.y-a.y,min=(a.r+b.r)*.75;if(dx>min||dx<-min||dy>min||dy<-min)continue;
    if(Math.abs(a.z-b.z)>.3)continue;
    const d=Math.hypot(dx,dy)||1;if(d>=min)continue;
