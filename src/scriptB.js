@@ -367,7 +367,7 @@ function updShip(o,s){
  if(o.pr)prismPaint(o,s.trail);
  const on=s.thr>.04;for(const f of o.fl){f[0].visible=on;if(on){const len=(.2+s.thr*1.25)*(.82+Math.random()*.36)*(o.pl?1.3:1);f[0].scale.set(len,f[1]*(o.pl?1.15:1),f[1]*(o.pl?1.15:1));}}
  const fr=s.maxSh>0?Math.min(1,s.sh/s.maxSh):0,fx=Math.max(0,s.shF||0);
- o.sh.visible=fr>.01||fx>0;if(o.sh.visible)o.sh.material.uniforms.op.value=fr*.06+fx*.95;
+ o.sh.visible=!window.__cineHideHud&&(fr>.01||fx>0);if(o.sh.visible)o.sh.material.uniforms.op.value=fr*.06+fx*.95;
  o.br.visible=s.brace>0;if(o.br.visible){const k=1+Math.sin(frameNo*.5)*.06;o.br.scale.setScalar(k);}
  o.sl.visible=s.slow>0;if(o.sl.visible)o.sl.rotation.y+=.22;
 }
@@ -439,8 +439,8 @@ function stationObj(st){
  const dg=new THREE.LatheGeometry([[0,0],[3,.6],[5.6,2.2],[7,3.6]].map(p=>new THREE.Vector2(p[0],p[1])),16),dm=new THREE.Mesh(dg,MT.metal);dm.position.set(7.5,1,0);dm.rotation.z=-.7;dm.castShadow=true;dishG.add(dm);own.push(dg);
  const fg=C(.3,.3,5,4),fm=new THREE.Mesh(fg,MT.dark);fm.position.set(9.2,3,0);fm.rotation.z=-.7;dishG.add(fm);own.push(fg);
  /* defense-field ring at ship height, soft glow on the floor */
- const am=new THREE.MeshBasicMaterial({color:col.clone().multiplyScalar(1.5),transparent:true,opacity:.6,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),ag=new THREE.RingGeometry(st.aura-5,st.aura,120).rotateX(-PI/2),au=new THREE.Mesh(ag,am);au.position.y=-6;g.add(au);
- const flm=new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.09,blending:THREE.AdditiveBlending,depthWrite:false}),flg=new THREE.CircleGeometry(st.aura*1.06,72).rotateX(-PI/2),fd=new THREE.Mesh(flg,flm);fd.position.y=FLOOR+3;g.add(fd);
+ const am=new THREE.MeshBasicMaterial({color:col.clone().multiplyScalar(1.2),transparent:true,opacity:.16,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),ag=new THREE.RingGeometry(st.aura-1.2,st.aura,120).rotateX(-PI/2),au=new THREE.Mesh(ag,am);au.position.y=-6;g.add(au);
+ const flm=new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.09,blending:THREE.AdditiveBlending,depthWrite:false}),flg=new THREE.CircleGeometry(st.aura*1.06,72).rotateX(-PI/2),fd=new THREE.Mesh(flg,flm);fd.position.y=FLOOR+3;fd.visible=false;g.add(fd);
  own.push(am,ag,flm,flg);
  dummy.rotation.set(0,0,0,'XYZ');
  g.position.set(st.x,-6,st.y);
@@ -448,7 +448,7 @@ function stationObj(st){
 }
 function updStation(o,st){
  o.ring.rotation.y=-st.rot;o.dish.rotation.y=st.rot*2.2;for(let i=0;i<3;i++)o.tur[i].rotation.y=-st.turrets[i].ang;
- o.au.material.opacity=.45+Math.sin(frameNo*.05)*.15;o.bl.emissiveIntensity=frameNo%70<12?4.5:.35;
+ o.au.material.opacity=window.__cineHideHud?0:(.1+Math.sin(frameNo*.05)*.03);o.au.visible=!window.__cineHideHud;o.bl.emissiveIntensity=frameNo%70<12?4.5:.35;
 }
 /* black hole: dark core, glowing rim, rotating accretion disk */
 function blackHoleObj(g){
@@ -474,7 +474,7 @@ function planetObj(g){
  const am=fresMat(new THREE.Color(g.c1).lerp(new THREE.Color(0xbfe0ff),.5).getHex(),.55,2.6),at=new THREE.Mesh(GEO.sphHi,am);at.scale.setScalar(1.045);tilt.add(at);own.push(am);
  const hm=fresMat(new THREE.Color(g.c1).lerp(new THREE.Color(0xbfe0ff),.6).getHex(),.16,5),ha=new THREE.Mesh(GEO.sphHi,hm);ha.scale.setScalar(1.12);tilt.add(ha);own.push(hm);
  let cl=null;if(!g.gas){const ct=cloudTex(g),cm=new THREE.MeshStandardMaterial({map:ct,transparent:true,depthWrite:false,roughness:1,metalness:0,envMapIntensity:.2});cl=new THREE.Mesh(GEO.sphHi,cm);cl.scale.setScalar(1.02);tilt.add(cl);own.push(ct,cm);}
- if(g.ring){const rt=ringTex(g),rm=new THREE.MeshBasicMaterial({map:rt,transparent:true,opacity:.4,side:THREE.DoubleSide,depthWrite:false});tilt.add(new THREE.Mesh(GEO.pring,rm));own.push(rt,rm);}
+ if(g.ring){const rt=ringTex(g),rm=new THREE.MeshBasicMaterial({map:rt,transparent:true,opacity:.2,side:THREE.DoubleSide,depthWrite:false});tilt.add(new THREE.Mesh(GEO.pring,rm));own.push(rt,rm);}
  tilt.rotation.z=g.tilt;tilt.rotation.x=g.tilt*.4;body.add(tilt);body.scale.set(g.r,g.r,g.r);body.position.y=0;root.add(body);
  const wm=new THREE.Mesh(GEO.plane,wellMat);wm.scale.setScalar(g.r*2.6);wm.position.y=-8;wm.visible=false;root.add(wm);
  root.position.set(g.x,0,g.y);
@@ -623,6 +623,7 @@ function checkQuality(){
 }
 let ckPZ=null,ckPitch=0;
 function placeCam(){
+ if(window.CINE_CAM){const q=window.CINE_CAM;cam.fov=52;cam.near=2;cam.aspect=W/H;cam.position.set(q.x,q.y,q.z);cam.up.set(0,1,0);cam.lookAt(q.lx,q.ly,q.lz);cam.updateProjectionMatrix();cam.updateMatrixWorld(true);sun.position.set(q.x-380,1250,q.z+440);sun.target.position.set(q.lx,0,q.lz);sun.target.updateMatrixWorld();updDust(q.x,q.z);return;}
  const ck=!!window.cockpitOn&&player&&!player.dead;
  if(ck){
   const p=player,pit=p.pitch||0,cp=Math.cos(pit),sp=Math.sin(pit),ca=Math.cos(p.ang),sa=Math.sin(p.ang);
