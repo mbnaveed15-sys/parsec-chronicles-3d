@@ -334,7 +334,7 @@ const wellMat=new THREE.ShaderMaterial({uniforms:{t:{value:0}},vertexShader:'var
 
 /* ---------- floor ("tabletop") ---------- */
 const floorMat=new THREE.MeshStandardMaterial({color:0xa8a8a8,roughness:1,metalness:0,envMapIntensity:0});
-const floor=new THREE.Mesh(new THREE.PlaneGeometry(26000,26000),floorMat);floor.rotation.x=-PI/2;floor.position.y=FLOOR;floor.receiveShadow=true;scene.add(floor);
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(26000,26000),floorMat);floor.rotation.x=-PI/2;floor.position.y=FLOOR;floor.receiveShadow=true;scene.add(floor);floor.visible=false;
 let floorSea=-1;
 function setSector(sea){
  if(sea===floorSea)return;floorSea=sea;const old=floorMat.map,t=canvasTex(makeBgTile(sea,settings.gfx==='low'?1024:2048),true);t.repeat.set(8,8);
@@ -450,7 +450,24 @@ function updStation(o,st){
  o.ring.rotation.y=-st.rot;o.dish.rotation.y=st.rot*2.2;for(let i=0;i<3;i++)o.tur[i].rotation.y=-st.turrets[i].ang;
  o.au.material.opacity=.45+Math.sin(frameNo*.05)*.15;o.bl.emissiveIntensity=frameNo%70<12?4.5:.35;
 }
+/* black hole: dark core, glowing rim, rotating accretion disk */
+function blackHoleObj(g){
+ const root=new THREE.Group();
+ const core=new THREE.Mesh(GEO.sphHi,new THREE.MeshBasicMaterial({color:0x000000}));
+ core.scale.setScalar(g.r);root.add(core);
+ const rm=fresMat(0xff8a3a,.95,3.2),rim=new THREE.Mesh(GEO.sphHi,rm);rim.scale.setScalar(g.r*1.02);root.add(rim);
+ const dc=mkCanvas(256,256),dx=dc.getContext('2d');
+ const gr=dx.createRadialGradient(128,128,18,128,128,127);
+ gr.addColorStop(0,'rgba(255,235,190,.95)');gr.addColorStop(.32,'rgba(255,160,70,.8)');gr.addColorStop(.66,'rgba(200,60,20,.32)');gr.addColorStop(1,'rgba(120,20,10,0)');
+ dx.fillStyle=gr;dx.fillRect(0,0,256,256);
+ const dt=new THREE.CanvasTexture(dc);dt.colorSpace=THREE.SRGBColorSpace;
+ const dmat=new THREE.MeshBasicMaterial({map:dt,transparent:true,opacity:.95,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending});
+ const disk=new THREE.Mesh(GEO.pring,dmat);disk.scale.setScalar(g.r*2.6);disk.rotation.x=Math.PI*.08;root.add(disk);
+ root.position.set(g.x,0,g.y);
+ return{o:root,sp:core,cl:null,own:[rm,dt,dmat],bh:disk};
+}
 function planetObj(g){
+ if(g.bh)return blackHoleObj(g);
  const root=new THREE.Group(),body=new THREE.Group(),tilt=new THREE.Group(),pt=planetTex(g),tex=pt.map,own=[tex];
  const m=new THREE.MeshStandardMaterial({map:tex,roughness:g.gas?.75:1,metalness:0,envMapIntensity:g.gas?.2:.3});if(pt.aux){m.roughnessMap=pt.aux;m.bumpMap=pt.aux;m.bumpScale=3;own.push(pt.aux);}own.push(m);
  const sp=new THREE.Mesh(GEO.sphHi,m);sp.castShadow=true;sp.receiveShadow=true;sp.rotation.y=g.rot;tilt.add(sp);
@@ -458,14 +475,14 @@ function planetObj(g){
  const hm=fresMat(new THREE.Color(g.c1).lerp(new THREE.Color(0xbfe0ff),.6).getHex(),.16,5),ha=new THREE.Mesh(GEO.sphHi,hm);ha.scale.setScalar(1.12);tilt.add(ha);own.push(hm);
  let cl=null;if(!g.gas){const ct=cloudTex(g),cm=new THREE.MeshStandardMaterial({map:ct,transparent:true,depthWrite:false,roughness:1,metalness:0,envMapIntensity:.2});cl=new THREE.Mesh(GEO.sphHi,cm);cl.scale.setScalar(1.02);tilt.add(cl);own.push(ct,cm);}
  if(g.ring){const rt=ringTex(g),rm=new THREE.MeshBasicMaterial({map:rt,transparent:true,opacity:.4,side:THREE.DoubleSide,depthWrite:false});tilt.add(new THREE.Mesh(GEO.pring,rm));own.push(rt,rm);}
- tilt.rotation.z=g.tilt;tilt.rotation.x=g.tilt*.4;body.add(tilt);body.scale.set(g.r,g.r*.5,g.r);body.position.y=-30;root.add(body);
- const wm=new THREE.Mesh(GEO.plane,wellMat);wm.scale.setScalar(g.r*2.6);wm.position.y=-8;root.add(wm);
+ tilt.rotation.z=g.tilt;tilt.rotation.x=g.tilt*.4;body.add(tilt);body.scale.set(g.r,g.r,g.r);body.position.y=0;root.add(body);
+ const wm=new THREE.Mesh(GEO.plane,wellMat);wm.scale.setScalar(g.r*2.6);wm.position.y=-8;wm.visible=false;root.add(wm);
  root.position.set(g.x,0,g.y);
  return{o:root,sp,cl,own};
 }
-function updPlanet(o,g){o.o.position.y=(g.z||0)*ALT;o.sp.rotation.y+=.0006;if(o.cl)o.cl.rotation.y+=.0011;}
+function updPlanet(o,g){o.o.position.y=(g.z||0)*ALT;o.sp.rotation.y+=.0006;if(o.cl)o.cl.rotation.y+=.0011;if(o.bh)o.bh.rotation.z+=.012;}
 function rockObj(r){
- if(r.moon){const m=new THREE.Mesh(GEO.sphHi,moonMat(r.seed%3));m.scale.set(r.r,r.r*.62,r.r);m.position.set(r.x,-12,r.y);m.rotation.y=r.rot;m.castShadow=true;m.receiveShadow=true;return{o:m};}
+ if(r.moon){const m=new THREE.Mesh(GEO.sphHi,moonMat(r.seed%3));m.scale.set(r.r,r.r,r.r);m.position.set(r.x,-12,r.y);m.rotation.y=r.rot;m.castShadow=true;m.receiveShadow=true;return{o:m};}
  const v=r.seed%6,mat=r.seed%5===0?MT.rockOre:MT.rock,g=new THREE.Group(),rs=mulberry32(r.seed);
  const m=new THREE.Mesh(GEO.ast[v],mat);m.scale.setScalar(r.r*1.08);m.castShadow=true;m.receiveShadow=true;g.add(m);
  for(let i=0;i<2;i++){const a=rs()*PI*2,e=(rs()-.5)*.8,d=r.r*(1.3+rs()*.35),b=new THREE.Mesh(GEO.ast[(v+1+i)%6],mat);b.scale.setScalar(r.r*(.06+rs()*.06));b.position.set(Math.cos(a)*d,e*r.r*.9,Math.sin(a)*d);b.rotation.set(rs()*6,rs()*6,0);b.castShadow=true;g.add(b);}
@@ -515,6 +532,13 @@ const starGeo=new THREE.BufferGeometry();
  starGeo.setAttribute('position',new THREE.BufferAttribute(sp,3));starGeo.setAttribute('color',new THREE.BufferAttribute(sc,3));}
 const starField=new THREE.Points(starGeo,new THREE.PointsMaterial({size:2,sizeAttenuation:false,vertexColors:true,transparent:true,opacity:.95,depthWrite:false}));
 starField.frustumCulled=false;scene.add(starField);
+/* nebula shell: soft coloured clouds surrounding the play space (both diorama and cockpit) */
+const nebula=(function(){
+ const c=mkCanvas(1024,512),x=c.getContext('2d'),r=mulberry32(4242),cols=[[120,50,190],[30,120,170],[180,50,120],[40,90,210],[90,60,200]];
+ for(let i=0;i<30;i++){const cx=r()*1024,cy=r()*512,rad=80+r()*260,cl=cols[r()*cols.length|0];const g=x.createRadialGradient(cx,cy,0,cx,cy,rad);g.addColorStop(0,'rgba('+cl[0]+','+cl[1]+','+cl[2]+',.16)');g.addColorStop(.6,'rgba('+cl[0]+','+cl[1]+','+cl[2]+',.06)');g.addColorStop(1,'rgba('+cl[0]+','+cl[1]+','+cl[2]+',0)');x.fillStyle=g;x.fillRect(cx-rad,cy-rad,rad*2,rad*2);}
+ const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
+ const m=new THREE.MeshBasicMaterial({map:tex,side:THREE.BackSide,transparent:true,opacity:.55,depthWrite:false,depthTest:false});
+ const mesh=new THREE.Mesh(new THREE.SphereGeometry(8200,32,20),m);mesh.renderOrder=-2;mesh.frustumCulled=false;scene.add(mesh);return mesh;})();
 const FD=64,fld=new THREE.InstancedMesh(GEO.ast[0],MT.rock,FD);fld.frustumCulled=false;
 {const r=mulberry32(777);for(let i=0;i<FD;i++){dummy.position.set((r()*2-1)*3200,r()*340-40,(r()*2-1)*3200);dummy.rotation.set(r()*PI*2,r()*PI*2,r()*PI*2);const s=6+r()*22;dummy.scale.set(s,s*(.6+r()*.6),s);dummy.updateMatrix();fld.setMatrixAt(i,dummy.matrix);}fld.instanceMatrix.needsUpdate=true;}
 fld.visible=false;scene.add(fld);
@@ -635,7 +659,7 @@ function render(){
  frameNo++;checkQuality();
  if(M.id!==curMission){curMission=M.id;setSector(M.sea);}
  placeCam();
- starField.position.copy(cam.position);fld.visible=!!window.cockpitOn;fld.rotation.y+=.0002;floor.material.transparent=true;floor.material.opacity=window.cockpitOn?.4:1;
+ starField.position.copy(cam.position);nebula.position.copy(cam.position);fld.visible=!!window.cockpitOn;fld.rotation.y+=.0002;floor.visible=false;
  const ck=!!window.cockpitOn&&player&&!player.dead;const szr=renderer.getDrawingBufferSize(new THREE.Vector2());const mr=ck?0:12*szr.y/1080;tiltH.uniforms.maxR.value=mr;tiltV.uniforms.maxR.value=mr;pMat.uniforms.sc.value=szr.y/(2*Math.tan((ck?70:32)*Math.PI/360));
  sync(maps.ship,ships,shipObj,updShip);sync(maps.st,stations,stationObj,updStation);sync(maps.pl,gravityWells,planetObj,updPlanet);
  sync(maps.rk,rocks,rockObj,updRock);sync(maps.fl,flotsams,flotObj,updFlot);sync(maps.pu,powerups,powObj,updPow);sync(maps.wr,wrecks,wreckObj,updWreck);
