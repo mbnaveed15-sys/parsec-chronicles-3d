@@ -1017,7 +1017,7 @@ function fireLaser(s,charged,tg){
  for(const f of foes){if(f.dead||Math.abs(f.z-s.z)>zt)continue;const tt=rayCircle(ox,oy,dx,dy,f.x,f.y,f.r*hr+pad);if(tt>=0&&tt<best){best=tt;hit=f;}}
  for(const st of stations){if(st.dead||st.team===s.team)continue;const tt=rayCircle(ox,oy,dx,dy,st.x,st.y,st.r);if(tt>=0&&tt<best){best=tt;hit=st;}}
  for(const r of rocks){if(r.dead||Math.abs(s.z-(r.z||0))>(r.moon?.65:.35))continue;const tt=rayCircle(ox,oy,dx,dy,r.x,r.y,r.r);if(tt>=0&&tt<best){best=tt;hit=r;}}
- for(const g of gravityWells){if(Math.abs(s.z-(g.z||0))>.65)continue;const tt=rayCircle(ox,oy,dx,dy,g.x,g.y,g.r);if(tt>=0&&tt<best){best=tt;hit=null;}}
+ for(const g of gravityWells){if(g.bh){if(Math.abs(s.z-(g.z||0))<.65){const tt=rayCircle(ox,oy,dx,dy,g.x,g.y,g.r);if(tt>=0&&tt<best){best=tt;hit=null;}}continue;}const gd=Math.hypot(g.x-s.x,g.y-s.y);if(gd>g.r)continue;if(s.z*140>Math.sqrt(Math.max(0,g.r*g.r-gd*gd)))continue;const tt=rayCircle(ox,oy,dx,dy,g.x,g.y,g.r);if(tt>=0&&tt<best){best=tt;hit=null;}}
  const ex=ox+dx*best,ey=oy+dy*best,hz=hit&&hit.kind==='ship'?hit.z:s.z;
  addBeam(ox,oy,s.z,ex,ey,hz,s.team?'#ff6a5a':WEAPONS[0].c,charged?18:9,charged?5.5:2.4);
  burst(ex,ey,hz,charged?8:4,s.team?'#ff9a8a':'#bff2ff',2,16,3);
@@ -1278,9 +1278,9 @@ function collide(){
   for(const r of rocks){if(r.dead)continue;const rd=Math.hypot(r.x-s.x,r.y-s.y);if(rd>r.r+s.r)continue;if(s.z*140>Math.sqrt(Math.max(0,r.r*r.r-rd*rd))+s.r*.4)continue;const imp=bump(s,r.x,r.y,r.r+s.r*.4);if(imp)crash(s,imp,r);if(s.dead)break;}
   if(s.dead)continue;
   for(const st of stations){
-   if(st.dead||st.team===s.team||Math.abs(s.z-(st.z||0))>.8)continue;const d=Math.hypot(st.x-s.x,st.y-s.y);if(d>st.r+s.r)continue;
+   if(st.dead||st.team===s.team||s.z*140>110)continue;const d=Math.hypot(st.x-s.x,st.y-s.y);if(d>st.r+s.r)continue;
    if(s.ai&&s.ai.ram&&st.team!==s.team){damage(st,s.maxHp*.4+15,s,0);kill(s,null,{noCount:true});break;}
-   const imp=bump(s,st.x,st.y,st.r*.95);if(imp)crash(s,imp,null);
+   const imp=bump(s,st.x,st.y,st.r);if(imp)crash(s,imp,null);
   }
  }
  const n=ships.length;
@@ -1288,7 +1288,7 @@ function collide(){
   const a=ships[i];if(a.dead)continue;
   for(let j=i+1;j<n;j++){
    const b=ships[j];if(b.dead||(a.team===0&&b.team===0))continue;
-   const dx=b.x-a.x,dy=b.y-a.y,min=(a.r+b.r)*.75;if(dx>min||dx<-min||dy>min||dy<-min)continue;
+   const dx=b.x-a.x,dy=b.y-a.y,min=(a.r+b.r)*.85;if(dx>min||dx<-min||dy>min||dy<-min)continue;
    if(Math.abs(a.z-b.z)>.3)continue;
    const d=Math.hypot(dx,dy)||1;if(d>=min)continue;
    const nx=dx/d,ny=dy/d,ov=(min-d)/2;a.x-=nx*ov;a.y-=ny*ov;b.x+=nx*ov;b.y+=ny*ov;
@@ -1441,13 +1441,18 @@ function stepProjectiles(){
   }
   p.x+=p.vx;p.y+=p.vy;
   let dead=--p.life<=0;
-  if(!dead)for(const g of gravityWells){if(Math.abs(p.z-(g.z||0))>.65)continue;if(Math.hypot(g.x-p.x,g.y-p.y)<g.r*.96){dead=true;break;}}
-  if(!dead)for(const r of rocks){if(r.dead||Math.abs(p.z-(r.z||0))>(r.moon?.65:.35))continue;const dx=r.x-p.x,dy=r.y-p.y;if(dx*dx+dy*dy<(r.r+p.r)*(r.r+p.r)){dead=true;if(!r.moon)damage(r,p.dmg*(p.type==='vulcan'?3:1),p.owner,0);break;}}
-  if(!dead)for(const st of stations){if(st.dead||st.team===p.team||Math.abs(p.z-(st.z||0))>.8)continue;const dx=st.x-p.x,dy=st.y-p.y;if(dx*dx+dy*dy<(st.r+p.r)*(st.r+p.r)){dead=true;damage(st,p.dmg,p.owner,{crit:p.crit,acc:p.type==='vulcan'});break;}}
+  if(!dead)for(const g of gravityWells){
+   if(g.bh){if(Math.abs(p.z-(g.z||0))<.65&&Math.hypot(g.x-p.x,g.y-p.y)<g.r*1.08){dead=true;break;}continue;}
+   const gd=Math.hypot(g.x-p.x,g.y-p.y);if(gd>g.r)continue;
+   if(p.z*140>Math.sqrt(Math.max(0,g.r*g.r-gd*gd)))continue;
+   dead=true;break;
+  }
+  if(!dead)for(const r of rocks){if(r.dead)continue;const rd=Math.hypot(r.x-p.x,r.y-p.y);if(rd>r.r+p.r)continue;if(p.z*140>Math.sqrt(Math.max(0,r.r*r.r-rd*rd)))continue;dead=true;if(!r.moon)damage(r,p.dmg*(p.type==='vulcan'?3:1),p.owner,0);break;}
+  if(!dead)for(const st of stations){if(st.dead||st.team===p.team||p.z*140>110)continue;const dx=st.x-p.x,dy=st.y-p.y;if(dx*dx+dy*dy<(st.r+p.r)*(st.r+p.r)){dead=true;damage(st,p.dmg,p.owner,{crit:p.crit,acc:p.type==='vulcan'});break;}}
   if(!dead){
    const foes=p.team?team0:enemies;
    for(const s of foes){
-    if(s.dead||s.roll>0)continue;const dx=s.x-p.x,dy=s.y-p.y,rr=s.r*.85+p.r;if(dx>rr||dx<-rr||dy>rr||dy<-rr)continue;
+    if(s.dead||s.roll>0)continue;const dx=s.x-p.x,dy=s.y-p.y,rr=s.r*.95+p.r;if(dx>rr||dx<-rr||dy>rr||dy<-rr)continue;
     if(dx*dx+dy*dy>rr*rr||Math.abs(s.z-p.z)>(cockpitOn?2.4:.45))continue;
     dead=true;let d=p.dmg;
     if(p.type==='vulcan'&&Math.hypot(p.x-p.x0,p.y-p.y0)>380)d*=.35;
@@ -1951,9 +1956,7 @@ function drawCargo2D(c,thr){
 function drawPlanet2D(g){
  const c=ctx;w2s(g.x,g.y,0);const gx=SX,gy=SY,r=g.r,x=gx,y=gy-r*.1;
  if(x<-r*2.8||x>W+r*2.8||y<-r*2.8||y>H+r*2.8)return;
- c.lineWidth=2;c.strokeStyle='rgb(150,195,255)';
- for(let i=0;i<3;i++){const f=(M.t*.004+i/3)%1,R=r*(2.6-f*1.5);c.globalAlpha=(1-f)*.12;c.beginPath();c.ellipse(gx,gy,R,R*TILT,0,0,TAU);c.stroke();}
- c.globalAlpha=1;
+/* planet body */
  const ring=front=>{c.save();c.translate(x,y);c.rotate(g.tilt*.6);c.beginPath();c.rect(-r*2,front?0:-r*2,r*4,r*2);c.clip();c.beginPath();c.ellipse(0,0,r*1.72,r*.72,0,0,TAU);c.ellipse(0,0,r*1.22,r*.51,0,0,TAU);c.fillStyle=rgba(g.c1,.42);c.fill('evenodd');c.beginPath();c.ellipse(0,0,r*1.5,r*.63,0,0,TAU);c.strokeStyle='rgba(0,0,0,.25)';c.lineWidth=r*.03;c.stroke();c.restore();};
  if(g.ring)ring(false);
  c.fillStyle='rgba(0,0,0,.3)';c.beginPath();c.ellipse(x+r*.12,y+r*.3,r,r*.8,0,0,TAU);c.fill();
