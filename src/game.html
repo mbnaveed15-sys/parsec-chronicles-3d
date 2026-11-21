@@ -90,8 +90,13 @@ button{font-family:inherit;color:inherit}
 .setbar{position:sticky;top:0;z-index:3;display:flex;flex-direction:column;gap:.5em;padding:.55em .6em;margin:-.2em 0 .5em;background:rgba(7,13,22,.94);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--ln);border-radius:10px}
 .setsearch{font-size:.95em;padding:.5em .7em}
 .setgroup{margin-top:.2em}
-.setcols{display:grid;grid-template-columns:1fr 1fr;gap:0 1.8em;height:calc(100vh - 234px);min-height:110px;overflow:hidden;width:100%}
-.setcol{overflow-y:auto;min-height:0;padding-right:6px}
+.setcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 1.4em;height:calc(100vh - 234px);min-height:110px;overflow:hidden;width:100%}
+.setcol{overflow-y:auto;overflow-x:hidden;min-height:0;padding-right:6px}
+.setcol .set{flex-wrap:wrap;gap:.4em;align-items:flex-start}
+.setcol .set>span{flex:1 1 100%;margin-bottom:.05em}
+.setcol .seg{width:100%}
+.setcol .seg .btn{padding:.45em .55em;font-size:.78em;min-height:1.9em}
+.setcol .set input[type=range]{flex:1 1 60px}
 /* settings stays two columns at every width (app rotates for landscape) */
 /* boot sequences */
 #bootseq{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,#0b1626,#04080f 72%);font-family:Orbitron,sans-serif;color:#cfe6f5;transition:opacity .4s}
@@ -2149,17 +2154,19 @@ const SCREENS={
    ['autopilot','Autopilot','<h3>Autopilot</h3>'+seg('assist','Pilot assist',[[true,'On'],[false,'Off']])+(settings.assist||q?seg('assistClimb','Auto-climb obstacles',[[true,'On'],[false,'Off']])+seg('assistFlak','Auto-flak plasma',[[true,'On'],[false,'Off']])+seg('assistBrace','Auto-brace (shield)',[[true,'On'],[false,'Off']])+seg('assistRoll','Auto-roll dodge',[[true,'On'],[false,'Off']])+seg('hideAssisted','Hide assisted buttons',[[true,'On'],[false,'Off']]):'<p class="dim sml">Turn Pilot assist on to configure its individual behaviours.</p>')],
    ['controls','Bindings','<h3>Control Bindings</h3>'+seg('land','Force landscape',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.6em"><button class="btn sm" data-a="layout">Touch layout editor</button><button class="btn sm" data-a="fs">Fullscreen</button></div><p class="dim sml" style="margin-top:.7em">Key bindings are listed in the Manual (H).</p>']
   ];
-  let c1='',c2='',k=0;
+  let c1='',c2='',c3='';
+  const colmap={display:1,audio:2,flight:2,autopilot:3,controls:3};
+  function addCol(g,html){var w=colmap[g[0]]||2;if(w===1)c1+=html;else if(w===2)c2+=html;else c3+=html;}
   if(q){
    for(const g of G){
     const rows=g[2].replace(/<h3>.*?<\/h3>/g,'').split(/(?=<label class="set"|<div class="set")/).filter(r=>r.indexOf('data-n="')>=0&&r.toLowerCase().indexOf(q)>=0);
-    if(rows.length){const html='<div class="setgroup"><h3>'+g[1]+'</h3>'+rows.join('')+'</div>';if(k++%2)c2+=html;else c1+=html;}
+    if(rows.length)addCol(g,'<div class="setgroup"><h3>'+g[1]+'</h3>'+rows.join('')+'</div>');
    }
-   if(!c1&&!c2)c1='<p class="dim setempty">No setting matches “'+esc(UI.setQ)+'”.</p>';
+   if(!c1&&!c2&&!c3)c1='<p class="dim setempty">No setting matches “'+esc(UI.setQ)+'”.</p>';
   }else{
-   for(const g of G){const html='<div class="setgroup">'+g[2]+'</div>';if(k++%2)c2+=html;else c1+=html;}
+   for(const g of G)addCol(g,'<div class="setgroup">'+g[2]+'</div>');
   }
-  const body='<div class="setcols"><div class="setcol">'+c1+'</div><div class="setcol">'+c2+'</div></div>';
+  const body='<div class="setcols"><div class="setcol">'+c1+'</div><div class="setcol">'+c2+'</div><div class="setcol">'+c3+'</div></div>';
   const tabs='';
   return'<div class="scr">'+hdr('Ship Systems')+'<div class="panel col" style="max-width:1040px;gap:.1em">'+
   '<div class="setbar"><input type="text" class="setsearch" id="setq" placeholder="Search settings — try “turn”, “flak”, “hud”…" value="'+esc(UI.setQ||'')+'" autocomplete="off">'+tabs+'</div>'+
