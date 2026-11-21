@@ -165,6 +165,24 @@ textarea{min-height:11em;font-family:ui-monospace,Consolas,monospace;font-size:.
 .scr{animation:scrIn .32s cubic-bezier(.2,.8,.2,1)}
 @keyframes scrIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
 @keyframes ledPulse{0%,100%{opacity:.4}50%{opacity:1}}
+/* compact commerce grids */
+.cgrid{display:grid;gap:.45em;grid-template-columns:repeat(auto-fill,minmax(88px,1fr));width:100%;margin-top:.5em}
+.csw{display:flex;flex-direction:column;gap:.3em;padding:.4em;border:1px solid var(--ln);border-radius:10px;background:rgba(10,18,30,.62);position:relative;min-width:0}
+.csw .sw{aspect-ratio:auto;height:28px;border-radius:6px;box-shadow:inset 0 -6px 10px rgba(0,0,0,.3),inset 0 4px 7px rgba(255,255,255,.1)}
+.csw b{font-family:'Exo 2',sans-serif;font-size:.7em;font-weight:600;color:#dfeaf3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.csw.sel{border-color:var(--c);box-shadow:0 0 14px rgba(125,227,255,.22)}
+.csw.prov{border-color:var(--gold);box-shadow:0 0 14px rgba(255,209,102,.3)}
+.csw.lock{opacity:.6}
+.cst{display:block;font-family:Orbitron,sans-serif;font-size:.54em;letter-spacing:.04em;text-align:center;padding:.34em .2em;border-radius:5px;border:1px solid var(--ln);text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;background:none;line-height:1.2}
+.cst.buy{color:var(--gold);border-color:rgba(255,209,102,.42);cursor:pointer;background:rgba(42,32,8,.45)}
+.cst.act{color:#eaffff;border-color:rgba(125,227,255,.5);cursor:pointer;background:rgba(20,50,70,.5)}
+.cst.on{color:var(--grn);border-color:rgba(111,224,138,.5)}
+.cst.lk{color:var(--dim);font-size:.48em;border-style:dashed}
+.dgrid{display:grid;gap:.55em;grid-template-columns:repeat(auto-fill,minmax(198px,1fr));margin-top:.5em}
+.card.sc .pv{aspect-ratio:auto;height:56px;border-radius:6px}
+.chips{display:flex;gap:.35em;flex-wrap:wrap;font-size:.6em;color:var(--dim)}
+.chips span{border:1px solid var(--ln);border-radius:5px;padding:.14em .45em;font-family:Orbitron,sans-serif;letter-spacing:.03em;white-space:nowrap}
+.ugrid{display:grid;gap:.55em;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));width:100%;max-width:980px}
 #ui{scrollbar-width:thin;scrollbar-color:rgba(125,227,255,.3) transparent}
 #ui::-webkit-scrollbar{width:9px}
 #ui::-webkit-scrollbar-thumb{background:rgba(125,227,255,.22);border-radius:6px}
@@ -1957,28 +1975,27 @@ const SCREENS={
   const t=UI.tab,s=save,r=reached(),du=dUp(s);
   let h='<div class="scr">'+hdr('Shop · '+DIFFS[s.diff].n)+'<span class="dim sml">Gear, ships and unlocks are separate on '+DIFFS[s.diff].n+'. Tech ceiling '+DMAX[s.diff]+' per track.</span><div class="tabs"><button class="btn sm'+(t==='up'?' on':'')+'" data-a="tab" data-v="up">Upgrades</button><button class="btn sm'+(t==='dock'?' on':'')+'" data-a="tab" data-v="dock">Dockyard</button><button class="btn sm'+(t==='mods'?' on':'')+'" data-a="tab" data-v="mods">Ship Mods</button></div>';
   if(t==='up'){
-   h+='<div class="grid g2" style="max-width:980px">';
+   h+='<div class="ugrid">';
    const cap=DMAX[s.diff];
    for(const k of UPK){const u=UPG[k],l=du[k],mx=l>=cap,c=upCost(k),lk=mx?'':upLock(k);
     h+='<div class="card"><div class="row"><h3 style="flex:1">'+u.n+'</h3><span class="tag">Lv '+l+' / '+cap+'</span></div><span class="dim sml">'+u.d+'</span><div class="statbar"><i style="width:'+Math.min(100,l/cap*100)+'%"></i></div>'+
      '<button class="btn sm'+(mx||lk?' dis':(!s.free&&dGold(s)<c?' warn':''))+'" data-a="buyup" data-v="'+k+'">'+(mx?'Maxed':lk?'🔒 '+lk:'Upgrade · ◈ '+fmtNum(c))+'</button></div>';}
    h+='</div>';
   }else if(t==='dock'){
+   const shipList=dList(s,'ships'),curShip=dGet(s,'ship',0);
    for(let tr=0;tr<5;tr++){
-    h+='<div class="panel"><h3>'+TIERS[tr]+'</h3><div class="grid g3" style="margin-top:.6em">';
+    h+='<div class="panel" style="padding:.7em .8em"><h3>'+TIERS[tr]+'</h3><div class="dgrid">';
     for(let j=0;j<3;j++){
-     const c=SHIPS[tr*3+j],shipList=dList(s,'ships'),own=shipList.includes(c.i),cur=dGet(s,'ship',0)===c.i,dl=diffLock(c),lock=!own&&(r<c.at||!!dl),why=!own&&dl?dl:'Unlocks at mission '+c.at;
-     h+='<div class="card'+(cur?' sel':'')+(lock?' lock':'')+'"><canvas class="pv" data-idx="'+c.i+'" width="312" height="192"></canvas><div class="row"><h3 style="flex:1">'+c.n+'</h3><span class="tag">'+ROLES[c.role]+'</span></div>'+
-      '<div class="kv"><span>Hull</span><b>'+c.hp+'</b></div><div class="statbar"><i style="width:'+(c.hp/1850*100)+'%"></i></div>'+
-      '<div class="kv"><span>Damage</span><b>'+c.dmg+'</b></div><div class="statbar"><i style="width:'+(c.dmg/86*100)+'%"></i></div>'+
-      '<div class="kv"><span>Speed</span><b>'+c.spd+'</b></div><div class="statbar"><i style="width:'+((c.spd-3.5)/1.8*100)+'%"></i></div>'+
-      (cur?'<button class="btn sm on dis">In service</button>':own?'<button class="btn sm" data-a="useship" data-v="'+c.i+'">Fly this ship</button>':lock?'<button class="btn sm dis">🔒 '+why+'</button>':'<button class="btn sm'+(!s.free&&dGold(s)<c.cost?' warn':' gold')+'" data-a="buyship" data-v="'+c.i+'">Buy · ◈ '+fmtNum(c.cost)+'</button>')+'</div>';
+     const c=SHIPS[tr*3+j],own=shipList.includes(c.i),cur=curShip===c.i,dl=diffLock(c),lock=!own&&(r<c.at||!!dl),why=!own&&dl?DIFFS[DRANKS[c.rank||0]].n.toUpperCase():('M'+c.at);
+     h+='<div class="card sc'+(cur?' sel':'')+(lock?' lock':'')+'"><canvas class="pv" data-idx="'+c.i+'" width="312" height="192"></canvas><div class="row" style="gap:.3em"><h3 style="flex:1;font-size:.86em">'+c.n+'</h3><span class="tag">'+ROLES[c.role]+'</span></div>'+
+      '<div class="chips"><span>H '+c.hp+'</span><span>D '+c.dmg+'</span><span>S '+c.spd+'</span></div>'+
+      (cur?'<button class="btn sm on dis">In service</button>':own?'<button class="btn sm" data-a="useship" data-v="'+c.i+'">Fly this ship</button>':lock?'<button class="btn sm dis" title="'+why+'">🔒 '+why+'</button>':'<button class="btn sm'+(!s.free&&dGold(s)<c.cost?' warn':' gold')+'" data-a="buyship" data-v="'+c.i+'">Buy · ◈ '+fmtNum(c.cost)+'</button>')+'</div>';
     }
     h+='</div></div>';
    }
   }else{
    const c=SHIPS[dGet(s,'ship',0)],own=(s.mods[s.diff]&&s.mods[s.diff][dGet(s,'ship',0)])||[];
-   h+='<div class="panel"><div class="row"><div style="flex:0 0 200px;max-width:40%"><canvas class="pv" data-idx="'+c.i+'" width="312" height="192"></canvas></div><div class="col" style="flex:1"><h3>Mods for '+c.n+'</h3><span class="dim sml">Mods are fitted to one hull and stay with it. Switch ships in the Dockyard to fit another.</span></div></div><div class="grid g2" style="margin-top:.8em">';
+   h+='<div class="panel"><div class="row"><div style="flex:0 0 200px;max-width:40%"><canvas class="pv" data-idx="'+c.i+'" width="312" height="192"></canvas></div><div class="col" style="flex:1"><h3>Mods for '+c.n+'</h3><span class="dim sml">Mods are fitted to one hull and stay with it. Switch ships in the Dockyard to fit another.</span></div></div><div class="ugrid" style="margin-top:.8em">';
    MODS.forEach((md,i)=>{const has=own.includes(i),dl=diffLock(md),lock=!has&&(r<md.at||!!dl),why=dl||('Unlocks at mission '+md.at);
     h+='<div class="card'+(has?' sel':'')+(lock?' lock':'')+'"><h3>'+md.n+'</h3><span class="dim sml">'+md.d+'</span>'+(has?'<button class="btn sm on dis">Fitted</button>':lock?'<button class="btn sm dis">🔒 '+why+'</button>':'<button class="btn sm'+(!s.free&&dGold(s)<md.cost?' warn':'')+'" data-a="buymod" data-v="'+i+'">Fit · ◈ '+fmtNum(md.cost)+'</button>')+'</div>';});
    h+='</div></div>';
@@ -1989,17 +2006,18 @@ const SCREENS={
   const s=save,r=reached(), HL=dList(s,'hulls'),TL=dList(s,'trails'),curH=dGet(s,'hull',0),curT=dGet(s,'trail',0);
   const ph=UI.pvH>=0&&HULLS[UI.pvH]?UI.pvH:-1,pt=UI.pvT>=0&&TRAILS[UI.pvT]?UI.pvT:-1,hi=ph>=0?ph:curH,ti=pt>=0?pt:curT;
   const sw=(o,kind)=>kind==='hull'?(o.fin==='chrome'?'linear-gradient(135deg,#ffffff,#9aa4b0 35%,#f4f8fc 55%,#5a6470 80%,#d8dee6)':'linear-gradient(135deg,'+shade(o.c,.25)+','+o.c+' 55%,'+shade(o.c,-.5)+')'):(o.rb?'linear-gradient(90deg,#ff4040,#ffd700,#40ff70,#40c8ff,#a040ff,#ff40c0)':'radial-gradient(circle at 30% 50%,#fff,'+o.c+' 40%,rgba(0,0,0,.2) 100%)');
-  const item=(o,i,kind,list,cur,pvi)=>{const own=list.includes(i),on=cur===i,dl=diffLock(o),lock=!own&&(r<o.at||!!dl),pvon=pvi===i,why=dl||('Mission '+o.at);
-   return'<div class="card'+(on?' sel':'')+(lock?' lock':'')+'"'+(pvon?' style="border-color:var(--gold);box-shadow:0 0 18px rgba(255,209,102,.35)"':'')+'><div class="sw" data-a="pv'+kind+'" data-v="'+i+'" title="Tap to preview" style="cursor:pointer;background:'+sw(o,kind)+'"></div><b>'+o.n+(pvon?' <span class="tag" style="color:var(--gold);border-color:var(--gold)">Preview</span>':'')+'</b>'+
-   (on?'<button class="btn sm on dis">Applied</button>':own?'<button class="btn sm" data-a="use'+kind+'" data-v="'+i+'">Apply</button>':lock?'<button class="btn sm dis">🔒 '+why+'</button>':'<button class="btn sm'+(!s.free&&dGold(s)<o.cost?' warn':'')+'" data-a="buy'+kind+'" data-v="'+i+'">◈ '+fmtNum(o.cost)+'</button>')+'</div>';};
+  const item=(o,i,kind,list,cur,pvi)=>{const own=list.includes(i),on=cur===i,dl=diffLock(o),lock=!own&&(r<o.at||!!dl),pvon=pvi===i;
+   const whyShort=dl?DIFFS[DRANKS[o.rank||0]].n.toUpperCase():('M'+o.at),whyLong=dl||('Unlocks at mission '+o.at);
+   const actv=on?'<span class="cst on">Applied</span>':own?'<button class="cst act" data-a="use'+kind+'" data-v="'+i+'">Apply</button>':lock?'<span class="cst lk" title="'+whyLong+'">🔒 '+whyShort+'</span>':'<button class="cst buy'+((!s.free&&dGold(s)<o.cost)?' warn':'')+'" data-a="buy'+kind+'" data-v="'+i+'">◈ '+fmtNum(o.cost)+'</button>';
+   return'<div class="csw'+(on?' sel':'')+(lock?' lock':'')+(pvon?' prov':'')+'"><div class="sw" data-a="pv'+kind+'" data-v="'+i+'" title="Tap to preview" style="cursor:pointer;background:'+sw(o,kind)+'"></div><b title="'+o.n+'">'+o.n+'</b>'+actv+'</div>';};
    const act=(o,i,kind,list)=>{const own=list.includes(i),dl=diffLock(o),lock=!own&&(r<o.at||!!dl),why=dl||('Mission '+o.at);return own?'<button class="btn sm primary" data-a="use'+kind+'" data-v="'+i+'">Apply '+o.n+'</button>':lock?'<button class="btn sm dis">'+o.n+' · 🔒 '+why+'</button>':'<button class="btn sm gold'+(!s.free&&dGold(s)<o.cost?' warn':'')+'" data-a="buy'+kind+'" data-v="'+i+'">Buy '+o.n+' · ◈ '+fmtNum(o.cost)+'</button>';};
   const pvTag='<span class="tag" style="color:var(--gold);border-color:var(--gold)">Preview</span> ';
   let h='<div class="scr">'+hdr('Cosmetics · '+DIFFS[s.diff].n)+'<div class="panel"><div class="row"><div style="flex:0 0 300px;max-width:100%"><canvas class="pv" data-idx="'+dGet(s,'ship',0)+'" data-hull="'+HULLS[hi].c+'" data-trail="'+TRAILS[ti].c+'"'+(TRAILS[ti].rb?' data-prism="1"':'')+' width="416" height="256"></canvas></div><div class="col" style="flex:1;min-width:180px"><h3>'+SHIPS[dGet(s,'ship',0)].n+'</h3>'+
    '<div class="kv"><span>Hull colour</span><b>'+(ph>=0?pvTag:'')+HULLS[hi].n+'</b></div><div class="kv"><span>Engine trail</span><b>'+(pt>=0?pvTag:'')+TRAILS[ti].n+'</b></div>'+
    ((ph>=0||pt>=0)?'<div class="row" style="margin-top:.4em">'+(ph>=0?act(HULLS[ph],ph,'hull',HL):'')+(pt>=0?act(TRAILS[pt],pt,'trail',TL):'')+'<button class="btn sm" data-a="pvreset">Reset preview</button></div>':'<span class="dim sml">Tap any swatch to preview it on your ship before buying.</span>')+
    '</div></div></div>';
-  h+='<div class="panel"><h3>Hull colours</h3><div class="grid g4" style="margin-top:.6em">'+HULLS.map((o,i)=>item(o,i,'hull',HL,curH,ph)).join('')+'</div></div>';
-  h+='<div class="panel"><h3>Engine trails</h3><div class="grid g4" style="margin-top:.6em">'+TRAILS.map((o,i)=>item(o,i,'trail',TL,curT,pt)).join('')+'</div></div>';
+  h+='<div class="panel"><h3>Hull colours</h3><div class="cgrid">'+HULLS.map((o,i)=>item(o,i,'hull',HL,curH,ph)).join('')+'</div></div>';
+  h+='<div class="panel"><h3>Engine trails</h3><div class="cgrid">'+TRAILS.map((o,i)=>item(o,i,'trail',TL,curT,pt)).join('')+'</div></div>';
   return h+'</div>';
  },
  deeds(){
