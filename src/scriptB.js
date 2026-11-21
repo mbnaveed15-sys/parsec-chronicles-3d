@@ -653,9 +653,28 @@ function checkQuality(){
  if(q!==curQ||!composer){curQ=q;curPR=pr;curW=cw;curH=ch;build(q);return;}
  if(Math.abs(pr-curPR)>.001||cw!==curW||ch!==curH){curPR=pr;curW=cw;curH=ch;renderer.setPixelRatio(pr);renderer.setSize(cw,ch,false);composer.setPixelRatio(pr);composer.setSize(cw,ch);sizeUniforms();}
 }
-let ckPZ=null,ckPitch=0;
+let ckPZ=null,ckPitch=0,tailYaw=null,tailPrev=false;
 function placeCam(){
  if(window.CINE_CAM){const q=window.CINE_CAM;cam.fov=52;cam.near=2;cam.aspect=W/H;cam.position.set(q.x,q.y,q.z);cam.up.set(0,1,0);cam.lookAt(q.lx,q.ly,q.lz);cam.updateProjectionMatrix();cam.updateMatrixWorld(true);sun.position.set(q.x-380,1250,q.z+440);sun.target.position.set(q.lx,0,q.lz);sun.target.updateMatrixWorld();updDust(q.x,q.z);return;}
+ const tl=!!window.tailOn&&player&&!player.dead;
+ if(tl){
+  const p=player;
+  if(!tailPrev||window.__tailSnap){tailYaw=p.ang;window.__tailSnap=false;}
+  tailPrev=true;
+  if(window.tailFixed)tailYaw=p.ang;
+  else{let dd=p.ang-tailYaw;dd=((dd+PI)%(PI*2)+PI*2)%(PI*2)-PI;tailYaw+=dd*.14;}
+  const ca=Math.cos(tailYaw),sa=Math.sin(tailYaw);
+  const back=150+Math.min(90,(p.thr||0)*70)+(p.boost>0?20:0);
+  const px=p.x-ca*back,py=p.z*ALT+62,pz=p.y-sa*back;
+  cam.fov=60;cam.near=3;cam.far=30000;cam.aspect=W/H;
+  cam.position.set(px,py,pz);cam.up.set(0,1,0);
+  cam.lookAt(p.x+ca*120,p.z*ALT+8,p.y+sa*120);
+  cam.updateProjectionMatrix();cam.updateMatrixWorld(true);
+  sun.position.set(px-380,1250,pz+440);sun.target.position.set(p.x,0,p.y);sun.target.updateMatrixWorld();
+  updDust(px,pz);floor.position.x=Math.round(px/3250)*3250;floor.position.z=Math.round(pz/3250)*3250;
+  return;
+ }
+ tailPrev=false;
  const ck=!!window.cockpitOn&&player&&!player.dead;
  if(ck){
   const p=player,pit=p.pitch||0,cp=Math.cos(pit),sp=Math.sin(pit),ca=Math.cos(p.ang),sa=Math.sin(p.ang);
@@ -696,8 +715,8 @@ function render(){
  for(let si=0;si<stars.length;si++)stars[si].position.copy(cam.position);
  nebula.rotation.y+=.00003;nebula2.rotation.y-=.000022;
  for(let si=0;si<stars.length;si++)stars[si].rotation.y+=.000008*(si+1);
- fld.visible=!!window.cockpitOn;fld.rotation.y+=.0002;floor.visible=false;
- const ck=!!window.cockpitOn&&player&&!player.dead;const szr=renderer.getDrawingBufferSize(new THREE.Vector2());const mr=ck?0:12*szr.y/1080;tiltH.uniforms.maxR.value=mr;tiltV.uniforms.maxR.value=mr;pMat.uniforms.sc.value=szr.y/(2*Math.tan((ck?70:32)*Math.PI/360));
+ fld.visible=!!(window.cockpitOn||window.tailOn);fld.rotation.y+=.0002;floor.visible=false;
+ const ck=!!((window.cockpitOn||window.tailOn)&&player&&!player.dead);const szr=renderer.getDrawingBufferSize(new THREE.Vector2());const mr=ck?0:12*szr.y/1080;tiltH.uniforms.maxR.value=mr;tiltV.uniforms.maxR.value=mr;pMat.uniforms.sc.value=szr.y/(2*Math.tan((ck?70:32)*Math.PI/360));
  sync(maps.ship,ships,shipObj,updShip);sync(maps.st,stations,stationObj,updStation);sync(maps.pl,gravityWells,planetObj,updPlanet);
  sync(maps.rk,rocks,rockObj,updRock);sync(maps.fl,flotsams,flotObj,updFlot);sync(maps.pu,powerups,powObj,updPow);sync(maps.wr,wrecks,wreckObj,updWreck);
  for(let i=0;i<minePool.length;i++){const o=minePool[i],m=typeof mines!=='undefined'?mines[i]:null;if(!m){o.g.visible=false;continue;}const armed=m.arm<=0;o.g.visible=true;o.g.position.set(m.x,7,m.y);o.g.rotation.y=frameNo*.02+i;o.g.scale.setScalar(armed?1+Math.sin(frameNo*.2+i)*.08:1);o.mat.color.setHex(armed?0xff5a5a:0x6a7078);o.mat.opacity=armed?.85:.5;}
@@ -740,7 +759,7 @@ function preview(el,idx,cols){
  }catch(e){pvFail=true;return false;}
 }
 
-window.R3D={design:designShip,on:settings.gfx!=='classic',failed:false,ready:true,render,resize(){curW=-1;},w2s:w2sB,s2w:s2wB,preview,stats(){return{mines:minePool.filter(o=>o.g.visible).length,nodes:scanPool.filter(o=>o.g.visible).length,bubbles:typeof ships!=='undefined'?ships.filter(s=>s.special==='shield'||(s.team===1&&typeof projectorGuard==='function'&&projectorGuard(s))).length:0};}};
+window.R3D={design:designShip,on:settings.gfx!=='classic',failed:false,ready:true,render,resize(){curW=-1;},w2s:w2sB,s2w:s2wB,preview,stats(){return{mines:minePool.filter(o=>o.g.visible).length,nodes:scanPool.filter(o=>o.g.visible).length,bubbles:typeof ships!=='undefined'?ships.filter(s=>s.special==='shield'||(s.team===1&&typeof projectorGuard==='function'&&projectorGuard(s))).length:0,cam:{x:cam.position.x,y:cam.position.y,z:cam.position.z},yaw:tailYaw};}};
 try{r3dReady();}catch(e){}
 }catch(e){if(window.console)console.warn('Parsec: 3D renderer unavailable, using classic 2D.',e);fail();}
 })();
