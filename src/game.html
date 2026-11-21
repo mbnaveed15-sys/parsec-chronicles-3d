@@ -849,8 +849,8 @@ function startMission(lv,hunt){
  else if(mode==='hunted'){M.mark=spawnEnemy(ei+1,EC.x,EC.y,pa+Math.PI,{hull:1.5,marked:true,name:'MARKED'});form(EC.x+Math.cos(pa)*110,EC.y+Math.sin(pa)*110,Math.max(2,n-1));}
  else if(mode==='escort'){
   const c=mkShip(2,0,PS.x+Math.cos(pa)*190,PS.y+Math.sin(pa)*190+90,pa);c.cargo=true;c.name='Freighter';c.label='FREIGHTER';c.hull=HULLS[dGet(save,'hull',0)].c;c.trail=TRAILS[dGet(save,'trail',0)].c;c.trim=TRIMS[dGet(save,'trim',0)].c;c.r=40;
-  c.maxHp=c.hp=Math.round((260+lv*9)*(1+sea*.2));c.maxSh=c.sh=Math.round(c.maxHp*.3);c.acc=.05;c.turn=.03;
-  M.beacon={x:ES.x,y:ES.y};c.spd=Math.hypot(ES.x-c.x,ES.y-c.y)/(34*60);c.ai=mkAI(c);allies.push(c);M.cargo=c;
+  c.maxHp=c.hp=Math.round((300+lv*10)*(1+sea*.2));c.maxSh=c.sh=Math.round(c.maxHp*.3);c.acc=.05;c.turn=.03;
+  M.beacon={x:ES.x,y:ES.y};c.spd=Math.hypot(ES.x-c.x,ES.y-c.y)/(22*60);c.ai=mkAI(c);allies.push(c);M.cargo=c;
   form(lerp(PS.x,ES.x,.62),lerp(PS.y,ES.y,.62),n);M.spawnT=260;
  }
  else if(mode==='hunt'){form(EC.x,EC.y,3);M.spawnT=120;}
@@ -1193,7 +1193,7 @@ function aiPick(s,foes){
  for(const f of foes){
   if(f.dead)continue;let d=Math.hypot(f.x-s.x,f.y-s.y);
   if(s.team===0&&player&&!player.dead&&Math.hypot(f.x-player.x,f.y-player.y)>1250)continue;
-  if(s.team===1){if(f.cargo)d*=.35;else if(f.isPlayer)d*=.92;}else if(f.marked||f.boss)d*=.8;
+  if(s.team===1){if(f.cargo)d*=.6;else if(f.isPlayer)d*=.92;}else if(f.marked||f.boss)d*=.8;
   if(d<bs){bs=d;best=f;}
  }
  if(es&&!es.dead){
@@ -1211,8 +1211,8 @@ function aiStep(s){
  s.vfired=false;
  if(s.cargo){
   const b=M.beacon;let h=Math.atan2(b.y-s.y,b.x-s.x),halt=false;
-  for(const e of enemies)if(!e.dead&&Math.hypot(e.x-s.x,e.y-s.y)<330){halt=true;break;}
-  h=avoid(s,h,inp,null);const dh=angDiff(s.ang,h);inp.turn=clamp(dh*3,-1,1);inp.thrust=halt?0:1;inp.brake=halt;return;
+  for(const e of enemies)if(!e.dead&&Math.hypot(e.x-s.x,e.y-s.y)<240){halt=true;break;}
+  h=avoid(s,h,inp,null);const dh=angDiff(s.ang,h);inp.turn=clamp(dh*3,-1,1);inp.thrust=halt?.55:1;inp.brake=false;return;
  }
  const foes=s.team?team0:enemies;
  /* careful allies: disengage when hurt or crowded, and hold a safer standoff */
