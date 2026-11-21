@@ -84,6 +84,13 @@ button{font-family:inherit;color:inherit}
 .stars i{font-style:normal;color:#3c4654;text-shadow:none}
 .stars.big{font-size:3em;line-height:1}
 .tabs{display:flex;gap:.4em;flex-wrap:wrap;justify-content:center}
+.setbar{position:sticky;top:0;z-index:3;display:flex;flex-direction:column;gap:.5em;padding:.55em .6em;margin:-.2em 0 .5em;background:rgba(7,13,22,.94);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--ln);border-radius:10px}
+.setsearch{font-size:.95em;padding:.5em .7em}
+.setgroup{margin-top:.2em}
+.setempty{padding:1.2em .4em;text-align:center}
+.qset{display:flex;flex-direction:column;gap:.1em;width:100%;margin:.2em 0;padding:.5em .7em;border:1px solid var(--ln);border-radius:10px;background:rgba(8,16,28,.5)}
+.qset .set{padding:.3em 0}
+.qset .set>span{flex-basis:7.5em}
 .menu{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:.7em;width:100%}
 .menu .btn{flex-direction:column;padding:1.2em .8em;font-size:.9em}
 .menu .btn small{font-family:'Exo 2',sans-serif;font-weight:400;letter-spacing:.02em;text-transform:none;color:#b9cfdf;font-size:.82em}
@@ -1930,16 +1937,30 @@ const SCREENS={
   return h+'</div></div>';
  },
  settings(){
-  const sl=(o,k,label,min,max,step)=>{const obj=o==='a'?audioSet:settings;return'<label class="set"><span>'+label+'</span><input type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+obj[k]+'" data-s="'+k+'" data-o="'+o+'"><b>'+Math.round(obj[k]*100)+'%</b></label>';};
-  const seg=(k,label,opts)=>'<div class="set"><span>'+label+'</span><div class="seg">'+opts.map(o=>'<button class="btn sm'+(String(settings[k])===String(o[0])?' on':'')+'" data-a="set" data-k="'+k+'" data-v="'+o[0]+'">'+o[1]+'</button>').join('')+'</div></div>';
+  const sl=(o,k,label,min,max,step)=>{const obj=o==='a'?audioSet:settings;return'<label class="set" data-n="'+label.toLowerCase()+'"><span>'+label+'</span><input type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+obj[k]+'" data-s="'+k+'" data-o="'+o+'"><b>'+Math.round(obj[k]*100)+'%</b></label>';};
+  const seg=(k,label,opts)=>'<div class="set" data-n="'+label.toLowerCase()+'"><span>'+label+'</span><div class="seg">'+opts.map(o=>'<button class="btn sm'+(String(settings[k])===String(o[0])?' on':'')+'" data-a="set" data-k="'+k+'" data-v="'+o[0]+'">'+o[1]+'</button>').join('')+'</div></div>';
+  const G=[
+   ['audio','Audio','<h3>Audio</h3>'+sl('a','music','Music volume',0,1,.05)+sl('a','sfx','SFX volume',0,1,.05)],
+   ['display','Display','<h3>Display</h3>'+seg('gfx','Graphics',[['high','High 3D'],['low','Low 3D'],['classic','Classic 2D']])+seg('res','Resolution',[['1080','1080p'],['native','Native'],['720','720p']])+'<div class="set" data-n="renderer"><span>Renderer</span><b style="flex:1;text-align:left;font-weight:400" class="dim">'+rendererLabel()+'</b></div>'+sl('s','hud','HUD size',.7,1.6,.05)+sl('s','shake','Screen shake',0,1.5,.05)+sl('s','text','Text size',.8,1.4,.05)+seg('glow','Player glow outline',[[true,'On'],[false,'Off']])],
+   ['flight','Flight','<h3>Flight</h3>'+sl('s','turn','Turn speed',.6,1.6,.05)+sl('s','thrust','Thrust power',.6,1.6,.05)],
+   ['autopilot','Autopilot','<h3>Autopilot</h3>'+seg('assist','Pilot assist',[[true,'On'],[false,'Off']])+(settings.assist?seg('assistClimb','Auto-climb obstacles',[[true,'On'],[false,'Off']])+seg('assistFlak','Auto-flak plasma',[[true,'On'],[false,'Off']])+seg('assistBrace','Auto-brace (shield)',[[true,'On'],[false,'Off']])+seg('assistRoll','Auto-roll dodge',[[true,'On'],[false,'Off']])+seg('hideAssisted','Hide assisted buttons',[[true,'On'],[false,'Off']]):'<p class="dim sml">Turn Pilot assist on to configure its individual behaviours.</p>')],
+   ['controls','Controls','<h3>Controls &amp; device</h3>'+seg('land','Force landscape',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.6em"><button class="btn sm" data-a="layout">Touch layout editor</button><button class="btn sm" data-a="fs">Fullscreen</button></div><p class="dim sml" style="margin-top:.7em">Key bindings are listed in the Manual (H).</p>']
+  ];
+  const q=(UI.setQ||'').trim().toLowerCase(),tab=UI.setTab||'audio';
+  let body='';
+  if(q){
+   for(const g of G){
+    const rows=g[2].replace(/<h3>.*?<\/h3>/g,'').split(/(?=<label class="set"|<div class="set")/).filter(r=>r.indexOf('data-n="')>=0&&r.toLowerCase().indexOf(q)>=0);
+    if(rows.length)body+='<div class="setgroup"><h3>'+g[1]+'</h3>'+rows.join('')+'</div>';
+   }
+   if(!body)body='<p class="dim setempty">No setting matches “'+esc(UI.setQ)+'”.</p>';
+  }else{
+   const g=G.find(x=>x[0]===tab)||G[0];body='<div class="setgroup">'+g[2]+'</div>';
+  }
+  const tabs=q?'':'<div class="tabs">'+G.map(g=>'<button class="btn sm'+(g[0]===tab?' on':'')+'" data-a="settab" data-v="'+g[0]+'">'+g[1]+'</button>').join('')+'</div>';
   return'<div class="scr">'+hdr('Settings')+'<div class="panel narrow col" style="max-width:640px;gap:.1em">'+
-  '<h3>Audio</h3>'+sl('a','music','Music volume',0,1,.05)+sl('a','sfx','SFX volume',0,1,.05)+
-  '<h3 style="margin-top:.8em">Display</h3>'+seg('gfx','Graphics',[['high','High 3D'],['low','Low 3D'],['classic','Classic 2D']])+seg('res','Resolution',[['1080','1080p'],['native','Native'],['720','720p']])+
-  '<div class="set"><span>Renderer</span><b style="flex:1;text-align:left;font-weight:400" class="dim">'+rendererLabel()+'</b></div>'+
-  sl('s','hud','HUD size',.7,1.6,.05)+sl('s','shake','Screen shake',0,1.5,.05)+sl('s','text','Text size',.8,1.4,.05)+
-  '<h3 style="margin-top:.8em">Flight</h3>'+sl('s','turn','Turn speed',.6,1.6,.05)+sl('s','thrust','Thrust power',.6,1.6,.05)+
-  seg('assist','Pilot assist',[[true,'On'],[false,'Off']])+seg('assistClimb','· Auto-climb obstacles',[[true,'On'],[false,'Off']])+seg('assistFlak','· Auto-flak plasma',[[true,'On'],[false,'Off']])+seg('assistBrace','· Auto-brace (shield)',[[true,'On'],[false,'Off']])+seg('assistRoll','· Auto-roll dodge',[[true,'On'],[false,'Off']])+seg('hideAssisted','Hide assisted buttons',[[true,'On'],[false,'Off']])+seg('glow','Player glow outline',[[true,'On'],[false,'Off']])+seg('land','Force landscape',[[true,'On'],[false,'Off']])+
-  '<div class="row" style="margin-top:.8em"><button class="btn sm" data-a="layout">Touch layout editor</button><button class="btn sm" data-a="fs">Fullscreen</button></div></div></div>';
+  '<div class="setbar"><input type="text" class="setsearch" id="setq" placeholder="Search settings — try “turn”, “flak”, “hud”…" value="'+esc(UI.setQ||'')+'" autocomplete="off">'+tabs+'</div>'+
+  body+'</div></div>';
  },
  layout(){
   const t=save.touch;
@@ -1977,8 +1998,12 @@ const SCREENS={
   '<h3>Hangar</h3><p>Spend credits on upgrades, new ships (15 classes across Scout, Fighter and Defender), per-ship mods, hull colours and engine trails. Wingmates fly ships of your class tier. Deeds pay bonus credits. Export a pilot as text from Pilot Select to back it up or move it.</p></div></div>';
  },
  pause(){
-  return'<div class="scr mid"><div class="panel narrow col" style="max-width:360px;text-align:center"><h2>Paused</h2><span class="dim sml">'+(M?(M.hunt?'Free Hunt':'Mission '+(M.sea+1)+'-'+M.m)+' · '+MODES[M.mode].n:'')+'</span>'+
-  '<button class="btn primary wide" data-a="resume">Resume</button><button class="btn wide" data-a="restart">Restart mission</button><button class="btn wide" data-a="nav" data-v="settings">Settings</button><button class="btn wide" data-a="nav" data-v="help">Manual</button><button class="btn warn wide" data-a="abort">Abort to hangar</button></div></div>';
+  const qsl=(o,k,label,min,max,step)=>{const obj=o==='a'?audioSet:settings;return'<label class="set"><span>'+label+'</span><input type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+obj[k]+'" data-s="'+k+'" data-o="'+o+'"><b>'+Math.round(obj[k]*100)+'%</b></label>';};
+  return'<div class="scr mid"><div class="panel narrow col" style="max-width:380px;text-align:center"><h2>Paused</h2><span class="dim sml">'+(M?(M.hunt?'Free Hunt':'Mission '+(M.sea+1)+'-'+M.m)+' · '+MODES[M.mode].n:'')+'</span>'+
+  '<button class="btn primary wide" data-a="resume">Resume</button>'+
+  '<div class="qset"><div class="set"><span>Pilot assist</span><div class="seg"><button class="btn sm'+(settings.assist?' on':'')+'" data-a="set" data-k="assist" data-v="true">On</button><button class="btn sm'+(!settings.assist?' on':'')+'" data-a="set" data-k="assist" data-v="false">Off</button></div></div>'+
+  qsl('s','hud','HUD size',.7,1.6,.05)+qsl('a','music','Music',0,1,.05)+qsl('a','sfx','SFX',0,1,.05)+'</div>'+
+  '<button class="btn wide" data-a="restart">Restart mission</button><button class="btn wide" data-a="nav" data-v="settings">All settings</button><button class="btn wide" data-a="nav" data-v="help">Manual</button><button class="btn warn wide" data-a="abort">Abort to hangar</button></div></div>';
  },
  end(a){
   const m=M;
@@ -2066,6 +2091,7 @@ const ACT={
  next(){const lv=M.lv+1;leaveMission();show('brief',{lv});},
  home(){leaveMission();show('hangar');},
  tab(v){UI.tab=v;show('shop');},
+ settab(v){UI.setTab=v;UI.setQ='';refresh();},
  buyup(k){const u=UPG[k];if(!u||save.up[k]>=u.max||upLock(k))return;if(!spend(upCost(k)))return;save.up[k]++;persist();sfx('buy');deedPing();refresh();},
  buyship(v){const c=SHIPS[+v];if(!c||save.ships.includes(c.i)||reached()<c.at)return;if(!spend(c.cost))return;save.ships.push(c.i);save.ship=c.i;save.best=Math.max(save.best,c.i);persist();sfx('buy');toast(c.n+' commissioned');deedPing();refresh();},
  useship(v){const i=+v;if(save.ships.includes(i)){save.ship=i;persist();refresh();}},
@@ -2091,7 +2117,13 @@ function bindUI(){
   audioInit();sfx('click');const f=ACT[b.dataset.a];if(f)f(b.dataset.v,b);
  });
  ui.addEventListener('input',e=>{
-  const t=e.target;if(!t.dataset||!t.dataset.s)return;const obj=t.dataset.o==='a'?audioSet:settings;obj[t.dataset.s]=+t.value;
+  const t=e.target;
+  if(t.id==='setq'){
+   UI.setQ=t.value;const pos=t.selectionStart;refresh();
+   const n=$('setq');if(n){n.focus();try{n.setSelectionRange(pos,pos);}catch(_){ }}
+   return;
+  }
+  if(!t.dataset||!t.dataset.s)return;const obj=t.dataset.o==='a'?audioSet:settings;obj[t.dataset.s]=+t.value;
   const lab=t.parentNode.querySelector('b');if(lab)lab.textContent=Math.round(+t.value*100)+'%';
   setVol();applyGfx();
  });
