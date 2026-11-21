@@ -249,6 +249,11 @@ textarea{min-height:11em;font-family:ui-monospace,Consolas,monospace;font-size:.
 .card.sc .pv{aspect-ratio:13/8;height:auto;width:100%;border-radius:6px}
 .chips{display:flex;gap:.35em;flex-wrap:wrap;font-size:.6em;color:var(--dim)}
 .chips span{border:1px solid var(--ln);border-radius:5px;padding:.14em .45em;font-family:Orbitron,sans-serif;letter-spacing:.03em;white-space:nowrap}
+.loadchips{display:flex;flex-wrap:wrap;gap:.35em;margin:.35em 0}
+.wchip{font-family:Orbitron,sans-serif;font-weight:700;font-size:.68em;letter-spacing:.08em;padding:.5em .7em;border-radius:7px;border:1px solid var(--ln);background:rgba(10,18,30,.7);color:#8296a8;cursor:pointer}
+.wchip:hover{border-color:var(--c);color:#dff2ff}
+.wchip.on{border-color:#7de3ff;background:rgba(30,90,120,.55);color:#eafaff;box-shadow:0 0 14px rgba(125,227,255,.35)}
+.wchip.lock{opacity:.4}
 .ugrid{display:grid;gap:.55em;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));grid-auto-rows:max-content;align-content:start;align-items:start;width:100%;max-width:980px;max-height:calc(100vh - 160px);overflow-y:auto;padding-right:4px}
 #ui{scrollbar-width:thin;scrollbar-color:rgba(125,227,255,.3) transparent}
 #ui::-webkit-scrollbar{width:9px}
@@ -355,7 +360,7 @@ const MODES={
  boss:{n:'BOSS',ic:'☠',obj:'Kill the sector captain, the escort and the station.',bonus:1.5,t:[40,60]},
  hunt:{n:'HUNT',ic:'∞',obj:'Free hunt. Reach the kill target.',bonus:1,t:[30,45]}
 };
-const WEAPONS=[{n:'LASER',c:'#7de3ff'},{n:'ION',c:'#c87dff'},{n:'PLASMA',c:'#ff7043'},{n:'VULCAN',c:'#ffd700'},{n:'MISSILE',c:'#ffb36b'},{n:'SING',c:'#b06bff'}];
+const WEAPONS=[{n:'LASER',c:'#7de3ff'},{n:'ION',c:'#c87dff'},{n:'PLASMA',c:'#ff7043'},{n:'VULCAN',c:'#ffd700'},{n:'MISSILE',c:'#ffb36b'},{n:'SING',c:'#b06bff'},{n:'FLAK',c:'#ffd76b'}];
 const PWR=['medkit','plasma','boost','damage','shield','gold'];
 const PWRC={medkit:'#6fe08a',plasma:'#ff7043',boost:'#7de3ff',damage:'#ff5a5a',shield:'#5aa0ff',gold:'#ffd700',sing:'#b06bff'};
 const FLOC={gold:'#ffd700',health:'#6fe08a',fuel:'#5aa0ff'};
@@ -431,9 +436,15 @@ function loadSettings(){
  if(SOFT_AUTO)setTimeout(function(){try{toast('Software graphics — switched to Classic 2D. Turn on hardware acceleration in your browser for 3D.')}catch(e){}},1500);
 }
 function saveSettings(){let o=settings;if(SOFT_AUTO&&settings.gfx==='classic'&&!LS.get('pc_force3d')){o=Object.assign({},settings);o.gfx=SOFT_PREV||'high';}LS.set('pc_settings',o);LS.set('pc_audio',audioSet);}
-function newSave(name){const s={v:1,name:name||'Pilot',gold:{cadet:0,pilot:0,ace:0},up:{},prog:{campaign:{cadet:{},pilot:{},ace:{}}},diff:'cadet',ach:{},hulls:{},trails:{},trims:{},hull:{},trail:{},trim:{},sq:{},sqCap:{},ship:{},ships:{},best:{},mods:{},gear:{},lore:{},vulcanAuto:false,cnt:{kills:0,gold:0,wins:0,voy:0,ram:0,boss:0,sectors:0,hunt:0,elite:0,flaw:0,wEsc:0,wHun:0,wDef:0,wTot:0,wPil:0,wAce:0,bAce:0},touch:{mirror:false,scale:1,stick:true,pos:{}}};initGear(s);for(const d of DRANKS){s.ships[d]=[0];s.hulls[d]=[0];s.trails[d]=[0];s.trims[d]=[0];s.ship[d]=0;s.hull[d]=0;s.trail[d]=0;s.trim[d]=0;s.sq[d]=0;s.sqCap[d]=0;s.best[d]=0;}return s;}
+function newSave(name){const s={v:1,name:name||'Pilot',gold:{cadet:0,pilot:0,ace:0},up:{},prog:{campaign:{cadet:{},pilot:{},ace:{}}},diff:'cadet',ach:{},hulls:{},trails:{},trims:{},hull:{},trail:{},trim:{},sq:{},sqCap:{},ship:{},ships:{},best:{},mods:{},gear:{},lore:{},loadout:[0],vulcanAuto:false,cnt:{kills:0,gold:0,wins:0,voy:0,ram:0,boss:0,sectors:0,hunt:0,elite:0,flaw:0,wEsc:0,wHun:0,wDef:0,wTot:0,wPil:0,wAce:0,bAce:0},touch:{mirror:false,scale:1,stick:true,pos:{}}};initGear(s);for(const d of DRANKS){s.ships[d]=[0];s.hulls[d]=[0];s.trails[d]=[0];s.trims[d]=[0];s.ship[d]=0;s.hull[d]=0;s.trail[d]=0;s.trim[d]=0;s.sq[d]=0;s.sqCap[d]=0;s.best[d]=0;}return s;}
 function initGear(s){if(!s.gear)s.gear={};for(const d of DRANKS){const g=s.gear[d]||(s.gear[d]=UPK.reduce((o,k)=>(o[k]=0,o),{weapons:0,hull:0,engines:0,cap:0,target:0,arc:0,squad:0,wing:0}));const cap=DMAX[d];for(const k of UPK)g[k]=clamp((+g[k])|0,0,cap);}}
+function fixLoadout(s,d){
+ const src=Array.isArray(d&&d.loadout)?d.loadout:null,out=[];
+ if(src)for(const w of src){const i=+w;if(Number.isInteger(i)&&i>=0&&i<WEAPONS.length&&!out.includes(i)&&out.length<5)out.push(i);}
+ s.loadout=out.length?out:[0];
+}
 function migrate(s,d){
+ fixLoadout(s,d);
  /* v1 saves stored one global loadout. Copy it into Ace as a retired-veteran head start,
     and seed Cadet/Pilot from it clamped to their ranks. Imported exports keep their exact stats. */
  if(d&&d.gear)return;
@@ -450,6 +461,7 @@ function migrate(s,d){
 }
 function sanitize(d){
  const s=newSave('Pilot');if(!d||typeof d!=='object')return s;
+ fixLoadout(s,d);
  s.name=String(d.name||'Pilot').slice(0,16);
  if(d.gold&&typeof d.gold==='object'){s.gold={};for(const r of DRANKS)s.gold[r]=Math.max(0,Math.floor(+d.gold[r]||0));}
  else{const g=Math.max(0,Math.floor(+d.gold||0));s.gold={cadet:0,pilot:0,ace:0};s.gold[DIFFS[d.diff]?d.diff:'cadet']=g;}
@@ -815,7 +827,7 @@ function mkShip(idx,team,x,y,ang){
   wep:0,cd:[0,0,0,0],charge:0,plasma:5,plasmaMax:5,heat:0,heatMax:100,over:false,vheat:0,vover:0,vt:0,vfired:false,flakCd:0,
   slow:0,burn:0,burnT:0,burnDmg:0,burnBy:null,brace:0,braceCd:0,thr:0,ab:false,flash:0,dead:false,ramT:0,ramB:0,ramRes:1,
   roll:0,rollCd:0,rollDir:1,elite:false,lbuf:0,fireWas:false,chargeT:40,lcdMax:20,lcdLast:20,wl:0,crit:0,critM:1.5,cdm:1,arc:25*DEG,boost:0,dbuff:0,dAcc:0,dCrit:false,pid:Math.random()*100|0,
-  isPlayer:false,cargo:false,boss:false,marked:false,label:'',hull:'#b23a30',trail:'#ff7a50',ai:null,mslCd:0,sing:0,singCd:0};
+  isPlayer:false,cargo:false,boss:false,marked:false,label:'',hull:'#b23a30',trail:'#ff7a50',ai:null,msl:0,mslMax:0,mrestock:0,sing:0,singCd:0};
 }
 function mkPlayer(x,y,ang){
  const u=dUp(save),sh=dGet(save,'ship',0),c=SHIPS[sh],mods=(save.mods[save.diff]&&save.mods[save.diff][sh])||[],s=mkShip(sh,0,x,y,ang);
@@ -883,7 +895,8 @@ function startMission(lv,hunt){
  for(let i=0;i<2;i++){const p=place(20,60);if(p)powerups.push(mkPower(p.x,p.y,pickPwr()));}
  /* fleets */
  const pa=Math.atan2(ES.y-PS.y,ES.x-PS.x);
- player=mkPlayer(PS.x+Math.cos(pa)*300,PS.y+Math.sin(pa)*300,pa);player.sing=singUnlocked()?1:0;
+ player=mkPlayer(PS.x+Math.cos(pa)*300,PS.y+Math.sin(pa)*300,pa);player.sing=singUnlocked()?1:0;player.msl=player.mslMax=4;
+ const lo=loadoutFor();player.loadout=lo;player.slot=0;player.wep=lo[0]||0;
  const nW=Math.min(wingCount(),squadHealthy());for(let i=0;i<nW;i++)allies.push(mkWing(i,pa));
  const n=3+Math.min(4,lv/60|0),ei=M.eIdx;
  const form=(cx,cy,cnt,o)=>{const a=Math.atan2(PS.y-cy,PS.x-cx);for(let i=0;i<cnt;i++){const col=i%3-1,row=i/3|0,lx=-row*100,ly=col*100;spawnEnemy(ei-(i%3===2?1:0),cx+Math.cos(a)*lx-Math.sin(a)*ly,cy+Math.sin(a)*lx+Math.cos(a)*ly,a,o);}};
@@ -1049,6 +1062,7 @@ function fireMissile(s,tg){
  let d=wd(s,26,3.4);const crit=Math.random()<s.crit;if(crit)d*=s.critM;
  const p=shoot('msl',s.team,s,s.x+Math.cos(ang)*s.r,s.y+Math.sin(ang)*s.r,s.z,ang,7.6,240,d,WEAPONS[4].c,5);
  p.homing=1;p.tg=t;p.turn=.06;p.crit=crit;p.trailCol=s.team?'#ff9a6a':'#ffd9a8';
+ burst(s.x+Math.cos(ang)*s.r,s.y+Math.sin(ang)*s.r,s.z,10,'#ffd9a8',2,24,4);
  sfxAt('plasma',s.x,s.y);
 }
 var singularities=[];
@@ -1105,8 +1119,8 @@ function drawSing(g){
 }
 
 /* ---------------- PLAYER ACTIONS ---------------- */
-function setWeapon(i){const p=player;if(!p||p.dead||p.wep===i)return;if(i===5&&!singUnlocked()){sfx('deny');msg('SINGULARITY LOCKED — BREAK A CAPTAIN',110);return;}p.wep=i;p.charge=0;sfx('click');}
-function cycleWeapon(d){const p=player;if(!p||p.dead)return;setWeapon((p.wep+d+6)%6);}
+function setWeapon(i){const p=player;if(!p||p.dead)return;const lo=p.loadout||[0];i=clamp(i|0,0,lo.length-1);if(p.slot===i&&p.wep===lo[i])return;p.slot=i;p.wep=lo[i];p.charge=0;sfx('click');}
+function cycleWeapon(d){const p=player;if(!p||p.dead)return;const lo=p.loadout||[0];setWeapon((((p.slot||0)+d)%lo.length+lo.length)%lo.length);}
 function toggleVulcan(){save.vulcanAuto=!save.vulcanAuto;msg('VULCAN AUTO-FIRE '+(save.vulcanAuto?'ON':'OFF'),70);sfx('click');}
 let cockpitThrottle=0;
 function applyCockpitWorld(on){
@@ -1166,7 +1180,8 @@ function playerWeapons(p){
    if(w===1&&p.cd[1]<=0){fireBolt(p,1);p.cd[1]=Math.round(52*p.cdm);}
    else if(w===2&&p.cd[2]<=0){if(p.plasma>0){fireBolt(p,2);p.plasma--;p.cd[2]=Math.round(70*p.cdm);}else{p.cd[2]=30;sfx('deny');msg('PLASMA EMPTY — DOCK TO RESTOCK',70);}}
    else if(w===3)fireVulcan(p);
-   else if(w===4&&p.cd[4]<=0){fireMissile(p);p.cd[4]=Math.round(105*p.cdm);}
+   else if(w===4&&p.cd[4]<=0){if(p.msl>0){fireMissile(p);p.msl--;p.cd[4]=Math.round(105*p.cdm);}else{sfx('deny');msg('MISSILE RACK EMPTY — DOCK TO REARM',90);p.cd[4]=40;}}
+   else if(w===6&&p.flakCd<=0)fireFlak(p,p.ang);
   }
  }
  if(w===5&&press)fireSing();
@@ -1388,7 +1403,7 @@ function stepStations(){
    if(f.dead)continue;const d=Math.hypot(f.x-st.x,f.y-st.y);if(d>st.aura)continue;
    const rate=f.isPlayer?Math.max(.5,f.maxHp*.004):Math.max(.2,f.maxHp*.0015);
    if(f.hp<f.maxHp)f.hp=Math.min(f.maxHp,f.hp+rate);if(f.sh<f.maxSh)f.sh=Math.min(f.maxSh,f.sh+f.maxSh*.008);
-   if(f.isPlayer){M.docked=true;if(f.plasma<f.plasmaMax){if(++f.restock>=300){f.restock=0;f.plasma++;sfx('power',.5);}}}
+   if(f.isPlayer){M.docked=true;if(f.plasma<f.plasmaMax){if(++f.restock>=300){f.restock=0;f.plasma++;sfx('power',.5);}}if(f.mslMax&&f.msl<f.mslMax&&++f.mrestock>=300){f.mrestock=0;f.msl++;sfx('power',.4);}}
   }
   for(let i=0;i<3;i++){
    const tu=st.turrets[i];if(tu.cd>0)tu.cd--;
@@ -1409,7 +1424,7 @@ function stepProjectiles(){
    if(p.tg&&p.tg.dead)p.tg=null;
    if(!p.tg){let bd=560;for(const s of (p.team?team0:enemies)){if(s.dead)continue;const d=Math.hypot(s.x-p.x,s.y-p.y);if(d<bd){bd=d;p.tg=s;}}}
    if(p.tg){const des=Math.atan2(p.tg.y-p.y,p.tg.x-p.x),cur=Math.atan2(p.vy,p.vx),a=cur+clamp(angDiff(cur,des),-p.turn,p.turn);p.vx=Math.cos(a)*p.sp;p.vy=Math.sin(a)*p.sp;}
-   if(M.t%2===0)spark(p.x,p.y,p.z,rand(-.3,.3),rand(-.3,.3),0,12,3,p.trailCol||'#ffb36b',0);
+   if(M.t%2===0)spark(p.x,p.y,p.z,rand(-.4,.4),rand(-.4,.4),0,22,7,'#ffcf9a',0);
   }
   if(p.type==='ion'||p.type==='plasma'){
    for(const g of gravityWells){const dx=g.x-p.x,dy=g.y-p.y,d=Math.hypot(dx,dy),R=g.r*2.6;if(d<R&&d>1){const f=(1-d/R)*.3;p.vx+=dx/d*f;p.vy+=dy/d*f;const v=Math.hypot(p.vx,p.vy);p.vx*=p.sp/v;p.vy*=p.sp/v;}}
@@ -1994,6 +2009,21 @@ function drawWorld2D(){
  c.globalCompositeOperation='lighter';c.lineCap='round';
  for(const p of projectiles){
   w2s(p.x,p.y,p.z);if(!onScr(20))continue;
+  if(p.type==='msl'){
+   const a=Math.atan2(p.vy,p.vx);c.save();c.translate(SX,SY);c.rotate(a);
+   c.globalCompositeOperation='lighter';
+   const fg2=c.createLinearGradient(-8,0,-62,0);fg2.addColorStop(0,'rgba(255,250,225,.98)');fg2.addColorStop(.3,'rgba(255,170,80,.7)');fg2.addColorStop(1,'rgba(255,120,40,0)');
+   c.fillStyle=fg2;c.beginPath();c.moveTo(-8,-6);c.lineTo(-62,0);c.lineTo(-8,6);c.closePath();c.fill();
+   c.globalCompositeOperation='source-over';
+   c.fillStyle='#cfdbe6';c.strokeStyle='#0d1420';c.lineWidth=1.4;
+   c.beginPath();c.moveTo(19,0);c.lineTo(6,6);c.lineTo(-11,6);c.lineTo(-11,-6);c.lineTo(6,-6);c.closePath();c.fill();c.stroke();
+   c.fillStyle='#ffb36b';c.fillRect(1,-6,4,12);
+   c.fillStyle='#ffd9a8';c.beginPath();c.moveTo(19,0);c.lineTo(6,-3.5);c.lineTo(6,3.5);c.closePath();c.fill();
+   c.fillStyle='#8fa3b6';c.beginPath();c.moveTo(-11,-6);c.lineTo(-16,-11);c.lineTo(-16,-4);c.closePath();c.fill();c.beginPath();c.moveTo(-11,6);c.lineTo(-16,11);c.lineTo(-16,4);c.closePath();c.fill();
+   c.restore();
+   c.globalCompositeOperation='lighter';const hg2=c.createRadialGradient(SX,SY,0,SX,SY,26);hg2.addColorStop(0,'rgba(255,210,150,.4)');hg2.addColorStop(.55,'rgba(255,175,90,.14)');hg2.addColorStop(1,'rgba(255,170,80,0)');c.fillStyle=hg2;c.fillRect(SX-26,SY-26,52,52);c.globalCompositeOperation='source-over';
+   continue;
+  }
   if(p.type==='ion'||p.type==='plasma'){const R=p.type==='ion'?7:10,g=c.createRadialGradient(SX,SY,0,SX,SY,R*1.8);g.addColorStop(0,'#ffffff');g.addColorStop(.35,p.col);g.addColorStop(1,rgba(p.col,0));c.fillStyle=g;c.fillRect(SX-R*2,SY-R*2,R*4,R*4);}
   else{const k=p.type==='flak'?.5:1.1;c.strokeStyle=p.col;c.lineWidth=p.type==='turret'?3:2;c.beginPath();c.moveTo(SX,SY);c.lineTo(SX-p.vx*k,SY-p.vy*k*TILT);c.stroke();}
  }
@@ -2118,21 +2148,22 @@ function drawHUD(){
  bar(44,'HEAT',p.heat/p.heatMax,p.over?'#ff5a4a':'#ffb347',p.over?'LOCKED':'');
  bar(61,'ALT',p.z,p.z>.65?'#ffffff':p.z>.35?'#c8d4e0':'#7f93a6',p.z>.65?'PLANETS':p.z>.35?'ROCKS':'');
  /* weapons */
- const wy=82;
- for(let i=0;i<6;i++){
-  const x=10+i*42,sel=p.wep===i,w=WEAPONS[i];
+ const wy=82,LO=p.loadout||[0];
+ for(let i=0;i<LO.length;i++){
+  const wi=LO[i],x=10+i*42,sel=p.wep===wi,w=WEAPONS[wi];
   c.fillStyle=sel?'rgba(20,44,64,.9)':'rgba(10,18,30,.6)';rr(c,x,wy,39,28,4);c.fill();c.strokeStyle=sel?w.c:'rgba(125,227,255,.16)';c.lineWidth=sel?1.5:1;c.stroke();
   c.fillStyle=sel?w.c:'#8296a8';c.font='700 7px Orbitron';c.textAlign='center';c.fillText(w.n,x+19.5,wy+8);
   let sub='',f=0;
-  if(i===0){f=p.cd[0]/(p.lcdLast||1);sub=p.charge>8?(p.charge>=p.chargeT?'READY':'CHARGE'):(60/(p.lcdMax||20)).toFixed(1)+'/s';}
-  else if(i===1){f=p.cd[1]/52;sub='∞';}
-  else if(i===2){f=p.cd[2]/70;sub=p.plasma+' / '+p.plasmaMax;}
-  else if(i===3){f=p.vover>0?1:p.vheat/75;sub=p.vover>0?'COOLING':save.vulcanAuto?'AUTO':'';}
-  else if(i===4){f=p.cd[4]/105;sub=p.cd[4]>0?((p.cd[4]/60).toFixed(1)+'s'):'GUIDED';}
-  else{f=p.singCd/420;sub=singUnlocked()?(p.sing+' / 3'):'LOCKED';}
+  if(wi===0){f=p.cd[0]/(p.lcdLast||1);sub=p.charge>8?(p.charge>=p.chargeT?'READY':'CHARGE'):(60/(p.lcdMax||20)).toFixed(1)+'/s';}
+  else if(wi===1){f=p.cd[1]/52;sub='∞';}
+  else if(wi===2){f=p.cd[2]/70;sub=p.plasma+' / '+p.plasmaMax;}
+  else if(wi===3){f=p.vover>0?1:p.vheat/75;sub=p.vover>0?'COOLING':save.vulcanAuto?'AUTO':'';}
+  else if(wi===4){f=p.cd[4]/105;sub=p.msl+' / '+p.mslMax;}
+  else if(wi===5){f=p.singCd/420;sub=p.sing+' / 3';}
+  else{f=p.flakCd/500;sub=p.flakCd>0?((p.flakCd/60).toFixed(1)+'s'):'SPREAD';}
   c.fillStyle='#d8e6f2';c.font='600 8px "Exo 2"';c.fillText(sub,x+19.5,wy+17);
   c.fillStyle='rgba(255,255,255,.1)';c.fillRect(x+4,wy+23,31,2);
-  c.fillStyle=i===3?(p.vover>0?'#ff5a4a':'#ffd700'):w.c;c.fillRect(x+4,wy+23,31*clamp(i===3?f:1-f,0,1),2);
+  c.fillStyle=wi===3?(p.vover>0?'#ff5a4a':'#ffd700'):w.c;c.fillRect(x+4,wy+23,31*(wi===4?clamp(p.msl/(p.mslMax||1),0,1):wi===3?f:1-f),2);
  }
  const mini=(x,label,f,col)=>{c.fillStyle='rgba(10,18,30,.6)';rr(c,x,wy+32,66,13,3);c.fill();c.fillStyle=col;c.globalAlpha=.3+.7*(f>=1?1:0);rr(c,x+2,wy+34,62*clamp(f,0,1),9,2);c.fill();c.globalAlpha=1;c.fillStyle='#ffffff';c.font='700 7px Orbitron';c.textAlign='center';c.fillText(label,x+33,wy+39);};
  mini(10,'FLAK',1-p.flakCd/500,'#ffd700');mini(80,'BRACE',p.brace>0?1:1-p.braceCd/600,'#ff9a3c');
@@ -2217,6 +2248,13 @@ function refresh(){show(UI.cur,UI.arg,true);}
 function fmtGold(g){return save&&save.free?'∞':Math.floor(g).toLocaleString('en-US');}
 function hdr(title){return'<div class="hdr"><button class="btn sm" data-a="back">◀ Back</button><h2>'+title+'</h2>'+(save?'<span class="cr" title="'+DIFFS[save.diff].n+' wallet">'+fmtGold(dGold(save))+'</span>':'')+'</div>';}
 function reachedOf(s){if(s.free)return 500;let m=0;for(const d in s.prog.campaign){const o=s.prog.campaign[d];for(const k in o)if(o[k].stars>0&&+k>m)m=+k;}return Math.min(500,m+1);}
+function slotCount(){if(!save)return 1;if(save.free)return 5;const r=reachedOf(save);return 1+(r>100?1:0)+(r>200?1:0)+(r>300?1:0)+(r>400?1:0);}
+function loadoutFor(){
+ const max=slotCount(),out=[],src=Array.isArray(save&&save.loadout)?save.loadout:[0];
+ for(const w of src){const i=+w;if(i<0||i>=WEAPONS.length)continue;if(i===5&&!singUnlocked())continue;if(!out.includes(i)&&out.length<max)out.push(i);}
+ if(!out.length)out.push(0);
+ return out;
+}
 function spend(c){if(save.free)return true;if(dGold(save)<c){sfx('deny');toast('Not enough credits on '+DIFFS[save.diff].n);return false;}dGoldSet(save,dGold(save)-c);return true;}
 function rendererLabel(){const r=window.R3D;if(r&&r.ready&&!r.failed)return settings.gfx==='classic'?'CLASSIC 2D':settings.gfx.toUpperCase()+' 3D';if(r&&r.failed)return'CLASSIC 2D (3D unavailable)';return'CLASSIC 2D · loading 3D…';}
 function r3dReady(){applyGfx();if(UI.cur==='title'||UI.cur==='settings')refresh();}
@@ -2296,6 +2334,7 @@ const SCREENS={
   const wr=mulberry32(lv*7919+13)(),weather=wr<.16?'Ion storm — EMP lightning':wr<.34?'Dust fog — reduced visibility':'Clear';
   const newIntro=!hunt&&m===1&&!save.lore[sea];if(newIntro){save.lore[sea]=1;persist();}
   const target=20+(lv/10|0)*5,rew=hunt?'('+'kills × 10 + 150) × '+DIFFS[save.diff].r:fmtNum(missionReward(lv,mode,save.diff));
+  const LO=loadoutFor(),MAXS=slotCount();
   return'<div class="scr">'+hdr(hunt?'Free Hunt':'Mission '+(sea+1)+'-'+m)+
   '<div class="panel narrow col" style="max-width:640px"><div class="row"><span style="font-size:2.2em;line-height:1;color:var(--c)">'+MD.ic+'</span><div><h3>'+MD.n+'</h3><span class="dim sml">'+S.n+' · '+DIFFS[save.diff].n+'</span></div>'+(newIntro?'<span class="tag g">New transmission</span>':'')+'</div>'+
   '<p><b>Objective:</b> '+(hunt?'Destroy '+target+' hostiles. They never stop coming.':MD.obj)+'</p>'+
@@ -2305,6 +2344,9 @@ const SCREENS={
   '<div class="kv"><span>Star times</span><b>★★★ under '+st[0]+'s · ★★ under '+st[1]+'s</b></div>'+
   '<div class="kv"><span>Reward</span><b style="color:var(--gold)">◈ '+rew+(MD.bonus>1?' (mode bonus ×'+MD.bonus+')':'')+'</b></div>'+
   (hunt?'':'<div class="kv"><span>Best</span><b>'+starStr(starsOf(lv))+'</b></div>')+
+  '<div class="kv"><span>Loadout</span><b>'+LO.length+' / '+MAXS+' slots'+(MAXS<5?' · slots unlock with progress':'')+'</b></div>'+
+  '<div class="loadchips">'+WEAPONS.map((w,i)=>{const on=LO.indexOf(i)>=0,lock=i===5&&!singUnlocked();return '<button class="wchip'+(on?' on':'')+(lock?' lock':'')+'" data-a="load" data-v="'+i+'">'+w.n+'</button>';}).join('')+'</div>'+
+  '<p class="dim sml">Tap a weapon to add or remove it; the order is your firing order on keys 1–'+MAXS+'. One slot at 1-1, five by the late sectors. MISSILE racks carry 4 per sortie and rearm while docked; SING needs your first captain kill.</p>'+
   '<div class="row" style="margin-top:.4em"><button class="btn primary" data-a="launch" style="flex:1">Launch</button><button class="btn" data-a="nav" data-v="shop">Shop</button></div></div></div>';
  },
  shop(){
@@ -2433,7 +2475,7 @@ const SCREENS={
   '<tr><td style="color:#c87dff">ION</td><td>Fast bolt that slows the target. Bends in gravity.</td></tr>'+
   '<tr><td style="color:#ff7043">PLASMA</td><td>Slow heavy bolt that burns over time. Limited charges, restocked by docking.</td></tr>'+
   '<tr><td style="color:#ffd700">VULCAN</td><td>Bullet stream, best inside 380 m. Overheats. V lets it fire by itself.</td></tr>'+
-  '<tr><td style="color:#ffb36b">MISSILE</td><td>Guided warhead: homes on your lock or the nearest hostile, 26+ damage with a small splash. Key 5.</td></tr>'+
+  '<tr><td style="color:#ffb36b">MISSILE</td><td>Guided warhead: homes on your lock or the nearest hostile, 26+ damage with a small splash. Rack holds 4 per sortie and rearms while you dock. Carry it in a loadout slot.</td></tr>'+
   '<tr><td style="color:#ffd700">FLAK</td><td>9-pellet spread on a long cooldown. Shoots down plasma.</td></tr>'+
   '<tr><td style="color:#b06bff">SING</td><td>Singularity bomb: a 215 m well that drags ships in and grinds them — allies take 25%. One charge a mission once you have broken a captain; rare purple pickups add charges. Key 6. Captains, elites and bosses can throw one back at you.</td></tr></table>'+
   '<p>Shots auto-aim at targets inside your <b>fire arc</b> (widen it with the Fire Arc upgrade). A ghost diamond shows where ion and plasma will land. Targeting upgrades add critical hits, shown in gold.</p>'+
@@ -2502,6 +2544,14 @@ function showEnd(){
 
 const ACT={
  nav(v){if(v==='settings'||v==='help')UI.ret=UI.cur;UI.confirm=-1;UI.pvH=UI.pvT=UI.pvR=-1;show(v);},
+ load(v){
+  if(!save)return;const i=+v;
+  if(i===5&&!singUnlocked()){sfx('deny');toast('Break a captain to unlock the singularity');return;}
+  const max=slotCount();let lo=Array.isArray(save.loadout)?save.loadout.slice():[0],at=lo.indexOf(i);
+  if(at>=0){if(lo.length<=1){toast('Keep at least one weapon');return;}lo.splice(at,1);}
+  else{if(lo.length>=max){lo[lo.length-1]=i;toast('Loaded '+WEAPONS[i].n+' into slot '+lo.length);}else lo.push(i);}
+  save.loadout=lo;persist();refresh();
+ },
  back(){
   const c=UI.cur;UI.confirm=-1;
   if(c==='layout'){editLayout=false;persist();show('settings');layoutTouch();return;}
@@ -3146,7 +3196,7 @@ const DN=700,dBase=new Float32Array(DN*3),dPos=new Float32Array(DN*3),dCol=new F
 dGeo.setAttribute('position',new THREE.BufferAttribute(dPos,3).setUsage(THREE.DynamicDrawUsage));dGeo.setAttribute('pcol',new THREE.BufferAttribute(dCol,3));dGeo.setAttribute('psize',new THREE.BufferAttribute(dSz,1));
 const dust=new THREE.Points(dGeo,pMat);dust.frustumCulled=false;scene.add(dust);
 function updDust(tx,tz){for(let i=0;i<DN;i++){const j=i*3;dPos[j]=tx+((((dBase[j]-tx)%3600)+3600)%3600)-1800;dPos[j+1]=dBase[j+1];dPos[j+2]=tz+((((dBase[j+2]-tz)%3600)+3600)%3600)-1800;}dGeo.attributes.position.needsUpdate=true;}
-const SHOT={ion:[10,4.5,4.5,2.4],plasma:[12,8.5,8.5,2.2],vulcan:[11,1.6,1.6,2.6],flak:[4.5,2.6,2.6,2.2],msl:[16,3,3,2.6],turret:[11,2.3,2.3,2.4]};
+const SHOT={ion:[10,4.5,4.5,2.4],plasma:[12,8.5,8.5,2.2],vulcan:[11,1.6,1.6,2.6],flak:[4.5,2.6,2.6,2.2],msl:[24,4,4,3.2],turret:[11,2.3,2.3,2.4]};
 function effects(){
  let n=0;
  for(const p of projectiles){if(n>=MAXS)break;const k=SHOT[p.type]||SHOT.turret,c=crgb(p.col);dummy.position.set(p.x,p.z*ALT,p.y);dummy.rotation.set(0,-Math.atan2(p.vy,p.vx),0);dummy.scale.set(k[0],k[1],k[2]);dummy.updateMatrix();shotM.setMatrixAt(n,dummy.matrix);shotM.setColorAt(n,C.setRGB(c[0]*k[3]+.25,c[1]*k[3]+.25,c[2]*k[3]+.25));n++;}
