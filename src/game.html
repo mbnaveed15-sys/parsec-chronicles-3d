@@ -267,6 +267,43 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
 #gameCanvas.cb-deut,#glCanvas.cb-deut{filter:url(#cbDeut)}
 #gameCanvas.cb-prot,#glCanvas.cb-prot{filter:url(#cbProt)}
 #gameCanvas.cb-trit,#glCanvas.cb-trit{filter:url(#cbTrit)}
+#ui input.kb,#ui select.kb,#ui textarea.kb{outline:2px solid #7de3ff;outline-offset:3px;box-shadow:0 0 0 5px rgba(125,227,255,.18)}
+@media (max-height:520px){
+ .scr{padding:.5em .45em 1em;gap:.35em}
+ .panel{padding:.5em .6em;border-radius:12px}
+ .hdr h2{font-size:.98em}
+ .hubnav{padding:.24em .26em;margin:0 0 .25em;gap:.18em}
+ .hubnav .btn.sm{padding:.3em .48em;font-size:.7em}
+ .setcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));height:calc(100dvh - 156px);min-height:120px;overflow:hidden}
+ .setcol{overflow-y:auto;padding-right:6px;margin-bottom:0}
+ .dockcols{height:auto;max-height:none;overflow:visible}
+ .termhead,.tagline,.scr.mid .logo small{display:none}
+ .scr.mid .logo{font-size:1.7em;line-height:1}
+ .kv{padding:.1em 0;font-size:.8em}
+ .btn{padding:.5em .85em}
+ .card{padding:.55em .65em}
+ #ui canvas.pv{max-width:150px!important;max-height:104px!important}
+ #ui .panel h3{font-size:.95em}
+ #ui .sgrid{grid-template-columns:repeat(4,1fr)}
+ .verdict{font-size:clamp(20px,5vmin,34px)}
+}
+@media (max-height:430px){
+ #ui canvas.pv{display:none!important}
+ .scr{padding:.4em .4em .8em;gap:.25em}
+ .panel{padding:.4em .5em}
+ .hdr{padding:0}
+ .hdr h2{font-size:.9em}
+ .kv{font-size:.74em;padding:.06em 0}
+ .hubnav .btn.sm{font-size:.64em;padding:.24em .38em}
+ .panel .dim.sml{display:none}
+ .qset{display:none}
+ .mstat .kv{font-size:.72em;padding:.04em 0}
+ .panel .btn.wide{padding:.42em .6em;margin:.1em 0}
+ .scr.mid>.panel{padding:.35em .5em}
+ .scr.mid h2{font-size:1.05em;margin:.05em 0}
+ .scr.mid .panel .btn{margin:.06em 0}
+ #toast{top:3%;bottom:auto;font-size:.72em;max-width:86vw;white-space:normal;text-align:center}
+}
 </style>
 </head>
 <body>
@@ -628,10 +665,10 @@ function evPos(e){const p=evApp(e);return[p[0]/VS,p[1]/VS];}
 /* ---------------- MENU FOCUS / NAVIGATION ---------------- */
 function uiFocusables(){
  const el=$('ui');if(!el||!el.className||el.className.indexOf('on')<0)return[];
- return [].slice.call(el.querySelectorAll('button:not([disabled]),[tabindex]:not([tabindex="-1"])')).filter(function(b){return b.offsetWidth>0&&b.offsetHeight>0;});
+ return [].slice.call(el.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])')).filter(function(b){return b.offsetWidth>0&&b.offsetHeight>0;});
 }
 function kbMark(b){const el=$('ui');if(el)for(const e of el.querySelectorAll('.kb'))e.classList.remove('kb');if(b)b.classList.add('kb');}
-document.addEventListener('focusin',function(e){if(document.documentElement.classList.contains('kbnav')){const b=e.target;if(b&&b.tagName==='BUTTON'&&b.closest&&b.closest('#ui'))kbMark(b);}});
+document.addEventListener('focusin',function(e){if(document.documentElement.classList.contains('kbnav')){const b=e.target;if(b&&(b.tagName==='BUTTON'||/^(INPUT|SELECT|TEXTAREA)$/.test(b.tagName))&&b.closest&&b.closest('#ui'))kbMark(b);}});
 function uiFocusFirst(){
  const f=uiFocusables();if(!f.length)return;
  const p=f.filter(function(b){return b.classList.contains('primary');})[0]||f[0];
@@ -660,6 +697,9 @@ addEventListener('keydown',e=>{
  if(state==='cine'){skipCine();return;}
  const menu=state!=='play'&&UI.cur;
  if(menu){
+  const ae0=document.activeElement,form0=ae0&&/^(INPUT|TEXTAREA|SELECT)$/.test(ae0.tagName);
+  if(form0&&e.code!=='Escape')return;
+  if(HUBNAME[UI.cur]&&(e.code==='BracketLeft'||e.code==='BracketRight')){const i=HUB_ORDER.indexOf(UI.cur);if(i>=0){const ni=(i+(e.code==='BracketRight'?1:-1)+HUB_ORDER.length)%HUB_ORDER.length;ACT.nav(HUB_ORDER[ni]);sfx('click');}e.preventDefault();return;}
   if(e.code==='ArrowUp'||e.code==='ArrowDown'||e.code==='ArrowLeft'||e.code==='ArrowRight'){e.preventDefault();uiNav({ArrowUp:'up',ArrowDown:'down',ArrowLeft:'left',ArrowRight:'right'}[e.code]);return;}
   if(e.code==='Tab'){
    const f=uiFocusables();if(f.length){const i=f.indexOf(document.activeElement);if(e.shiftKey&&i<=0){e.preventDefault();f[f.length-1].focus();}else if(!e.shiftKey&&(i<0||i===f.length-1)){e.preventDefault();f[0].focus();}}
@@ -2356,8 +2396,27 @@ const LANG={en:{hangar:'Hangar',shop:'Shop',cosm:'Cosmetics',deeds:'Deeds',campa
 function TR(k){const l=settings&&settings.lang||'en';return(LANG[l]&&LANG[l][k])||LANG.en[k]||k;}
 function hubNav(cur){
  const items=[['hangar',TR('hangar')],['shop',TR('shop')],['cosm',TR('cosm')],['deeds',TR('deeds')],['sectors',TR('campaign')],['contracts',TR('contracts')],['settings',TR('settings')],['help',TR('help')]];
- return '<div class="hubnav">'+items.map(function(it){return '<button class="btn sm'+(it[0]===cur?' on':'')+'" data-a="nav" data-v="'+it[0]+'">'+it[1]+'</button>';}).join('')+'</div>';
+ return '<div class="hubnav">'+items.map(function(it){return '<button class="btn sm'+(it[0]===cur?' on':'')+'" data-a="nav" data-v="'+it[0]+'">'+it[1]+'</button>';}).join('')+(touchOn?'<span class="dim sml" style="align-self:center;margin-left:.3em">SWIPE ⟷</span>':'')+'</div>';
 }
+const HUB_ORDER=['hangar','shop','cosm','deeds','sectors','contracts','settings','help'];
+const SWIPE={x:0,y:0,t:0,on:false,block:false};
+document.addEventListener('pointerdown',function(e){
+ if(e.pointerType==='mouse'||state!=='menu'||!UI.cur||!HUBNAME[UI.cur])return;
+ SWIPE.x=e.clientX;SWIPE.y=e.clientY;SWIPE.t=Date.now();SWIPE.on=true;
+},{passive:true});
+document.addEventListener('pointerup',function(e){
+ if(!SWIPE.on)return;SWIPE.on=false;
+ if(e.pointerType==='mouse')return;
+ const dx=e.clientX-SWIPE.x,dy=e.clientY-SWIPE.y,dt=Date.now()-SWIPE.t;
+ if(dt>800||Math.abs(dx)<55||Math.abs(dx)<Math.abs(dy)*1.5)return;
+ const i=HUB_ORDER.indexOf(UI.cur);if(i<0)return;
+ const ni=(i+(dx<0?1:-1)+HUB_ORDER.length)%HUB_ORDER.length;
+ SWIPE.block=true;setTimeout(function(){SWIPE.block=false;},400);
+ ACT.nav(HUB_ORDER[ni]);sfx('click');
+},{passive:true});
+document.addEventListener('click',function(e){
+ if(SWIPE.block){e.stopPropagation();e.preventDefault();SWIPE.block=false;}
+},true);
 function fitScrolls(){
  const ui=document.getElementById('ui');if(!ui||!ui.offsetHeight)return;
  const appH=(function(){var a=document.getElementById('app');return (a&&a.clientHeight)||(typeof ch==='number'&&ch>0?ch:window.innerHeight||ui.offsetHeight);})();
