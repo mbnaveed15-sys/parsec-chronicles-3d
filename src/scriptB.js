@@ -523,22 +523,45 @@ const DN=700,dBase=new Float32Array(DN*3),dPos=new Float32Array(DN*3),dCol=new F
 dGeo.setAttribute('position',new THREE.BufferAttribute(dPos,3).setUsage(THREE.DynamicDrawUsage));dGeo.setAttribute('pcol',new THREE.BufferAttribute(dCol,3));dGeo.setAttribute('psize',new THREE.BufferAttribute(dSz,1));
 const dust=new THREE.Points(dGeo,pMat);dust.frustumCulled=false;scene.add(dust);
 function updDust(tx,tz){for(let i=0;i<DN;i++){const j=i*3;dPos[j]=tx+((((dBase[j]-tx)%3600)+3600)%3600)-1800;dPos[j+1]=dBase[j+1];dPos[j+2]=tz+((((dBase[j+2]-tz)%3600)+3600)%3600)-1800;}dGeo.attributes.position.needsUpdate=true;}
-/* surrounding space: starfield skybox + floating debris so the world wraps the player in cockpit */
-const starGeo=new THREE.BufferGeometry();
-{const SN=2600,sp=new Float32Array(SN*3),sc=new Float32Array(SN*3),r=mulberry32(99);
- for(let i=0;i<SN;i++){const th=r()*PI*2,ph=Math.acos(2*r()-1),R=9000;
-  sp[i*3]=R*Math.sin(ph)*Math.cos(th);sp[i*3+1]=R*Math.cos(ph);sp[i*3+2]=R*Math.sin(ph)*Math.sin(th);
-  const b=.25+r()*.75,t=r();sc[i*3]=b*(t<.25?.75:1);sc[i*3+1]=b*(t<.25?.82:.96);sc[i*3+2]=b*(t>.8?.8:1);}
- starGeo.setAttribute('position',new THREE.BufferAttribute(sp,3));starGeo.setAttribute('color',new THREE.BufferAttribute(sc,3));}
-const starField=new THREE.Points(starGeo,new THREE.PointsMaterial({size:2,sizeAttenuation:false,vertexColors:true,transparent:true,opacity:.95,depthWrite:false}));
-starField.frustumCulled=false;scene.add(starField);
-/* nebula shell: soft coloured clouds surrounding the play space (both diorama and cockpit) */
-const nebula=(function(){
- const c=mkCanvas(1024,512),x=c.getContext('2d'),r=mulberry32(4242),cols=[[120,50,190],[30,120,170],[180,50,120],[40,90,210],[90,60,200]];
- for(let i=0;i<30;i++){const cx=r()*1024,cy=r()*512,rad=80+r()*260,cl=cols[r()*cols.length|0];const g=x.createRadialGradient(cx,cy,0,cx,cy,rad);g.addColorStop(0,'rgba('+cl[0]+','+cl[1]+','+cl[2]+',.16)');g.addColorStop(.6,'rgba('+cl[0]+','+cl[1]+','+cl[2]+',.06)');g.addColorStop(1,'rgba('+cl[0]+','+cl[1]+','+cl[2]+',0)');x.fillStyle=g;x.fillRect(cx-rad,cy-rad,rad*2,rad*2);}
- const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
- const m=new THREE.MeshBasicMaterial({map:tex,side:THREE.BackSide,transparent:true,opacity:.55,depthWrite:false,depthTest:false});
- const mesh=new THREE.Mesh(new THREE.SphereGeometry(8200,32,20),m);mesh.renderOrder=-2;mesh.frustumCulled=false;scene.add(mesh);return mesh;})();
+/* surrounding space: layered starfield + seamless nebula shells so the world wraps the player in cockpit */
+function starLayer(n,R,size,opacity,seed){
+ const g=new THREE.BufferGeometry(),sp=new Float32Array(n*3),sc=new Float32Array(n*3),r=mulberry32(seed);
+ for(let i=0;i<n;i++){const th=r()*PI*2,ph=Math.acos(2*r()-1),rad=R*(.92+r()*.16);
+  sp[i*3]=rad*Math.sin(ph)*Math.cos(th);sp[i*3+1]=rad*Math.cos(ph);sp[i*3+2]=rad*Math.sin(ph)*Math.sin(th);
+  const b=.22+r()*.78,t=r();sc[i*3]=b*(t<.22?.72:1);sc[i*3+1]=b*(t<.22?.8:.97);sc[i*3+2]=b*(t>.82?.78:1);}
+ g.setAttribute('position',new THREE.BufferAttribute(sp,3));g.setAttribute('color',new THREE.BufferAttribute(sc,3));
+ const p=new THREE.Points(g,new THREE.PointsMaterial({size:size,sizeAttenuation:false,vertexColors:true,transparent:true,opacity:opacity,depthWrite:false}));
+ p.frustumCulled=false;scene.add(p);return p;
+}
+const stars=[starLayer(1400,12500,1.4,.5,7),starLayer(2600,9000,2.1,.95,99),starLayer(700,5200,2.9,.8,13)];
+/* seamless nebula shells: wrapped blobs + fibrous detail + dither, so no UV seam or banding */
+function nebTex(seed,w,h,cols,alpha,band){
+ const c=mkCanvas(w,h),x=c.getContext('2d'),r=mulberry32(seed);
+ const blob=function(cx,cy,rad,cl,a){
+  for(let ox=-1;ox<=1;ox++)for(let oy=-1;oy<=1;oy++){
+   const X=cx+ox*w,Y=cy+oy*h,g=x.createRadialGradient(X,Y,0,X,Y,rad);
+   g.addColorStop(0,'rgba('+cl[0]+','+cl[1]+','+cl[2]+','+a.toFixed(3)+')');
+   g.addColorStop(.5,'rgba('+cl[0]+','+cl[1]+','+cl[2]+','+(a*.5).toFixed(3)+')');
+   g.addColorStop(1,'rgba('+cl[0]+','+cl[1]+','+cl[2]+',0)');
+   x.fillStyle=g;x.fillRect(X-rad,Y-rad,rad*2,rad*2);
+  }
+ };
+ if(band)for(let i=0;i<12;i++){const t=i/12,cx=t*w,cy=h*.5+Math.sin(t*12.566)*h*.16;blob(cx,cy,h*(.2+r()*.16),cols[r()*cols.length|0],alpha*.45);}
+ for(let i=0;i<14;i++)blob(r()*w,r()*h,w*(.06+r()*.2),cols[r()*cols.length|0],alpha*(.4+r()*.5));
+ for(let i=0;i<1100;i++)blob(r()*w,r()*h,w*(.008+r()*.026),cols[r()*cols.length|0],alpha*(.15+r()*.28));
+ const id=x.getImageData(0,0,w,h),d=id.data;
+ for(let i=0;i<d.length;i+=4){if(!d[i+3])continue;const n=(r()*2-1)*8;d[i]=clamp(d[i]+n,0,255);d[i+1]=clamp(d[i+1]+n,0,255);d[i+2]=clamp(d[i+2]+n,0,255);}
+ x.putImageData(id,0,0);
+ const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.wrapS=THREE.RepeatWrapping;tex.anisotropy=4;
+ return tex;
+}
+ function nebShell(seed,radius,opacity,order){
+ const tex=nebTex(seed,2048,1024,[[120,50,190],[30,120,170],[180,50,120],[40,90,210],[90,60,200]],.1,true);
+ const m=new THREE.MeshBasicMaterial({map:tex,side:THREE.BackSide,transparent:true,opacity:opacity,depthWrite:false,depthTest:false});
+ const mesh=new THREE.Mesh(new THREE.SphereGeometry(radius,64,32),m);mesh.renderOrder=order;mesh.frustumCulled=false;scene.add(mesh);return mesh;
+}
+const nebula=nebShell(4242,8200,.42,-2);
+const nebula2=nebShell(1717,11000,.26,-3);
 const FD=64,fld=new THREE.InstancedMesh(GEO.ast[0],MT.rock,FD);fld.frustumCulled=false;
 {const r=mulberry32(777);for(let i=0;i<FD;i++){dummy.position.set((r()*2-1)*3200,r()*340-40,(r()*2-1)*3200);dummy.rotation.set(r()*PI*2,r()*PI*2,r()*PI*2);const s=6+r()*22;dummy.scale.set(s,s*(.6+r()*.6),s);dummy.updateMatrix();fld.setMatrixAt(i,dummy.matrix);}fld.instanceMatrix.needsUpdate=true;}
 fld.visible=false;scene.add(fld);
@@ -660,7 +683,11 @@ function render(){
  frameNo++;checkQuality();
  if(M.id!==curMission){curMission=M.id;setSector(M.sea);}
  placeCam();
- starField.position.copy(cam.position);nebula.position.copy(cam.position);fld.visible=!!window.cockpitOn;fld.rotation.y+=.0002;floor.visible=false;
+ nebula.position.copy(cam.position);nebula2.position.copy(cam.position);
+ for(let si=0;si<stars.length;si++)stars[si].position.copy(cam.position);
+ nebula.rotation.y+=.00003;nebula2.rotation.y-=.000022;
+ for(let si=0;si<stars.length;si++)stars[si].rotation.y+=.000008*(si+1);
+ fld.visible=!!window.cockpitOn;fld.rotation.y+=.0002;floor.visible=false;
  const ck=!!window.cockpitOn&&player&&!player.dead;const szr=renderer.getDrawingBufferSize(new THREE.Vector2());const mr=ck?0:12*szr.y/1080;tiltH.uniforms.maxR.value=mr;tiltV.uniforms.maxR.value=mr;pMat.uniforms.sc.value=szr.y/(2*Math.tan((ck?70:32)*Math.PI/360));
  sync(maps.ship,ships,shipObj,updShip);sync(maps.st,stations,stationObj,updStation);sync(maps.pl,gravityWells,planetObj,updPlanet);
  sync(maps.rk,rocks,rockObj,updRock);sync(maps.fl,flotsams,flotObj,updFlot);sync(maps.pu,powerups,powObj,updPow);sync(maps.wr,wrecks,wreckObj,updWreck);
