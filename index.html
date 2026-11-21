@@ -113,6 +113,7 @@ button{font-family:inherit;color:inherit}
 .mint .ml i{display:block;height:100%;width:100%;background:linear-gradient(90deg,#7de3ff,#ffd166);transform-origin:left;animation:msw .9s ease both}
 @keyframes msw{from{transform:scaleX(0)}to{transform:scaleX(1)}}
 .setempty{padding:1.2em .4em;text-align:center}
+.mstat{display:flex;flex-direction:column;gap:.1em;margin:.2em 0 .5em;padding:.5em .7em;border:1px solid var(--ln);border-radius:10px;background:rgba(8,16,28,.5);text-align:left}
 .qset{display:flex;flex-direction:column;gap:.1em;width:100%;margin:.2em 0;padding:.5em .7em;border:1px solid var(--ln);border-radius:10px;background:rgba(8,16,28,.5)}
 .qset .set{padding:.3em 0}
 .qset .set>span{flex-basis:7.5em}
@@ -768,7 +769,7 @@ function mkWing(i,ang){
  const u=dUp(save),idx=(dGet(save,'ship',0)/3|0)*3+i%3,c=SHIPS[idx],rank=(i>>1)+1,side=i%2?1:-1,lx=-70*rank,ly=side*85*rank;
  const s=mkShip(idx,0,player.x+Math.cos(ang)*lx-Math.sin(ang)*ly,player.y+Math.sin(ang)*lx+Math.cos(ang)*ly,ang);
  s.maxHp=s.hp=c.hp+u.squad*25;s.maxSh=s.sh=Math.round(s.maxHp*.3);s.spd=c.spd*.92+u.squad*.2;s.dm=(c.dmg+u.squad*2)/10*.7;
- s.wl=Math.min(u.weapons,c.tier*3+u.squad);s.hull='#4fc3b0';s.trail='#7dffd8';s.ai=mkAI(s);s.ai.slot={x:lx,y:ly};
+ s.wl=Math.min(u.weapons,c.tier*3+u.squad);s.hull=HULLS[dGet(save,'hull',0)].c;s.trail=TRAILS[dGet(save,'trail',0)].c;s.trim=TRIMS[dGet(save,'trim',0)].c;s.prism=!!TRAILS[dGet(save,'trail',0)].rb;s.ai=mkAI(s);s.ai.slot={x:lx,y:ly};
  return s;
 }
 function spawnEnemy(idx,x,y,ang,o){
@@ -824,7 +825,7 @@ function startMission(lv,hunt){
  else if(mode==='boss'){M.boss=spawnEnemy(ei+3,EC.x-Math.cos(pa)*140,EC.y-Math.sin(pa)*140,pa+Math.PI,{hull:1.6,boss:true,name:m===50?SEAS[sea].boss:'Lt. of '+SEAS[sea].boss});form(EC.x,EC.y,Math.max(2,n-1));}
  else if(mode==='hunted'){M.mark=spawnEnemy(ei+1,EC.x,EC.y,pa+Math.PI,{hull:1.5,marked:true,name:'MARKED'});form(EC.x+Math.cos(pa)*110,EC.y+Math.sin(pa)*110,Math.max(2,n-1));}
  else if(mode==='escort'){
-  const c=mkShip(2,0,PS.x+Math.cos(pa)*190,PS.y+Math.sin(pa)*190+90,pa);c.cargo=true;c.name='Freighter';c.label='FREIGHTER';c.hull='#8a7a4a';c.trail='#ffd27a';c.r=40;
+  const c=mkShip(2,0,PS.x+Math.cos(pa)*190,PS.y+Math.sin(pa)*190+90,pa);c.cargo=true;c.name='Freighter';c.label='FREIGHTER';c.hull=HULLS[dGet(save,'hull',0)].c;c.trail=TRAILS[dGet(save,'trail',0)].c;c.trim=TRIMS[dGet(save,'trim',0)].c;c.r=40;
   c.maxHp=c.hp=Math.round((260+lv*9)*(1+sea*.2));c.maxSh=c.sh=Math.round(c.maxHp*.3);c.acc=.05;c.turn=.03;
   M.beacon={x:ES.x,y:ES.y};c.spd=Math.hypot(ES.x-c.x,ES.y-c.y)/(34*60);c.ai=mkAI(c);allies.push(c);M.cargo=c;
   form(lerp(PS.x,ES.x,.62),lerp(PS.y,ES.y,.62),n);M.spawnT=260;
@@ -1398,6 +1399,8 @@ function tick(){
  collide();stepStations();stepProjectiles();stepFx();stepPickups();stepWeather();
  compact(allies);compact(enemies);compact(rocks);
  stepMode();
+ /* objective lives in pause; flash it briefly on change + periodic reminder */
+ if(!m.done){if(m.objFlash>0)m.objFlash--;const osig=objText().replace(/\d+/g,'#');if(osig!==m._objSig){m._objSig=osig;if(m.t>150&&m.msgT<=0){m.objFlash=120;m.objFlashText=objText();}}m._objRem=(m._objRem||0)+1;if(m._objRem>=900&&!m.tutOn&&m.msgT<=0&&!(m.objFlash>0)){m._objRem=0;m.objFlash=120;m.objFlashText=objText();}}
  const p=player;
  if(p){
   if(!p.dead){const lx=Math.cos(p.ang)*70+p.vx*10,ly=Math.sin(p.ang)*50+p.vy*8;camLX+=(lx-camLX)*.05;camLY+=(ly-camLY)*.05;}
@@ -1870,18 +1873,12 @@ function drawHUD(){
  if(p.burn>0)tagl('BURNING','#ff7043');
  if(m.weather!=='clear')tagl(m.weather==='storm'?'⚡ ION STORM':'≋ DUST FOG','#b8a8e8');
  hudExtras(c,hw,hh);
- /* objective + clock */
- const secs=m.clock/60,st=starTimes(m.mode,m.sea),tier=secs<st[0]?3:secs<st[1]?2:1,obj=objText();
- c.font='700 10px Orbitron';const ow=Math.max(230,c.measureText(obj).width+36),ox=hw/2-ow/2,oy=touchOn?50:8;
- c.fillStyle='rgba(10,18,30,.62)';rr(c,ox,oy,ow,44,7);c.fill();c.strokeStyle='rgba(125,227,255,.2)';c.lineWidth=1;c.stroke();
- c.textAlign='center';c.fillStyle='#7de3ff';c.font='700 8px Orbitron';c.fillText((m.hunt?'FREE HUNT':'M'+(m.sea+1)+'-'+m.m)+'  ·  '+MODES[m.mode].n+'  ·  '+m.D.n.toUpperCase(),hw/2,oy+9.5);
- c.fillStyle='#ffffff';c.font='700 10px Orbitron';c.fillText(obj,hw/2,oy+21);
- c.font='700 10px Orbitron';const ts=fmtTime(secs),tcol=tier===3?'#ffd166':tier===2?'#d8e6f2':'#8296a8';
- c.fillStyle=tcol;c.textAlign='right';c.fillText(ts,hw/2-6,oy+34);c.textAlign='left';c.fillStyle='#ffd166';c.fillText('★'.repeat(tier),hw/2+6,oy+34);c.fillStyle='#3c4654';c.fillText('★'.repeat(3-tier),hw/2+6+c.measureText('★'.repeat(tier)).width,oy+34);
- if(tier>1){c.fillStyle='#8296a8';c.font='600 7px "Exo 2"';c.textAlign='left';c.fillText('< '+fmtTime(st[3-tier]).replace('.0',''),hw/2+46,oy+34);}
+ /* objective + clock moved into the pause menu to keep the play HUD clear */
  /* boss bar */
  const B=m.boss&&!m.boss.dead?m.boss:m.mark&&!m.mark.dead?m.mark:null;
- if(B){const bw2=Math.min(400,hw*.4),bx=hw/2-bw2/2,byy=oy+52;c.fillStyle='rgba(10,18,30,.68)';rr(c,bx-4,byy-4,bw2+8,18,5);c.fill();c.fillStyle='#ffd166';rr(c,bx,byy,bw2*clamp(B.hp/B.maxHp,0,1),11,3);c.fill();c.fillStyle='#000';c.font='700 7.5px Orbitron';c.textAlign='center';c.fillText((B.label||B.name).toUpperCase(),hw/2,byy+6);}
+ if(B){const bw2=Math.min(400,hw*.4),bx=hw/2-bw2/2,byy=8;c.fillStyle='rgba(10,18,30,.68)';rr(c,bx-4,byy-4,bw2+8,18,5);c.fill();c.fillStyle='#ffd166';rr(c,bx,byy,bw2*clamp(B.hp/B.maxHp,0,1),11,3);c.fill();c.fillStyle='#000';c.font='700 7.5px Orbitron';c.textAlign='center';c.fillText((B.label||B.name).toUpperCase(),hw/2,byy+6);}
+ /* objective flash (panel itself lives in pause) */
+ if(m.objFlash>0){const a=Math.min(1,m.objFlash/30);let t=m.objFlashText||objText();c.globalAlpha=a*.95;c.font='700 10px Orbitron';c.textAlign='center';let w=Math.min(hw*.82,c.measureText(t).width+26);while(c.measureText(t).width>w-20&&t.length>6)t=t.slice(0,-2)+'…';const fy=B?30:6,x=hw/2-w/2;c.fillStyle='rgba(10,18,30,.85)';rr(c,x,fy,w,20,6);c.fill();c.strokeStyle='rgba(125,227,255,.4)';c.lineWidth=1;c.stroke();c.fillStyle='#cfe9ff';c.fillText(t,hw/2,fy+11);c.globalAlpha=1;}
  /* minimap */
  const ms=112,mx0=hw-ms-12,my0=12;drawMap(mx0,my0,ms,false);
  MAPR.x=mx0*U;MAPR.y=my0*U;MAPR.w=ms*U;MAPR.h=ms*U;
@@ -1900,9 +1897,10 @@ function drawPreviews(){
  const use3=!!(window.R3D&&R3D.ready&&!R3D.failed&&settings.gfx!=='classic');
  for(const el of list){
   const r=el.getBoundingClientRect();if(r.bottom<0||r.top>window.innerHeight||r.right<0||r.left>window.innerWidth||r.width<4)continue;
-  const idx=+el.dataset.idx,cols={hull:el.dataset.hull||HULLS[dGet(save,'hull',0)].c,trail:el.dataset.trail||TRAILS[dGet(save,'trail',0)].c};
-  cols.prism=el.dataset.prism==='1'||(!el.dataset.trail&&!!TRAILS[dGet(save,'trail',0)].rb);if(cols.prism)cols.trail=prismHex(performance.now()/16);
-  cols.trim=el.dataset.trim!==undefined?el.dataset.trim:TRIMS[dGet(save,'trim',0)].c;
+  const SH=save?HULLS[dGet(save,'hull',0)].c:'#2a4d8a',ST=save?TRAILS[dGet(save,'trail',0)].c:'#7de3ff';
+  const idx=+el.dataset.idx,cols={hull:el.dataset.hull||SH,trail:el.dataset.trail||ST};
+  cols.prism=el.dataset.prism==='1'||(!el.dataset.trail&&!!(save&&TRAILS[dGet(save,'trail',0)].rb));if(cols.prism)cols.trail=prismHex(performance.now()/16);
+  cols.trim=el.dataset.trim!==undefined?el.dataset.trim:(save?TRIMS[dGet(save,'trim',0)].c:'');
   let ok=false;if(use3){try{ok=R3D.preview(el,idx,cols);}catch(e){ok=false;}}
   if(!ok){const x=el.getContext('2d'),w=el.width,h=el.height;x.setTransform(1,0,0,1,0,0);x.clearRect(0,0,w,h);x.save();x.translate(w/2,h/2);x.scale(1,TILT);x.rotate(performance.now()*.0006+idx);const sc=h*.3*(.72+.25*SHIPS[idx].sc);x.scale(sc,sc);drawShip2D(x,idx,cols.hull,cols.trail,.6,0,false);x.restore();}
  }
@@ -2074,7 +2072,7 @@ const SCREENS={
    '<div class="kv"><span>Paint</span><b>'+(ph>=0?pvTag:'')+HULLS[hi].n+'</b></div>'+
    '<div class="kv"><span>Thrust</span><b>'+(pt>=0?pvTag:'')+TRAILS[ti].n+'</b></div>'+
    '<div class="kv"><span>Trim</span><b>'+(pr>=0?pvTag:'')+TRIMS[ri].n+'</b></div>'+
-   (anyPv?'<div class="row" style="margin-top:.4em">'+(ph>=0?act(HULLS[ph],ph,'hull',HL):'')+(pt>=0?act(TRAILS[pt],pt,'trail',TL):'')+(pr>=0?act(TRIMS[pr],pr,'trim',RL):'')+'<button class="btn sm" data-a="pvreset">Reset</button></div>':'<span class="dim sml">Tap a swatch to preview it on your ship before buying.</span>')+
+   (anyPv?'<div class="row" style="margin-top:.4em">'+(ph>=0?act(HULLS[ph],ph,'hull',HL):'')+(pt>=0?act(TRAILS[pt],pt,'trail',TL):'')+(pr>=0?act(TRIMS[pr],pr,'trim',RL):'')+'<button class="btn sm" data-a="pvreset">Reset</button></div>':'<span class="dim sml">Colours apply to your whole squadron. Tap a swatch to preview.</span>')+
    '</div>';
   h+='<div class="panel cosm-col"><h3>Paint</h3><div class="cgrid">'+HULLS.map((o,i)=>item(o,i,'hull',HL,curH,ph)).join('')+'</div></div>';
   h+='<div class="col cosm-right"><div class="panel cosm-col"><h3>Thrust</h3><div class="cgrid">'+TRAILS.map((o,i)=>item(o,i,'trail',TL,curT,pt)).join('')+'</div></div>'+
@@ -2155,7 +2153,8 @@ const SCREENS={
  },
  pause(){
   const qsl=(o,k,label,min,max,step)=>{const obj=o==='a'?audioSet:settings;return'<label class="set"><span>'+label+'</span><input type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+obj[k]+'" data-s="'+k+'" data-o="'+o+'"><b>'+Math.round(obj[k]*100)+'%</b></label>';};
-  return'<div class="scr mid"><div class="panel narrow col" style="max-width:380px;text-align:center"><h2>Paused</h2><span class="dim sml">'+(M?(M.hunt?'Free Hunt':'Mission '+(M.sea+1)+'-'+M.m)+' · '+MODES[M.mode].n:'')+'</span>'+
+  const ms=M?(()=>{const secs=M.clock/60,st=starTimes(M.mode,M.sea),tier=secs<st[0]?3:secs<st[1]?2:1;return '<div class="mstat"><div class="kv"><span>Objective</span><b style="text-align:right">'+esc(objText())+'</b></div><div class="kv"><span>Elapsed</span><b>'+fmtTime(secs)+'</b></div><div class="kv"><span>Stars</span><b style="color:var(--gold)">'+'★'.repeat(tier)+'<span style="color:#3c4654">'+'★'.repeat(3-tier)+'</span></b></div><div class="kv"><span>Kills</span><b>'+M.kills+'</b></div></div>';})():'';
+  return'<div class="scr mid"><div class="panel narrow col" style="max-width:380px;text-align:center"><h2>Paused</h2><span class="dim sml">'+(M?(M.hunt?'Free Hunt':'Mission '+(M.sea+1)+'-'+M.m)+' · '+MODES[M.mode].n:'')+'</span>'+ms+
   '<button class="btn primary wide" data-a="resume">Resume</button>'+
   '<div class="qset"><div class="set"><span>Pilot assist</span><div class="seg"><button class="btn sm'+(settings.assist?' on':'')+'" data-a="set" data-k="assist" data-v="true">On</button><button class="btn sm'+(!settings.assist?' on':'')+'" data-a="set" data-k="assist" data-v="false">Off</button></div></div>'+
   qsl('s','hud','HUD size',.7,1.6,.05)+qsl('a','music','Music',0,1,.05)+qsl('a','sfx','SFX',0,1,.05)+'</div>'+
