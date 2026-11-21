@@ -22,8 +22,8 @@ into one `index.html`. Works on desktop and mobile.
 - **Arsenal.** Pulse/charged beam laser, ion, plasma, vulcan cannon, flak, barrel rolls, afterburner,
   target lock, and a heat/overheat model.
 - **Progression.** Per-difficulty careers: Cadet/Pilot/Ace keep separate upgrades (20/40/60 level
-  ceilings), ships, mods, cosmetics and campaign progress, so a maxed Cadet ship can't carry you
-  through Ace. Credits, 8 upgrade tracks, unlockable hulls and trails, star ratings and bosses.
+  ceilings), ships, mods, cosmetics, campaign progress and **credit wallets**, so a maxed Cadet ship
+  can't carry you through Ace. 8 upgrade tracks, unlockable hulls and trails, star ratings and bosses.
 - **Anywhere.** Keyboard, gamepad, or a fully customizable touch layout (drag buttons, mirror,
   scale). Procedural music + SFX via Web Audio.
 

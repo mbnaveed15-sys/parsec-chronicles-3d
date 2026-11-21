@@ -83,6 +83,9 @@ button{font-family:inherit;color:inherit}
 .stars i{font-style:normal;color:#3c4654;text-shadow:none}
 .stars.big{font-size:3em;line-height:1}
 .tabs{display:flex;gap:.4em;flex-wrap:wrap;justify-content:center}
+.hubnav{position:sticky;top:0;z-index:4;display:flex;gap:.3em;flex-wrap:wrap;justify-content:center;padding:.45em .4em;margin:0 0 .6em;background:rgba(7,13,22,.93);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--ln);border-radius:10px}
+.hubnav .btn.sm{padding:.5em .75em;font-size:.8em}
+.manualnav{position:sticky;top:0;z-index:4;display:flex;gap:.3em;flex-wrap:wrap;justify-content:center;padding:.5em;margin-bottom:.7em;background:rgba(7,13,22,.93);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--ln);border-radius:10px}
 .setbar{position:sticky;top:0;z-index:3;display:flex;flex-direction:column;gap:.5em;padding:.55em .6em;margin:-.2em 0 .5em;background:rgba(7,13,22,.94);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--ln);border-radius:10px}
 .setsearch{font-size:.95em;padding:.5em .7em}
 .setgroup{margin-top:.2em}
@@ -230,6 +233,10 @@ const dUp=s=>{(s.gear||(s.gear={}))[s.diff]||(s.gear[s.diff]={});return s.gear[s
 const dList=(s,key)=>{const L=s[key]||(s[key]={});return L[s.diff]||(L[s.diff]=[0]);};
 const dGet=(s,key,fallback)=>(s[key]&&s[key][s.diff]!==undefined?s[key][s.diff]:fallback);
 const dSet=(s,key,val)=>{(s[key]||(s[key]={}))[s.diff]=val;};
+/* Credits are a per-difficulty wallet: earning on Cadet can't fund an Ace run. */
+const dGold=s=>{const g=s.gold;return (g&&typeof g==='object')?(+g[s.diff]||0):(+g||0);};
+const dGoldSet=(s,v)=>{if(!s.gold||typeof s.gold!=='object')s.gold={cadet:0,pilot:0,ace:0};s.gold[s.diff]=Math.max(0,Math.floor(v));};
+const dGoldAdd=(s,n)=>dGoldSet(s,dGold(s)+n);
 const MODES={
  battle:{n:'BATTLE',ic:'⚔',obj:'Destroy every hostile ship and the enemy station.',bonus:1,t:[30,45]},
  escort:{n:'ESCORT',ic:'➤',obj:'Protect the cargo freighter until it reaches the green beacon.',bonus:1.15,t:[45,65]},
@@ -311,7 +318,7 @@ function loadSettings(){
  audioSet=Object.assign({music:.55,sfx:.8},LS.get('pc_audio')||{});
 }
 function saveSettings(){LS.set('pc_settings',settings);LS.set('pc_audio',audioSet);}
-function newSave(name){const s={v:1,name:name||'Pilot',gold:0,up:{},prog:{campaign:{cadet:{},pilot:{},ace:{}}},diff:'cadet',ach:{},hulls:{},trails:{},hull:{},trail:{},ship:{},ships:{},best:{},mods:{},gear:{},lore:{},vulcanAuto:false,cnt:{kills:0,gold:0,wins:0,voy:0,ram:0,boss:0,sectors:0,hunt:0,elite:0,flaw:0,wEsc:0,wHun:0,wDef:0,wTot:0,wPil:0,wAce:0,bAce:0},touch:{mirror:false,scale:1,stick:true,pos:{}}};initGear(s);for(const d of DRANKS){s.ships[d]=[0];s.hulls[d]=[0];s.trails[d]=[0];s.ship[d]=0;s.hull[d]=0;s.trail[d]=0;s.best[d]=0;}return s;}
+function newSave(name){const s={v:1,name:name||'Pilot',gold:{cadet:0,pilot:0,ace:0},up:{},prog:{campaign:{cadet:{},pilot:{},ace:{}}},diff:'cadet',ach:{},hulls:{},trails:{},hull:{},trail:{},ship:{},ships:{},best:{},mods:{},gear:{},lore:{},vulcanAuto:false,cnt:{kills:0,gold:0,wins:0,voy:0,ram:0,boss:0,sectors:0,hunt:0,elite:0,flaw:0,wEsc:0,wHun:0,wDef:0,wTot:0,wPil:0,wAce:0,bAce:0},touch:{mirror:false,scale:1,stick:true,pos:{}}};initGear(s);for(const d of DRANKS){s.ships[d]=[0];s.hulls[d]=[0];s.trails[d]=[0];s.ship[d]=0;s.hull[d]=0;s.trail[d]=0;s.best[d]=0;}return s;}
 function initGear(s){if(!s.gear)s.gear={};for(const d of DRANKS){const g=s.gear[d]||(s.gear[d]=UPK.reduce((o,k)=>(o[k]=0,o),{weapons:0,hull:0,engines:0,cap:0,target:0,arc:0,squad:0,wing:0}));const cap=DMAX[d];for(const k of UPK)g[k]=clamp((+g[k])|0,0,cap);}}
 function migrate(s,d){
  /* v1 saves stored one global loadout. Copy it into Ace as a retired-veteran head start,
@@ -329,7 +336,9 @@ function migrate(s,d){
 }
 function sanitize(d){
  const s=newSave('Pilot');if(!d||typeof d!=='object')return s;
- s.name=String(d.name||'Pilot').slice(0,16);s.gold=Math.max(0,+d.gold||0);
+ s.name=String(d.name||'Pilot').slice(0,16);
+ if(d.gold&&typeof d.gold==='object'){s.gold={};for(const r of DRANKS)s.gold[r]=Math.max(0,Math.floor(+d.gold[r]||0));}
+ else{const g=Math.max(0,Math.floor(+d.gold||0));s.gold={cadet:0,pilot:0,ace:0};s.gold[DIFFS[d.diff]?d.diff:'cadet']=g;}
  for(const df in DIFFS){const src=d.prog&&d.prog.campaign&&d.prog.campaign[df];if(src)for(const k in src){const lv=+k,st=src[k]&&+src[k].stars;if(lv>=1&&lv<=500&&st>0)s.prog.campaign[df][lv]={stars:clamp(st|0,1,3)};}}
  s.diff=DIFFS[d.diff]?d.diff:'cadet';
  if(d.ach)for(const a of DEEDS)if(d.ach[a.id])s.ach[a.id]=1;
@@ -359,7 +368,7 @@ function sanitize(d){
  if(d.touch&&typeof d.touch==='object'){s.touch.mirror=!!d.touch.mirror;s.touch.scale=clamp(+d.touch.scale||1,.6,1.6);s.touch.stick=d.touch.stick!==false;if(d.touch.pos)for(const k in d.touch.pos){const p=d.touch.pos[k];if(Array.isArray(p)&&p.length===2)s.touch.pos[k]=[clamp(+p[0]||0,0,1),clamp(+p[1]||0,0,1)];}}
  return s;
 }
-function freeSave(){const s=newSave('FREE ROAM');s.free=true;s.gold=9999999;for(const r of DRANKS){s.ships[r]=SHIPS.map(x=>x.i);s.hulls[r]=HULLS.map((x,i)=>i);s.trails[r]=TRAILS.map((x,i)=>i);s.ship[r]=14;s.best[r]=14;s.gear[r]=UPK.reduce((o,k)=>(o[k]=DMAX[r],o),{});for(const x of SHIPS)(s.mods[r][x.i]||(s.mods[r][x.i]=[])).push(0,1,2,3);}return s;}
+function freeSave(){const s=newSave('FREE ROAM');s.free=true;s.gold={cadet:9999999,pilot:9999999,ace:9999999};for(const r of DRANKS){s.ships[r]=SHIPS.map(x=>x.i);s.hulls[r]=HULLS.map((x,i)=>i);s.trails[r]=TRAILS.map((x,i)=>i);s.ship[r]=14;s.best[r]=14;s.gear[r]=UPK.reduce((o,k)=>(o[k]=DMAX[r],o),{});for(const x of SHIPS)(s.mods[r][x.i]||(s.mods[r][x.i]=[])).push(0,1,2,3);}return s;}
 function persist(){if(save&&!save.free&&slotIdx>=0)LS.set('pc_save_'+slotIdx,save);}
 function starsOf(lv,diff){const o=save.prog.campaign[diff||save.diff][lv];return o?o.stars:0;}
 function reached(){if(save.free)return 500;let m=0;const o=save.prog.campaign[save.diff];for(const k in o)if(o[k].stars>0&&+k>m)m=+k;return Math.min(500,m+1);}
@@ -1811,18 +1820,25 @@ function drawPreviews(){
 /* ---------------- MENUS (DOM overlays) ---------------- */
 const UI={cur:'',arg:null,ret:'title',tab:'up',sea:0,confirm:-1,pvH:-1,pvT:-1};
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),1900);}
+const HUBNAME={hangar:1,shop:1,cosm:1,deeds:1,sectors:1,settings:1,help:1};
+function hubNav(cur){
+ const items=[['hangar','Hangar'],['shop','Shop'],['cosm','Cosmetics'],['deeds','Deeds'],['sectors','Campaign'],['settings','Systems'],['help','Manual']];
+ return '<div class="hubnav">'+items.map(function(it){return '<button class="btn sm'+(it[0]===cur?' on':'')+'" data-a="nav" data-v="'+it[0]+'">'+it[1]+'</button>';}).join('')+'</div>';
+}
 function show(name,arg,keep){
  const el=$('ui'),st=keep?el.scrollTop:0;UI.cur=name;UI.arg=arg;
  if(!name){el.className='';el.innerHTML='';return;}
- el.innerHTML=SCREENS[name](arg);
+ var html=SCREENS[name](arg);
+ if(state==='menu'&&HUBNAME[name])html=html.replace(/(<div class="scr"[^>]*>)/,'$1'+hubNav(name));
+ el.innerHTML=html;
  el.className='on'+((state==='pause'||state==='end')?' clear':'')+(name==='layout'?' float':'')+(keep?'':' in');
  el.scrollTop=st;
 }
 function refresh(){show(UI.cur,UI.arg,true);}
 function fmtGold(g){return save&&save.free?'∞':Math.floor(g).toLocaleString('en-US');}
-function hdr(title){return'<div class="hdr"><button class="btn sm" data-a="back">◀ Back</button><h2>'+title+'</h2>'+(save?'<span class="cr">'+fmtGold(save.gold)+'</span>':'')+'</div>';}
+function hdr(title){return'<div class="hdr"><button class="btn sm" data-a="back">◀ Back</button><h2>'+title+'</h2>'+(save?'<span class="cr" title="'+DIFFS[save.diff].n+' wallet">'+fmtGold(dGold(save))+'</span>':'')+'</div>';}
 function reachedOf(s){if(s.free)return 500;let m=0;for(const d in s.prog.campaign){const o=s.prog.campaign[d];for(const k in o)if(o[k].stars>0&&+k>m)m=+k;}return Math.min(500,m+1);}
-function spend(c){if(save.free)return true;if(save.gold<c){sfx('deny');toast('Not enough credits');return false;}save.gold-=c;return true;}
+function spend(c){if(save.free)return true;if(dGold(save)<c){sfx('deny');toast('Not enough credits on '+DIFFS[save.diff].n);return false;}dGoldSet(save,dGold(save)-c);return true;}
 function rendererLabel(){const r=window.R3D;if(r&&r.ready&&!r.failed)return settings.gfx==='classic'?'CLASSIC 2D':settings.gfx.toUpperCase()+' 3D';if(r&&r.failed)return'CLASSIC 2D (3D unavailable)';return'CLASSIC 2D · loading 3D…';}
 function r3dReady(){applyGfx();if(UI.cur==='title'||UI.cur==='settings')refresh();}
 
@@ -1841,7 +1857,7 @@ const SCREENS={
    if(d){
     const s=sanitize(d),r=reachedOf(s);
     h+='<div class="card"><span class="tag">Slot '+(i+1)+'</span><h3>'+esc(s.name)+'</h3>'+
-     '<div class="kv"><span>Credits</span><b>'+Math.floor(s.gold).toLocaleString('en-US')+'</b></div>'+
+     '<div class="kv"><span>Credits ('+DIFFS[s.diff].n+')</span><b>'+dGold(s).toLocaleString('en-US')+'</b></div>'+
      '<div class="kv"><span>Furthest mission</span><b>'+((r-1)/50+1|0)+'-'+((r-1)%50+1)+' · '+SEAS[(r-1)/50|0].n+'</b></div>'+
      '<div class="kv"><span>Ship</span><b>'+SHIPS[dGet(s,'ship',0)].n+'</b></div><div class="kv"><span>Voyages / kills</span><b>'+s.cnt.voy+' / '+s.cnt.kills+'</b></div>'+
      '<div class="row"><button class="btn primary" data-a="fly" data-v="'+i+'">Fly</button><button class="btn sm" data-a="exp" data-v="'+i+'">Export</button><button class="btn sm warn" data-a="del" data-v="'+i+'">'+(UI.confirm===i?'Confirm delete?':'Delete')+'</button></div></div>';
@@ -1923,7 +1939,7 @@ const SCREENS={
    const cap=DMAX[s.diff];
    for(const k of UPK){const u=UPG[k],l=du[k],mx=l>=cap,c=upCost(k),lk=mx?'':upLock(k);
     h+='<div class="card"><div class="row"><h3 style="flex:1">'+u.n+'</h3><span class="tag">Lv '+l+' / '+cap+'</span></div><span class="dim sml">'+u.d+'</span><div class="statbar"><i style="width:'+Math.min(100,l/cap*100)+'%"></i></div>'+
-     '<button class="btn sm'+(mx||lk?' dis':(!s.free&&s.gold<c?' warn':''))+'" data-a="buyup" data-v="'+k+'">'+(mx?'Maxed':lk?'🔒 '+lk:'Upgrade · ◈ '+fmtNum(c))+'</button></div>';}
+     '<button class="btn sm'+(mx||lk?' dis':(!s.free&&dGold(s)<c?' warn':''))+'" data-a="buyup" data-v="'+k+'">'+(mx?'Maxed':lk?'🔒 '+lk:'Upgrade · ◈ '+fmtNum(c))+'</button></div>';}
    h+='</div>';
   }else if(t==='dock'){
    for(let tr=0;tr<5;tr++){
@@ -1934,7 +1950,7 @@ const SCREENS={
       '<div class="kv"><span>Hull</span><b>'+c.hp+'</b></div><div class="statbar"><i style="width:'+(c.hp/1850*100)+'%"></i></div>'+
       '<div class="kv"><span>Damage</span><b>'+c.dmg+'</b></div><div class="statbar"><i style="width:'+(c.dmg/86*100)+'%"></i></div>'+
       '<div class="kv"><span>Speed</span><b>'+c.spd+'</b></div><div class="statbar"><i style="width:'+((c.spd-3.5)/1.8*100)+'%"></i></div>'+
-      (cur?'<button class="btn sm on dis">In service</button>':own?'<button class="btn sm" data-a="useship" data-v="'+c.i+'">Fly this ship</button>':lock?'<button class="btn sm dis">🔒 '+why+'</button>':'<button class="btn sm'+(!s.free&&s.gold<c.cost?' warn':' gold')+'" data-a="buyship" data-v="'+c.i+'">Buy · ◈ '+fmtNum(c.cost)+'</button>')+'</div>';
+      (cur?'<button class="btn sm on dis">In service</button>':own?'<button class="btn sm" data-a="useship" data-v="'+c.i+'">Fly this ship</button>':lock?'<button class="btn sm dis">🔒 '+why+'</button>':'<button class="btn sm'+(!s.free&&dGold(s)<c.cost?' warn':' gold')+'" data-a="buyship" data-v="'+c.i+'">Buy · ◈ '+fmtNum(c.cost)+'</button>')+'</div>';
     }
     h+='</div></div>';
    }
@@ -1942,7 +1958,7 @@ const SCREENS={
    const c=SHIPS[dGet(s,'ship',0)],own=(s.mods[s.diff]&&s.mods[s.diff][dGet(s,'ship',0)])||[];
    h+='<div class="panel"><div class="row"><div style="flex:0 0 200px;max-width:40%"><canvas class="pv" data-idx="'+c.i+'" width="312" height="192"></canvas></div><div class="col" style="flex:1"><h3>Mods for '+c.n+'</h3><span class="dim sml">Mods are fitted to one hull and stay with it. Switch ships in the Dockyard to fit another.</span></div></div><div class="grid g2" style="margin-top:.8em">';
    MODS.forEach((md,i)=>{const has=own.includes(i),dl=diffLock(md),lock=!has&&(r<md.at||!!dl),why=dl||('Unlocks at mission '+md.at);
-    h+='<div class="card'+(has?' sel':'')+(lock?' lock':'')+'"><h3>'+md.n+'</h3><span class="dim sml">'+md.d+'</span>'+(has?'<button class="btn sm on dis">Fitted</button>':lock?'<button class="btn sm dis">🔒 '+why+'</button>':'<button class="btn sm'+(!s.free&&s.gold<md.cost?' warn':'')+'" data-a="buymod" data-v="'+i+'">Fit · ◈ '+fmtNum(md.cost)+'</button>')+'</div>';});
+    h+='<div class="card'+(has?' sel':'')+(lock?' lock':'')+'"><h3>'+md.n+'</h3><span class="dim sml">'+md.d+'</span>'+(has?'<button class="btn sm on dis">Fitted</button>':lock?'<button class="btn sm dis">🔒 '+why+'</button>':'<button class="btn sm'+(!s.free&&dGold(s)<md.cost?' warn':'')+'" data-a="buymod" data-v="'+i+'">Fit · ◈ '+fmtNum(md.cost)+'</button>')+'</div>';});
    h+='</div></div>';
   }
   return h+'</div>';
@@ -1953,8 +1969,8 @@ const SCREENS={
   const sw=(o,kind)=>kind==='hull'?(o.fin==='chrome'?'linear-gradient(135deg,#ffffff,#9aa4b0 35%,#f4f8fc 55%,#5a6470 80%,#d8dee6)':'linear-gradient(135deg,'+shade(o.c,.25)+','+o.c+' 55%,'+shade(o.c,-.5)+')'):(o.rb?'linear-gradient(90deg,#ff4040,#ffd700,#40ff70,#40c8ff,#a040ff,#ff40c0)':'radial-gradient(circle at 30% 50%,#fff,'+o.c+' 40%,rgba(0,0,0,.2) 100%)');
   const item=(o,i,kind,list,cur,pvi)=>{const own=list.includes(i),on=cur===i,dl=diffLock(o),lock=!own&&(r<o.at||!!dl),pvon=pvi===i,why=dl||('Mission '+o.at);
    return'<div class="card'+(on?' sel':'')+(lock?' lock':'')+'"'+(pvon?' style="border-color:var(--gold);box-shadow:0 0 18px rgba(255,209,102,.35)"':'')+'><div class="sw" data-a="pv'+kind+'" data-v="'+i+'" title="Tap to preview" style="cursor:pointer;background:'+sw(o,kind)+'"></div><b>'+o.n+(pvon?' <span class="tag" style="color:var(--gold);border-color:var(--gold)">Preview</span>':'')+'</b>'+
-   (on?'<button class="btn sm on dis">Applied</button>':own?'<button class="btn sm" data-a="use'+kind+'" data-v="'+i+'">Apply</button>':lock?'<button class="btn sm dis">🔒 '+why+'</button>':'<button class="btn sm'+(!s.free&&s.gold<o.cost?' warn':'')+'" data-a="buy'+kind+'" data-v="'+i+'">◈ '+fmtNum(o.cost)+'</button>')+'</div>';};
-   const act=(o,i,kind,list)=>{const own=list.includes(i),dl=diffLock(o),lock=!own&&(r<o.at||!!dl),why=dl||('Mission '+o.at);return own?'<button class="btn sm primary" data-a="use'+kind+'" data-v="'+i+'">Apply '+o.n+'</button>':lock?'<button class="btn sm dis">'+o.n+' · 🔒 '+why+'</button>':'<button class="btn sm gold'+(!s.free&&s.gold<o.cost?' warn':'')+'" data-a="buy'+kind+'" data-v="'+i+'">Buy '+o.n+' · ◈ '+fmtNum(o.cost)+'</button>';};
+   (on?'<button class="btn sm on dis">Applied</button>':own?'<button class="btn sm" data-a="use'+kind+'" data-v="'+i+'">Apply</button>':lock?'<button class="btn sm dis">🔒 '+why+'</button>':'<button class="btn sm'+(!s.free&&dGold(s)<o.cost?' warn':'')+'" data-a="buy'+kind+'" data-v="'+i+'">◈ '+fmtNum(o.cost)+'</button>')+'</div>';};
+   const act=(o,i,kind,list)=>{const own=list.includes(i),dl=diffLock(o),lock=!own&&(r<o.at||!!dl),why=dl||('Mission '+o.at);return own?'<button class="btn sm primary" data-a="use'+kind+'" data-v="'+i+'">Apply '+o.n+'</button>':lock?'<button class="btn sm dis">'+o.n+' · 🔒 '+why+'</button>':'<button class="btn sm gold'+(!s.free&&dGold(s)<o.cost?' warn':'')+'" data-a="buy'+kind+'" data-v="'+i+'">Buy '+o.n+' · ◈ '+fmtNum(o.cost)+'</button>';};
   const pvTag='<span class="tag" style="color:var(--gold);border-color:var(--gold)">Preview</span> ';
   let h='<div class="scr">'+hdr('Cosmetics · '+DIFFS[s.diff].n)+'<div class="panel"><div class="row"><div style="flex:0 0 300px;max-width:100%"><canvas class="pv" data-idx="'+dGet(s,'ship',0)+'" data-hull="'+HULLS[hi].c+'" data-trail="'+TRAILS[ti].c+'"'+(TRAILS[ti].rb?' data-prism="1"':'')+' width="416" height="256"></canvas></div><div class="col" style="flex:1;min-width:180px"><h3>'+SHIPS[dGet(s,'ship',0)].n+'</h3>'+
    '<div class="kv"><span>Hull colour</span><b>'+(ph>=0?pvTag:'')+HULLS[hi].n+'</b></div><div class="kv"><span>Engine trail</span><b>'+(pt>=0?pvTag:'')+TRAILS[ti].n+'</b></div>'+
@@ -1980,7 +1996,7 @@ const SCREENS={
   const q=(UI.setQ||'').trim().toLowerCase(),tab=UI.setTab||'audio';
   const G=[
    ['audio','Audio','<h3>Audio</h3>'+sl('a','music','Music volume',0,1,.05)+sl('a','sfx','SFX volume',0,1,.05)],
-   ['display','Display','<h3>Display</h3>'+seg('gfx','Graphics',[['high','High 3D'],['low','Low 3D'],['classic','Classic 2D']])+seg('res','Resolution',[['1080','1080p'],['native','Native'],['720','720p']])+'<div class="set" data-n="renderer"><span>Renderer</span><b style="flex:1;text-align:left;font-weight:400" class="dim">'+rendererLabel()+'</b></div>'+sl('s','hud','HUD size',.7,1.6,.05)+sl('s','shake','Screen shake',0,1.5,.05)+sl('s','text','Text size',.8,1.4,.05)+seg('glow','Player glow outline',[[true,'On'],[false,'Off']])],
+   ['display','Display','<h3>Display</h3>'+'<div class="set" data-n="preset quality performance"><span>Preset</span><div class="seg"><button class="btn sm" data-a="preset" data-v="quality">Quality</button><button class="btn sm" data-a="preset" data-v="balanced">Balanced</button><button class="btn sm" data-a="preset" data-v="performance">Performance</button></div></div>'+seg('gfx','Graphics',[['high','High 3D'],['low','Low 3D'],['classic','Classic 2D']])+seg('res','Resolution',[['1080','1080p'],['native','Native'],['720','720p']])+'<div class="set" data-n="renderer"><span>Renderer</span><b style="flex:1;text-align:left;font-weight:400" class="dim">'+rendererLabel()+'</b></div>'+sl('s','hud','HUD size',.7,1.6,.05)+sl('s','shake','Screen shake',0,1.5,.05)+sl('s','text','Text size',.8,1.4,.05)+seg('glow','Player glow outline',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.7em"><button class="btn sm warn" data-a="resetcfg">Reset all settings</button></div>'],
    ['flight','Flight','<h3>Flight</h3>'+sl('s','turn','Turn speed',.6,1.6,.05)+sl('s','thrust','Thrust power',.6,1.6,.05)],
    ['autopilot','Autopilot','<h3>Autopilot</h3>'+seg('assist','Pilot assist',[[true,'On'],[false,'Off']])+(settings.assist||q?seg('assistClimb','Auto-climb obstacles',[[true,'On'],[false,'Off']])+seg('assistFlak','Auto-flak plasma',[[true,'On'],[false,'Off']])+seg('assistBrace','Auto-brace (shield)',[[true,'On'],[false,'Off']])+seg('assistRoll','Auto-roll dodge',[[true,'On'],[false,'Off']])+seg('hideAssisted','Hide assisted buttons',[[true,'On'],[false,'Off']]):'<p class="dim sml">Turn Pilot assist on to configure its individual behaviours.</p>')],
    ['controls','Controls','<h3>Controls &amp; device</h3>'+seg('land','Force landscape',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.6em"><button class="btn sm" data-a="layout">Touch layout editor</button><button class="btn sm" data-a="fs">Fullscreen</button></div><p class="dim sml" style="margin-top:.7em">Key bindings are listed in the Manual (H).</p>']
@@ -2007,9 +2023,9 @@ const SCREENS={
   '<button class="btn sm'+(t.stick!==false?' on':'')+'" data-a="lstick">'+(t.stick!==false?'Fixed stick':'Floating stick')+'</button><button class="btn sm warn" data-a="lreset">Reset</button><button class="btn sm primary" data-a="back">Done</button></div></div></div>';
  },
  help(){
-  return'<div class="scr">'+hdr('Flight Manual')+'<div class="panel help">'+
+  return'<div class="scr">'+hdr('Flight Manual')+'<div class="manualnav">'+[['controls','Controls'],['flight','Flight'],['weapons','Weapons'],['stations','Stations'],['missions','Missions'],['hangar','Hangar']].map(function(x){return '<button class="btn sm" data-a="jump" data-v="'+x[0]+'">'+x[1]+'</button>';}).join('')+'</div>'+'<div class="panel help">'+
   '<h3 style="margin-top:0">Your commission</h3><p>You hunt the renegade <b>Halvard Kray</b> through 10 sectors of 50 missions each. Every 10th mission is a boss; mission 50 is the sector captain. Clear a mission to open the next. Faster clears earn more stars. Progress is kept separately for Cadet, Pilot and Ace.</p>'+
-  '<h3>Keyboard &amp; mouse</h3><table>'+
+  '<h3 id="sec-controls">Keyboard &amp; mouse</h3><table>'+
   '<tr><td>W / S</td><td>Thrust forward / reverse</td></tr><tr><td>A / D</td><td>Yaw left / right (the ship banks into turns)</td></tr>'+
   '<tr><td>Space</td><td>Fire. The laser shoots the moment you press; hold for rapid pulses, with a heavy beam each time the charge ring fills</td></tr>'+
   '<tr><td>C / wheel / 1–4</td><td>Cycle or pick weapon</td></tr><tr><td>V</td><td>Toggle vulcan auto-fire</td></tr><tr><td>G</td><td>Flak burst (also detonates enemy plasma)</td></tr>'+
@@ -2018,22 +2034,22 @@ const SCREENS={
   '<tr><td>B</td><td>Cockpit: full 3D flight (3D only)</td></tr><tr><td>M</td><td>Large map</td></tr><tr><td>H</td><td>This manual</td></tr><tr><td>Esc / P</td><td>Pause</td></tr></table>'+
   '<h3>Xbox gamepad</h3><table><tr><td>Left stick</td><td>Steer toward the stick, thrust with deflection</td></tr><tr><td>A / B / X / Y</td><td>Fire / flak / vulcan auto / lock target</td></tr><tr><td>LB · RB</td><td>Cycle weapons</td></tr><tr><td>LT · RT</td><td>Brake · afterburner</td></tr><tr><td>L3 · R3</td><td>Climb · brace</td></tr><tr><td>D-pad ◀ ▶</td><td>Barrel roll</td></tr><tr><td>Start</td><td>Pause</td></tr></table>'+
   '<h3>Touch</h3><p>Left stick steers and thrusts. Buttons: FIRE, WPN, FLAK, SHLD (brake + brace), ROLL, AIM, BURN, VULC, CLIMB and pause. Tap an enemy to lock it, tap the minimap to enlarge it. Rearrange everything in Settings → Touch layout editor (drag, mirror, resize, fixed or floating stick); the layout is saved per pilot.</p>'+
-  '<h3>Flight</h3><p>Ships drift: thrust adds speed along your heading and friction is mild, so brake or counter-thrust to stop. <b>Altitude</b> matters: above 35% you clear asteroids, above 65% you clear moons and planets. Planets are <b>gravity wells</b> that pull ships and bend ion and plasma shots. <b>Ramming</b> hurts both ships by closing speed; the Hull upgrade adds ram damage and the Reactive mod softens impacts. Your <b>shield</b> absorbs damage first and starts recharging 5 seconds after the last hit. Pilot Assist auto-climbs over obstacles and damps sideways drift.</p><p><b>Cockpit flight (B / COCKPIT button):</b> full 3D — W/S or the stick pitches the nose, A/D yaws, auto-cruise thrust, Q/BURN boost, Shift/SHLD brake. Climb above the planets, dive to attack.</p><p><b>Pilot Assist</b> auto-climbs obstacles, fires flak at incoming plasma, braces against hits and barrel-rolls to dodge. Each assist has its own toggle in Settings, and <i>Hide assisted buttons</i> hides the matching touch buttons for the assists you leave on.</p>'+
-  '<h3>Weapons</h3><table>'+
+  '<h3 id="sec-flight">Flight</h3><p>Ships drift: thrust adds speed along your heading and friction is mild, so brake or counter-thrust to stop. <b>Altitude</b> matters: above 35% you clear asteroids, above 65% you clear moons and planets. Planets are <b>gravity wells</b> that pull ships and bend ion and plasma shots. <b>Ramming</b> hurts both ships by closing speed; the Hull upgrade adds ram damage and the Reactive mod softens impacts. Your <b>shield</b> absorbs damage first and starts recharging 5 seconds after the last hit. Pilot Assist auto-climbs over obstacles and damps sideways drift.</p><p><b>Cockpit flight (B / COCKPIT button):</b> full 3D — W/S or the stick pitches the nose, A/D yaws, R/F sets your throttle, Q/BURN boost, Shift/SHLD brake. Climb above the planets, dive to attack.</p><p><b>Pilot Assist</b> auto-climbs obstacles, fires flak at incoming plasma, braces against hits and barrel-rolls to dodge. Each assist has its own toggle in Settings, and <i>Hide assisted buttons</i> hides the matching touch buttons for the assists you leave on.</p>'+
+  '<h3 id="sec-weapons">Weapons</h3><table>'+
   '<tr><td style="color:#7de3ff">LASER</td><td>Instant hit, range 1150, with a wider auto-aim cone than other weapons; cyan brackets mark the ship your next shot will hit. Tap for a pulse; hold for 3 pulses a second plus a charged beam whenever the ring fills. The Weapons upgrade raises its fire rate (up to 5 a second) and charge speed.</td></tr>'+
   '<tr><td style="color:#c87dff">ION</td><td>Fast bolt that slows the target. Bends in gravity.</td></tr>'+
   '<tr><td style="color:#ff7043">PLASMA</td><td>Slow heavy bolt that burns over time. Limited charges, restocked by docking.</td></tr>'+
   '<tr><td style="color:#ffd700">VULCAN</td><td>Bullet stream, best inside 380 m. Overheats. V lets it fire by itself.</td></tr>'+
   '<tr><td style="color:#ffd700">FLAK</td><td>9-pellet spread on a long cooldown. Shoots down plasma.</td></tr></table>'+
   '<p>Shots auto-aim at targets inside your <b>fire arc</b> (widen it with the Fire Arc upgrade). A ghost diamond shows where ion and plasma will land. Targeting upgrades add critical hits, shown in gold.</p>'+
-  '<h3>Stations</h3><p>Each side may hold a station with three turrets. Its <b>defense field</b> (the ring) burns enemy ships inside it and reduces damage to friends inside by 35%. Park inside your own ring to <b>dock</b>: hull repairs, shields recharge and plasma restocks.</p>'+
-  '<h3>Missions</h3><table>'+
+  '<h3 id="sec-stations">Stations</h3><p>Each side may hold a station with three turrets. Its <b>defense field</b> (the ring) burns enemy ships inside it and reduces damage to friends inside by 35%. Park inside your own ring to <b>dock</b>: hull repairs, shields recharge and plasma restocks.</p>'+
+  '<h3 id="sec-missions">Missions</h3><table>'+
   '<tr><td>⚔ Battle</td><td>Destroy every hostile ship and the enemy station.</td></tr><tr><td>➤ Escort</td><td>Guard the freighter to the green beacon. It halts while enemies are close.</td></tr>'+
   '<tr><td>◎ Hunted</td><td>Kill the golden marked ship.</td></tr><tr><td>▣ Defend</td><td>Survive three waves of rammers aimed at your station.</td></tr>'+
   '<tr><td>✹ Total War</td><td>Battle against a station with +50% armour, +25% pay.</td></tr><tr><td>☠ Boss</td><td>Kill the captain, the escort and the station.</td></tr><tr><td>∞ Hunt</td><td>Free mode from the Hangar: reach the kill target.</td></tr></table>'+
   '<p>Weather: <b>ion storms</b> telegraph EMP strikes with a ring — leave it or lose your shields; <b>dust fog</b> cuts visibility.</p>'+
-  '<p><b>Streaks:</b> kills within 5.5 seconds of each other build a streak worth +10% bounty each, up to +100%. <b>Elites</b> (purple) are tougher, hit harder and always drop a powerup. Bosses call reinforcements at half hull.</p>'+'<h3>Pickups</h3><p>Wrecks and asteroids drop flotsam: gold (credits), green (repair), blue (coolant). Powerups: Medkit, Plasma restock, speed Boost, Damage ×1.5, Shield overcharge, Gold.</p>'+
-  '<h3>Hangar</h3><p>Spend credits on upgrades, new ships (15 classes across Scout, Fighter and Defender), per-ship mods, hull colours and engine trails. Wingmates fly ships of your class tier. Deeds pay bonus credits. Export a pilot as text from Pilot Select to back it up or move it.</p><p><b>Each difficulty is its own career:</b> Cadet, Pilot and Ace keep separate upgrades, ships, mods, cosmetics and campaign progress. Upgrade ceilings are 20 / 40 / 60 levels per track, and the heavier ships, mods and finishes require the higher difficulty — a fully upgraded Cadet ship cannot carry you through Ace. Switching difficulty in the Hangar swaps your whole loadout; credits are shared.</p></div></div>';
+  '<p><b>Streaks:</b> kills within 5.5 seconds of each other build a streak worth +10% bounty each, up to +100%. <b>Elites</b> (purple) are tougher, hit harder and always drop a powerup. Bosses call reinforcements at half hull.</p>'+'<h3 id="sec-pickups">Pickups</h3><p>Wrecks and asteroids drop flotsam: gold (credits), green (repair), blue (coolant). Powerups: Medkit, Plasma restock, speed Boost, Damage ×1.5, Shield overcharge, Gold.</p>'+
+  '<h3 id="sec-hangar">Hangar</h3><p>Spend credits on upgrades, new ships (15 classes across Scout, Fighter and Defender), per-ship mods, hull colours and engine trails. Wingmates fly ships of your class tier. Deeds pay bonus credits. Export a pilot as text from Pilot Select to back it up or move it.</p><p><b>Each difficulty is its own career:</b> Cadet, Pilot and Ace keep separate upgrades, ships, mods, cosmetics and campaign progress. Upgrade ceilings are 20 / 40 / 60 levels per track, and the heavier ships, mods and finishes require the higher difficulty — a fully upgraded Cadet ship cannot carry you through Ace. Switching difficulty in the Hangar swaps your whole loadout; each difficulty also has its own credit wallet, so earnings on Cadet cannot fund an Ace run.</p></div></div>';
  },
  pause(){
   const qsl=(o,k,label,min,max,step)=>{const obj=o==='a'?audioSet:settings;return'<label class="set"><span>'+label+'</span><input type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+obj[k]+'" data-s="'+k+'" data-o="'+o+'"><b>'+Math.round(obj[k]*100)+'%</b></label>';};
@@ -2063,7 +2079,7 @@ function leaveMission(){state='menu';M=null;player=null;lockT=null;layoutTouch()
 function checkDeeds(r){
  const got=[];r=r||{};
  const ev={nohit:r.win&&r.noHit,flawless:r.win&&r.noHit&&r.stars===3,swift:r.win&&r.secs<20,swift15:r.win&&r.secs<15};
- for(const d of DEEDS){if(save.ach[d.id])continue;let ok=ev[d.id];if(ok===undefined){const p=deedProg(d.id);ok=!!p&&p[0]>=p[1];}if(ok){save.ach[d.id]=1;save.gold+=d.g;got.push(d);}}
+ for(const d of DEEDS){if(save.ach[d.id])continue;let ok=ev[d.id];if(ok===undefined){const p=deedProg(d.id);ok=!!p&&p[0]>=p[1];}if(ok){save.ach[d.id]=1;dGoldAdd(save,d.g);got.push(d);}}
  return got;
 }
 /* collection deeds can be earned in the hangar: check after each purchase */
@@ -2074,7 +2090,7 @@ function showEnd(){
  else if(hunt)reward=Math.round(m.kills*5*m.D.r);
  const total=reward+m.gold;
  if(!save.free){
-  const c=save.cnt;save.gold+=total;c.gold+=total;c.voy++;
+  const c=save.cnt;dGoldAdd(save,total);c.gold+=total;c.voy++;
   if(hunt)c.hunt=Math.max(c.hunt,m.kills);
   if(win){
    c.wins++;if(m.mode==='boss')c.boss++;
@@ -2142,6 +2158,9 @@ const ACT={
  pvreset(){UI.pvH=UI.pvT=-1;refresh();},
  usetrail(v){const i=+v;if(dList(save,'trails').includes(i)){dSet(save,'trail',i);UI.pvT=-1;persist();refresh();}},
  set(v,el){const k=el.dataset.k;settings[k]=v==='true'?true:v==='false'?false:v;saveSettings();applyGfx();resize();refresh();},
+ preset(v){const P={quality:{gfx:'high',res:isTouch?'1080':'native',shake:1,glow:true},balanced:{gfx:'high',res:'1080',shake:1,glow:true},performance:{gfx:'low',res:'720',shake:.3,glow:false}}[v];if(!P)return;Object.assign(settings,P);saveSettings();applyGfx();resize();refresh();toast('Preset: '+v.charAt(0).toUpperCase()+v.slice(1));},
+ resetcfg(){Object.assign(settings,{glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistClimb:true,assistFlak:true,assistBrace:true,assistRoll:true,hideAssisted:false,gfx:isTouch?'low':'high',res:'1080'});Object.assign(audioSet,{music:.55,sfx:.8});saveSettings();applyGfx();setVol();resize();refresh();toast('Settings reset to defaults');},
+ jump(v){const el=document.getElementById('sec-'+v);if(el&&el.scrollIntoView)el.scrollIntoView({block:'start',behavior:'smooth'});},
  layout(){if(!save){toast('Select a pilot first — layouts are saved per pilot');return;}editLayout=true;if(!TEL)buildTouch();show('layout');layoutTouch();},
  lmirror(){save.touch.mirror=!save.touch.mirror;layoutTouch();refresh();},
  lsize(v){save.touch.scale=clamp((save.touch.scale||1)+(+v)*.1,.6,1.6);layoutTouch();},
