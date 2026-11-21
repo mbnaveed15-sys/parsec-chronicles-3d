@@ -92,7 +92,7 @@ button{font-family:inherit;color:inherit}
 .setgroup{margin-top:.2em}
 .setcols{display:grid;grid-template-columns:1fr 1fr;gap:0 1.8em;height:calc(100vh - 234px);min-height:110px;overflow:hidden;width:100%}
 .setcol{overflow-y:auto;min-height:0;padding-right:6px}
-@media (max-width:760px){.setcols{grid-template-columns:1fr;height:auto;min-height:0}.setcol{overflow:visible}}
+/* settings stays two columns at every width (app rotates for landscape) */
 /* boot sequences */
 #bootseq{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,#0b1626,#04080f 72%);font-family:Orbitron,sans-serif;color:#cfe6f5;transition:opacity .4s}
 #bootseq.out{opacity:0}
@@ -197,7 +197,7 @@ textarea{min-height:11em;font-family:ui-monospace,Consolas,monospace;font-size:.
 .cosm-col{position:relative;min-width:0;padding:.5em .55em;overflow:hidden}
 .cosm-col h3{margin:0;font-size:.8em}
 .cscroll{position:absolute;left:.55em;right:.55em;top:2.05em;bottom:.5em;overflow-y:auto;display:flex;flex-direction:column;gap:.35em;padding-right:3px}
-@media (max-width:620px){.cosgrid{grid-template-columns:1fr 1fr}.cosm-pv{grid-column:1/-1}.cosm-col{position:static;overflow:visible}.cscroll{position:static;max-height:240px;margin-top:.3em}}
+/* keep preview beside the colour columns at every width (app rotates for landscape) */
 .shopgrid{display:grid;grid-template-columns:minmax(220px,320px) minmax(0,1fr);gap:.8em;align-items:start;width:100%;max-width:1180px;margin-top:.2em}
 .shop-side{display:flex;flex-direction:column;gap:.45em;min-width:0}
 .shop-side .pv{width:100%;aspect-ratio:13/8;height:auto}
@@ -241,7 +241,7 @@ textarea{min-height:11em;font-family:ui-monospace,Consolas,monospace;font-size:.
 .card.sc .pv{aspect-ratio:13/8;height:auto;width:100%;border-radius:6px}
 .chips{display:flex;gap:.35em;flex-wrap:wrap;font-size:.6em;color:var(--dim)}
 .chips span{border:1px solid var(--ln);border-radius:5px;padding:.14em .45em;font-family:Orbitron,sans-serif;letter-spacing:.03em;white-space:nowrap}
-.ugrid{display:grid;gap:.55em;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));width:100%;max-width:980px;max-height:calc(100vh - 160px);overflow-y:auto;padding-right:4px}
+.ugrid{display:grid;gap:.55em;grid-template-columns:repeat(auto-fill,minmax(212px,1fr));grid-auto-rows:max-content;align-content:start;align-items:start;width:100%;max-width:980px;max-height:calc(100vh - 160px);overflow-y:auto;padding-right:4px}
 #ui{scrollbar-width:thin;scrollbar-color:rgba(125,227,255,.3) transparent}
 #ui::-webkit-scrollbar{width:9px}
 #ui::-webkit-scrollbar-thumb{background:rgba(125,227,255,.22);border-radius:6px}
@@ -1497,7 +1497,7 @@ function resize(){
  if(window.R3D&&R3D.resize){try{R3D.resize();}catch(e){}}
  layoutTouch();
 }
-function applyGfx(){if(window.R3D&&!R3D.failed)R3D.on=settings.gfx!=='classic';document.documentElement.style.setProperty('--fs',settings.text);}
+function applyGfx(){if(window.R3D&&R3D.failed){if(settings.gfx!=='classic'){settings.gfx='classic';saveSettings();}}else if(window.R3D){R3D.on=settings.gfx!=='classic';}document.documentElement.style.setProperty('--fs',settings.text);}
 function w2s(x,y,z){
  if(U3){const p=R3D.w2s(x,y,z||0);SX=p.x;SY=p.y;}
  else{SX=x-camX;SY=H/2+(y-camY-H/2)*TILT-(z||0)*ALT_PX;}
@@ -2144,7 +2144,7 @@ const SCREENS={
   const q=(UI.setQ||'').trim().toLowerCase(),tab=UI.setTab||'audio';
   const G=[
    ['audio','Comms','<h3>Comms / Audio</h3>'+sl('a','music','Music volume',0,1,.05)+sl('a','sfx','SFX volume',0,1,.05)],
-   ['display','Optics','<h3>Optics / Display</h3>'+'<div class="set" data-n="preset quality performance"><span>Preset</span><div class="seg"><button class="btn sm" data-a="preset" data-v="quality">Quality</button><button class="btn sm" data-a="preset" data-v="balanced">Balanced</button><button class="btn sm" data-a="preset" data-v="performance">Performance</button></div></div>'+seg('gfx','Graphics',[['high','High 3D'],['low','Low 3D'],['classic','Classic 2D']])+seg('res','Resolution',[['1080','1080p'],['native','Native'],['720','720p']])+'<div class="set" data-n="renderer"><span>Renderer</span><b style="flex:1;text-align:left;font-weight:400" class="dim">'+rendererLabel()+'</b></div>'+sl('s','hud','HUD size',.7,1.6,.05)+sl('s','shake','Screen shake',0,1.5,.05)+sl('s','text','Text size',.8,1.4,.05)+seg('glow','Player glow outline',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.7em"><button class="btn sm warn" data-a="resetcfg">Reset all settings</button></div>'],
+   ['display','Optics','<h3>Optics / Display</h3>'+'<div class="set" data-n="preset quality performance"><span>Preset</span><div class="seg"><button class="btn sm" data-a="preset" data-v="quality">Quality</button><button class="btn sm" data-a="preset" data-v="balanced">Balanced</button><button class="btn sm" data-a="preset" data-v="performance">Performance</button></div></div>'+seg('gfx','Graphics',[['high','High 3D'],['low','Low 3D'],['classic','Classic 2D']])+(window.R3D&&R3D.failed?'<p class="dim sml">3D unavailable on this device — running Classic 2D.</p>':'')+seg('res','Resolution',[['1080','1080p'],['native','Native'],['720','720p']])+'<div class="set" data-n="renderer"><span>Renderer</span><b style="flex:1;text-align:left;font-weight:400" class="dim">'+rendererLabel()+'</b></div>'+sl('s','hud','HUD size',.7,1.6,.05)+sl('s','shake','Screen shake',0,1.5,.05)+sl('s','text','Text size',.8,1.4,.05)+seg('glow','Player glow outline',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.7em"><button class="btn sm warn" data-a="resetcfg">Reset all settings</button></div>'],
    ['flight','Flight','<h3>Flight Control</h3>'+sl('s','turn','Turn speed',.6,1.6,.05)+sl('s','thrust','Thrust power',.6,1.6,.05)],
    ['autopilot','Autopilot','<h3>Autopilot</h3>'+seg('assist','Pilot assist',[[true,'On'],[false,'Off']])+(settings.assist||q?seg('assistClimb','Auto-climb obstacles',[[true,'On'],[false,'Off']])+seg('assistFlak','Auto-flak plasma',[[true,'On'],[false,'Off']])+seg('assistBrace','Auto-brace (shield)',[[true,'On'],[false,'Off']])+seg('assistRoll','Auto-roll dodge',[[true,'On'],[false,'Off']])+seg('hideAssisted','Hide assisted buttons',[[true,'On'],[false,'Off']]):'<p class="dim sml">Turn Pilot assist on to configure its individual behaviours.</p>')],
    ['controls','Bindings','<h3>Control Bindings</h3>'+seg('land','Force landscape',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.6em"><button class="btn sm" data-a="layout">Touch layout editor</button><button class="btn sm" data-a="fs">Fullscreen</button></div><p class="dim sml" style="margin-top:.7em">Key bindings are listed in the Manual (H).</p>']
