@@ -235,7 +235,7 @@ textarea{min-height:11em;font-family:ui-monospace,Consolas,monospace;font-size:.
 .dscroll{flex:1;min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:.55em;padding-right:4px}
 .dscroll>.card{flex:0 0 auto}
 .cscroll>.csw{flex:0 0 auto}
-@media (max-width:820px){.dockcols{grid-template-columns:1fr;height:auto;min-height:0}.dockcol{max-height:60vh}}
+/* keep the three role columns side by side at all widths (no stacking) */
 /* shop: columns scale to the viewport height and scroll internally */
 .scr.shopscr>.dockcols{height:calc(100vh - 160px)}
 .card.sc .pv{aspect-ratio:13/8;height:auto;width:100%;border-radius:6px}
