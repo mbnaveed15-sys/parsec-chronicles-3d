@@ -150,6 +150,27 @@ textarea{min-height:11em;font-family:ui-monospace,Consolas,monospace;font-size:.
 .sgrid div{background:rgba(255,255,255,.05);border-radius:8px;padding:.45em .3em;font-size:.78em;color:var(--dim)}
 .sgrid b{display:block;color:#fff;font-family:Orbitron,sans-serif;font-size:1.25em}
 @media (max-width:700px){.mgrid{grid-template-columns:repeat(5,1fr)}.set>span{flex-basis:7em}}
+/* ===== Phase 3 - ship's console skin ===== */
+.panel{position:relative;background:repeating-linear-gradient(0deg,rgba(125,227,255,.022) 0 1px,transparent 1px 4px),var(--pn)}
+.panel::before,.panel::after{content:"";position:absolute;width:16px;height:16px;pointer-events:none;border-color:rgba(125,227,255,.5);opacity:.8}
+.panel::before{left:5px;top:5px;border-left:2px solid;border-top:2px solid}
+.panel::after{right:5px;bottom:5px;border-right:2px solid;border-bottom:2px solid}
+.card::before{content:"";position:absolute;left:0;top:0;width:14px;height:14px;border-left:2px solid rgba(125,227,255,.45);border-top:2px solid rgba(125,227,255,.45);border-top-left-radius:11px;pointer-events:none;opacity:.7}
+.setgroup>h3,.help h3{display:flex;align-items:center;gap:.6em;letter-spacing:.2em}
+.setgroup>h3::before,.help h3::before{content:"";flex:0 0 auto;width:7px;height:7px;border-radius:50%;background:var(--grn);box-shadow:0 0 9px var(--grn);animation:ledPulse 2.6s ease-in-out infinite}
+.seg .btn{border-radius:6px;padding:.55em .8em;min-height:2.1em;letter-spacing:.07em}
+.seg .btn.on{box-shadow:0 0 14px rgba(60,180,230,.4),0 0 0 1px rgba(191,242,255,.45) inset}
+.seg .btn.on::before{content:"";display:inline-block;width:6px;height:6px;margin-right:.4em;border-radius:50%;background:#eaffff;box-shadow:0 0 8px #bff2ff}
+.termhead{font-family:Orbitron,sans-serif;font-weight:700;font-size:.6em;letter-spacing:.4em;color:var(--c);opacity:.78;text-transform:uppercase;border:1px solid var(--ln);border-radius:6px;padding:.55em 1.1em;margin-bottom:.5em;background:rgba(8,16,28,.5)}
+.scr{animation:scrIn .32s cubic-bezier(.2,.8,.2,1)}
+@keyframes scrIn{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:none}}
+@keyframes ledPulse{0%,100%{opacity:.4}50%{opacity:1}}
+#ui{scrollbar-width:thin;scrollbar-color:rgba(125,227,255,.3) transparent}
+#ui::-webkit-scrollbar{width:9px}
+#ui::-webkit-scrollbar-thumb{background:rgba(125,227,255,.22);border-radius:6px}
+#ui::-webkit-scrollbar-thumb:hover{background:rgba(125,227,255,.4)}
+#ui::-webkit-scrollbar-track{background:transparent}
+@media (prefers-reduced-motion:reduce){.scr{animation:none}.setgroup>h3::before,.help h3::before{animation:none}}
 </style>
 </head>
 <body>
@@ -1845,7 +1866,7 @@ function r3dReady(){applyGfx();if(UI.cur==='title'||UI.cur==='settings')refresh(
 
 const SCREENS={
  title(){
-  return'<div class="scr mid"><div class="logo">PARSEC<br>CHRONICLES <em>3D</em><small>THE HUNT FOR HALVARD KRAY</small></div>'+
+  return'<div class="scr mid"><div class="termhead">Commission Terminal · 10 Sectors · Clearance Granted</div><div class="logo">PARSEC<br>CHRONICLES <em>3D</em><small>THE HUNT FOR HALVARD KRAY</small></div>'+
   '<canvas class="pv" data-idx="13" data-hull="#2a4d8a" data-trail="#7de3ff" width="416" height="256" style="max-width:280px;background:none"></canvas>'+'<p class="tagline">Ten sectors. Five hundred sorties. One renegade waiting at the edge of the map.</p>'+
   '<button class="btn primary" data-a="nav" data-v="pilots" style="font-size:1.05em;padding:1em 2.8em">Launch</button>'+
   '<div class="row c"><button class="btn sm" data-a="nav" data-v="settings">Settings</button><button class="btn sm" data-a="nav" data-v="help">Manual</button><button class="btn sm" data-a="fs">Fullscreen</button></div>'+
@@ -1996,11 +2017,11 @@ const SCREENS={
   const seg=(k,label,opts)=>'<div class="set" data-n="'+label.toLowerCase()+'"><span>'+label+'</span><div class="seg">'+opts.map(o=>'<button class="btn sm'+(String(settings[k])===String(o[0])?' on':'')+'" data-a="set" data-k="'+k+'" data-v="'+o[0]+'">'+o[1]+'</button>').join('')+'</div></div>';
   const q=(UI.setQ||'').trim().toLowerCase(),tab=UI.setTab||'audio';
   const G=[
-   ['audio','Audio','<h3>Audio</h3>'+sl('a','music','Music volume',0,1,.05)+sl('a','sfx','SFX volume',0,1,.05)],
-   ['display','Display','<h3>Display</h3>'+'<div class="set" data-n="preset quality performance"><span>Preset</span><div class="seg"><button class="btn sm" data-a="preset" data-v="quality">Quality</button><button class="btn sm" data-a="preset" data-v="balanced">Balanced</button><button class="btn sm" data-a="preset" data-v="performance">Performance</button></div></div>'+seg('gfx','Graphics',[['high','High 3D'],['low','Low 3D'],['classic','Classic 2D']])+seg('res','Resolution',[['1080','1080p'],['native','Native'],['720','720p']])+'<div class="set" data-n="renderer"><span>Renderer</span><b style="flex:1;text-align:left;font-weight:400" class="dim">'+rendererLabel()+'</b></div>'+sl('s','hud','HUD size',.7,1.6,.05)+sl('s','shake','Screen shake',0,1.5,.05)+sl('s','text','Text size',.8,1.4,.05)+seg('glow','Player glow outline',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.7em"><button class="btn sm warn" data-a="resetcfg">Reset all settings</button></div>'],
-   ['flight','Flight','<h3>Flight</h3>'+sl('s','turn','Turn speed',.6,1.6,.05)+sl('s','thrust','Thrust power',.6,1.6,.05)],
+   ['audio','Comms','<h3>Comms / Audio</h3>'+sl('a','music','Music volume',0,1,.05)+sl('a','sfx','SFX volume',0,1,.05)],
+   ['display','Optics','<h3>Optics / Display</h3>'+'<div class="set" data-n="preset quality performance"><span>Preset</span><div class="seg"><button class="btn sm" data-a="preset" data-v="quality">Quality</button><button class="btn sm" data-a="preset" data-v="balanced">Balanced</button><button class="btn sm" data-a="preset" data-v="performance">Performance</button></div></div>'+seg('gfx','Graphics',[['high','High 3D'],['low','Low 3D'],['classic','Classic 2D']])+seg('res','Resolution',[['1080','1080p'],['native','Native'],['720','720p']])+'<div class="set" data-n="renderer"><span>Renderer</span><b style="flex:1;text-align:left;font-weight:400" class="dim">'+rendererLabel()+'</b></div>'+sl('s','hud','HUD size',.7,1.6,.05)+sl('s','shake','Screen shake',0,1.5,.05)+sl('s','text','Text size',.8,1.4,.05)+seg('glow','Player glow outline',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.7em"><button class="btn sm warn" data-a="resetcfg">Reset all settings</button></div>'],
+   ['flight','Flight','<h3>Flight Control</h3>'+sl('s','turn','Turn speed',.6,1.6,.05)+sl('s','thrust','Thrust power',.6,1.6,.05)],
    ['autopilot','Autopilot','<h3>Autopilot</h3>'+seg('assist','Pilot assist',[[true,'On'],[false,'Off']])+(settings.assist||q?seg('assistClimb','Auto-climb obstacles',[[true,'On'],[false,'Off']])+seg('assistFlak','Auto-flak plasma',[[true,'On'],[false,'Off']])+seg('assistBrace','Auto-brace (shield)',[[true,'On'],[false,'Off']])+seg('assistRoll','Auto-roll dodge',[[true,'On'],[false,'Off']])+seg('hideAssisted','Hide assisted buttons',[[true,'On'],[false,'Off']]):'<p class="dim sml">Turn Pilot assist on to configure its individual behaviours.</p>')],
-   ['controls','Controls','<h3>Controls &amp; device</h3>'+seg('land','Force landscape',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.6em"><button class="btn sm" data-a="layout">Touch layout editor</button><button class="btn sm" data-a="fs">Fullscreen</button></div><p class="dim sml" style="margin-top:.7em">Key bindings are listed in the Manual (H).</p>']
+   ['controls','Bindings','<h3>Control Bindings</h3>'+seg('land','Force landscape',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.6em"><button class="btn sm" data-a="layout">Touch layout editor</button><button class="btn sm" data-a="fs">Fullscreen</button></div><p class="dim sml" style="margin-top:.7em">Key bindings are listed in the Manual (H).</p>']
   ];
   let body='';
   if(q){
@@ -2013,7 +2034,7 @@ const SCREENS={
    const g=G.find(x=>x[0]===tab)||G[0];body='<div class="setgroup">'+g[2]+'</div>';
   }
   const tabs=q?'':'<div class="tabs">'+G.map(g=>'<button class="btn sm'+(g[0]===tab?' on':'')+'" data-a="settab" data-v="'+g[0]+'">'+g[1]+'</button>').join('')+'</div>';
-  return'<div class="scr">'+hdr('Settings')+'<div class="panel narrow col" style="max-width:640px;gap:.1em">'+
+  return'<div class="scr">'+hdr('Ship Systems')+'<div class="panel narrow col" style="max-width:640px;gap:.1em">'+
   '<div class="setbar"><input type="text" class="setsearch" id="setq" placeholder="Search settings — try “turn”, “flak”, “hud”…" value="'+esc(UI.setQ||'')+'" autocomplete="off">'+tabs+'</div>'+
   body+'</div></div>';
  },
