@@ -43,7 +43,8 @@ into one `index.html`. Works on desktop and mobile.
 | Q / Shift | Afterburner / brake |
 | Z / X | Barrel roll |
 | C / V / G | Switch weapon / vulcan / flak |
-| E / M / B | Target lock / map / cockpit |
+| E / M | Target lock / map |
+| B | Cycle view: diorama → cockpit → tail (3D only) |
 
 ### Cockpit (press B)
 | Key | Action |
@@ -58,6 +59,8 @@ into one `index.html`. Works on desktop and mobile.
 
 On touch: the left stick pitches/yaws, a **throttle lever** appears on the left, and FIRE / BURN /
 SHLD buttons handle weapons, boost and brake. Mission 1 walks you through the cockpit scheme.
+
+View cycling is a diorama/3D control only. In Classic 2D the eye button, `B` binding and the cockpit/tail views are removed from the active scheme.
 
 ## Game modes
 Battle · Total War · Boss · Hunted (ace duel) · Escort · Defend · Free Hunt — spread across

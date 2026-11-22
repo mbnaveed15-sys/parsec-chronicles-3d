@@ -900,7 +900,7 @@ function layoutTouch(){
  const put=(el,id,x,y,sz)=>{const p=t.pos&&t.pos[id];let fx=p?p[0]:x;const fy=p?p[1]:y;if(t.mirror)fx=1-fx;el.style.left=(fx*100)+'%';el.style.top=(fy*100)+'%';el.style.width=el.style.height=(sz*sc)+'px';el.style.fontSize=Math.max(9,sz*sc*.19)+'px';};
  for(const b of TB)put(TEL[b[0]],b[0],b[2],b[3],b[4]);
  put(TEL.stick,'stick',STICK[0],STICK[1],STICK[2]);
- if(TEL.cockpit)TEL.cockpit.classList.toggle('on',!!(cockpitOn||tailOn));const hid=settings.assist&&settings.hideAssisted&&!editLayout;const hmap={climb:'assistClimb',shield:'assistBrace',roll:'assistRoll',flak:'assistCm',ab1:'assistCm'};for(const id in hmap)if(TEL[id])TEL[id].style.display=(hid&&settings[hmap[id]])?'none':'';
+ if(TEL.cockpit)TEL.cockpit.classList.toggle('on',!!(cockpitOn||tailOn));const hid=settings.assist&&settings.hideAssisted&&!editLayout;const hmap={climb:'assistClimb',shield:'assistBrace',roll:'assistRoll',flak:'assistCm',ab1:'assistCm'};for(const id in hmap)if(TEL[id])TEL[id].style.display=(hid&&settings[hmap[id]])?'none':'';if(TEL.cockpit)TEL.cockpit.style.display=view3D()?'':'none';
  TEL.stick.style.display=(t.stick===false&&!editLayout)?'none':'';
  if(TEL.thr)TEL.thr.style.display=((viewMode!==0)&&!editLayout)?'block':'none';
  root.style.display=((touchOn&&state==='play')||editLayout)?'block':'none';
@@ -913,7 +913,7 @@ function tpress(id,v){
   case'fire':T.fire=v;break;case'burner':T.burn=v;break;case'climb':T.climb=v;break;
   case'shield':T.brake=v;if(v)playerBrace();break;
   case'weapon':if(v)cycleWeapon(1);break;case'roll':if(v)playerRoll(0);break;case'flak':if(v)playerFlak();break;
-  case'aim':if(v)toggleLock();break;case'vulcan':if(v)toggleVulcan();break;case'cockpit':if(v)cycleView();break;
+  case'aim':if(v)toggleLock();break;case'vulcan':if(v)toggleVulcan();break;case'cockpit':if(v&&view3D())cycleView();break;
   case'ab1':if(v)useAbility(1);break;case'ab2':if(v)useAbility(2);break;
  }
 }
@@ -1344,15 +1344,16 @@ function applyCockpitWorld(on){
 }
 function setView(v){
  v=clamp(v|0,0,2);
- if(v!==0&&(settings.gfx==='classic'||(window.R3D&&R3D.failed))){toast('3D views need 3D graphics');sfx('deny');v=0;}
+ if(v!==0&&!view3D()){toast('3D views need 3D graphics');sfx('deny');v=0;}
  viewMode=v;cockpitOn=v===1;tailOn=v===2;window.tailOn=tailOn;window.cockpitOn=cockpitOn;window.tailFixed=settings.tailCam==='fixed';
  if(player){player.pitch=0;player.rollA=0;if(viewMode!==0){player.z=Math.max(player.z,.4);cockpitThrottle=clamp(cockpitThrottle||0,0,1);}else player.z=0;}
  applyCockpitWorld(v!==0);layoutTouch();
  toast(v===0?'DIORAMA VIEW':v===1?'COCKPIT — R/F THROTTLE · W/S PITCH':'TAIL VIEW — CHASE CAMERA');sfx('click');
  if(v===1)window.__viewSnap=true;if(v===2)window.__tailSnap=true;
 }
+function view3D(){return !(settings.gfx==='classic'||(window.R3D&&window.R3D.failed));}
 function cycleView(){
- if(settings.gfx==='classic'||(window.R3D&&R3D.failed)){toast('3D views need 3D graphics');sfx('deny');return;}
+ if(!view3D())return;
  setView((viewMode+1)%3);
 }
 function toggleCockpit(){cycleView();}
@@ -2053,7 +2054,7 @@ function resize(){
  if(window.R3D&&R3D.resize){try{R3D.resize();}catch(e){}}
  layoutTouch();
 }
-function applyGfx(){if(window.R3D&&R3D.failed){if(settings.gfx!=='classic'){settings.gfx='classic';saveSettings();try{document.documentElement.lang=settings.lang||'en';}catch(e){}}}else if(window.R3D){R3D.on=settings.gfx!=='classic';}document.documentElement.style.setProperty('--fs',settings.text);
+function applyGfx(){if(window.R3D&&R3D.failed){if(settings.gfx!=='classic'){settings.gfx='classic';saveSettings();try{document.documentElement.lang=settings.lang||'en';}catch(e){}}}else if(window.R3D){R3D.on=settings.gfx!=='classic';}if(!view3D()&&viewMode!==0)setView(0);document.documentElement.style.setProperty('--fs',settings.text);
  if(cv){const cl=settings.cb&&settings.cb!=='none'?({'deuter':'cb-deut','protan':'cb-prot','tritan':'cb-trit'}[settings.cb]||''):'';for(const el of [cv,$('glCanvas')]){if(!el)continue;el.classList.remove('cb-deut','cb-prot','cb-trit');if(cl)el.classList.add(cl);}}}
 function w2s(x,y,z){
  if(U3){const p=R3D.w2s(x,y,z||0);SX=p.x;SY=p.y;}
@@ -2906,10 +2907,10 @@ const SCREENS={
   '<tr><td>C / wheel / 1–4</td><td>Cycle or pick weapon</td></tr><tr><td>V</td><td>Toggle vulcan auto-fire</td></tr><tr><td>G</td><td>Flak burst (also detonates enemy plasma)</td></tr>'+
   '<tr><td>Shift</td><td>Space brake</td></tr><tr><td>Q</td><td>Afterburner (builds heat; overheating locks it)</td></tr><tr><td>R</td><td>Climb. Release to sink back</td></tr>'+
   '<tr><td>E / click</td><td>Aim assist: lock the nearest enemy, or click one to lock it</td></tr><tr><td>F</td><td>Brace: halve incoming damage for a moment</td></tr><tr><td>Z / X</td><td>Barrel roll left / right: a sideways dash that shots pass through</td></tr>'+
-  '<tr><td>B</td><td>Cycle view: diorama → cockpit → tail (3D for cockpit/tail)</td></tr><tr><td>M</td><td>Large map</td></tr><tr><td>H</td><td>This manual</td></tr><tr><td>Esc / P</td><td>Pause</td></tr></table>'+
+  (view3D()?'<tr><td>B</td><td>Cycle view: diorama → cockpit → tail (3D only)</td></tr>':'')+'<tr><td>M</td><td>Large map</td></tr><tr><td>H</td><td>This manual</td></tr><tr><td>Esc / P</td><td>Pause</td></tr></table>'+
   '<h3>Xbox gamepad</h3><table><tr><td>Left stick</td><td>Steer toward the stick, thrust with deflection</td></tr><tr><td>A / B / X / Y</td><td>Fire / flak / vulcan auto / lock target</td></tr><tr><td>LB · RB</td><td>Cycle weapons</td></tr><tr><td>LT · RT</td><td>Brake · afterburner</td></tr><tr><td>L3 · R3</td><td>Climb · brace</td></tr><tr><td>D-pad ◀ ▶</td><td>Barrel roll</td></tr><tr><td>Start</td><td>Pause</td></tr></table>'+
-  '<h3>Touch</h3><p>Left stick steers and thrusts. Buttons: FIRE, WPN, FLAK, SHLD (brake + brace), ROLL, AIM, BURN, VULC, CLIMB, the eye (view cycle) and pause. Tap an enemy to lock it, tap the minimap to enlarge it. Rearrange everything in Settings → Touch layout editor (drag, mirror, resize, fixed or floating stick); the layout is saved per pilot.</p>'+
-  '<h3 id="sec-flight">Flight</h3><p>Ships drift: thrust adds speed along your heading and friction is mild, so brake or counter-thrust to stop. <b>Altitude</b> matters: above 35% you clear asteroids, above 65% you clear moons and planets. Planets are <b>gravity wells</b> that pull ships and bend ion and plasma shots. <b>Ramming</b> hurts both ships by closing speed; the Hull upgrade adds ram damage and the Reactive mod softens impacts. Your <b>shield</b> absorbs damage first and starts recharging 5 seconds after the last hit. Pilot Assist auto-climbs over obstacles, damps sideways drift, and (with Auto countermeasures on) fires flak at incoming plasma and pops flares at inbound missiles.</p><p><b>Views (B / eye button):</b> cycles <b>diorama → cockpit → tail</b>. Cockpit is full 3D — W/S or the stick pitches the nose, A/D yaws, R/F sets throttle. Tail flies exactly the same 3D model from a chase camera outside the hull; floating yaw by default (set Fixed in Systems → Optics for a rigid mount).</p><p><b>Pilot Assist</b> auto-climbs obstacles, fires flak at incoming plasma, pops flares at inbound missiles, braces against hits and barrel-rolls to dodge. Each assist has its own toggle in Settings, and <i>Hide assisted buttons</i> hides the matching touch buttons for the assists you leave on.</p>'+
+  '<h3>Touch</h3><p>Left stick steers and thrusts. Buttons: FIRE, WPN, FLAK, SHLD (brake + brace), ROLL, AIM, BURN, VULC, CLIMB'+(view3D()?', the eye (view cycle)':'')+' and pause. Tap an enemy to lock it, tap the minimap to enlarge it. Rearrange everything in Settings → Touch layout editor (drag, mirror, resize, fixed or floating stick); the layout is saved per pilot.</p>'+
+  '<h3 id="sec-flight">Flight</h3><p>Ships drift: thrust adds speed along your heading and friction is mild, so brake or counter-thrust to stop. <b>Altitude</b> matters: above 35% you clear asteroids, above 65% you clear moons and planets. Planets are <b>gravity wells</b> that pull ships and bend ion and plasma shots. <b>Ramming</b> hurts both ships by closing speed; the Hull upgrade adds ram damage and the Reactive mod softens impacts. Your <b>shield</b> absorbs damage first and starts recharging 5 seconds after the last hit. Pilot Assist auto-climbs over obstacles, damps sideways drift, and (with Auto countermeasures on) fires flak at incoming plasma and pops flares at inbound missiles.</p>'+(view3D()?'<p><b>Views (B / eye button):</b> cycles <b>diorama → cockpit → tail</b>. Cockpit is full 3D — W/S or the stick pitches the nose, A/D yaws, R/F sets throttle. Tail flies exactly the same 3D model from a chase camera outside the hull; floating yaw by default (set Fixed in Systems → Optics for a rigid mount).</p>':'<p><b>View cycling is a 3D/diorama control.</b> Classic 2D always uses the diorama.</p>')+'<p><b>Pilot Assist</b> auto-climbs obstacles, fires flak at incoming plasma, pops flares at inbound missiles, braces against hits and barrel-rolls to dodge. Each assist has its own toggle in Settings, and <i>Hide assisted buttons</i> hides the matching touch buttons for the assists you leave on.</p>'+
   '<h3 id="sec-weapons">Weapons</h3><table>'+
   '<tr><td style="color:#7de3ff">LASER</td><td>Instant hit, range 1150, with a wider auto-aim cone than other weapons; cyan brackets mark the ship your next shot will hit. Tap for a pulse; hold for 3 pulses a second plus a charged beam whenever the ring fills. The Weapons upgrade raises its fire rate (up to 5 a second) and charge speed.</td></tr>'+
   '<tr><td style="color:#c87dff">ION</td><td>Fast bolt that slows the target. Bends in gravity.</td></tr>'+
