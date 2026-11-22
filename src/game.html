@@ -61,6 +61,7 @@ html.kbnav #ui button:focus,#ui button.kb{outline:2px solid #7de3ff;outline-offs
 .btn.primary{background:linear-gradient(180deg,#2aa7cf,#136a8e);border-color:#9fe9ff;color:#fff;box-shadow:0 0 22px rgba(60,180,230,.35)}
 .btn.gold{background:linear-gradient(180deg,#b88a2a,#7a5914);border-color:#ffe09a}
 .btn.warn{border-color:rgba(255,110,90,.5);color:#ffb7ac}
+.abortwarn{margin:.35em 0 .55em;padding:.65em .75em;border:1px solid rgba(255,110,90,.38);border-radius:10px;background:rgba(72,22,18,.38);color:#ffc7bd;font-size:.86em;line-height:1.35;text-align:left}
 .btn.sm{padding:.5em .8em;font-size:.72em;min-height:2.3em}
 .btn.on{background:linear-gradient(180deg,#2aa7cf,#136a8e);border-color:#bff2ff;color:#fff}
 .btn.dis,.btn:disabled{opacity:.38;pointer-events:none;filter:grayscale(.6)}
@@ -824,7 +825,7 @@ addEventListener('keydown',e=>{
    case'Digit1':case'Digit2':case'Digit3':case'Digit4':case'Digit5':case'Digit6':setWeapon(+e.code.slice(5)-1);break;
    case'Digit7':useAbility(1);break;case'Digit8':useAbility(2);break;
   }
- }else if(state==='pause'&&(e.code==='Escape'||e.code==='KeyP')){ACT.resume();}
+ }else if(state==='pause'&&(e.code==='Escape'||e.code==='KeyP')){if(UI.cur==='confirmAbort')ACT.abortNo();else ACT.resume();}
  else if(e.code==='Escape'){const b=document.querySelector('#ui [data-a=back]');if(b)b.click();}
  else if(e.code==='Enter'){const b=document.querySelector('#ui .btn.primary');if(b)b.click();}
 });
@@ -1382,8 +1383,8 @@ function clickWorld(sx,sy){
  for(const s of stations){if(s.dead||s.team!==1)continue;const d=Math.hypot(s.x-WX,s.y-WY)-s.r;if(d<bd){bd=d;best=s;}}
  lockT=best;if(best)sfx('lock');
 }
-function pauseGame(){if(state!=='play')return;state='pause';T.fire=T.burn=T.climb=T.brake=false;T.son=false;UI.ret='pause';show('pause');layoutTouch();}
-function openHelp(){if(state!=='play')return;state='pause';UI.ret='pause';show('help');layoutTouch();}
+function pauseGame(){if(state!=='play')return;state='pause';T.fire=T.burn=T.climb=T.brake=false;T.son=false;UI.ret='pause';UI.abortConfirm=false;const o=document.getElementById('mintro');if(o)o.remove();show('pause');layoutTouch();}
+function openHelp(){if(state!=='play')return;state='pause';UI.ret='pause';UI.abortConfirm=false;const o=document.getElementById('mintro');if(o)o.remove();show('help');layoutTouch();}
 
 function pickFallback(p){
  const lo=p.loadout||[0];
@@ -2937,6 +2938,11 @@ const SCREENS={
   qsl('s','hud','HUD size',.7,1.6,.05)+qsl('a','music','Music',0,1,.05)+qsl('a','sfx','SFX',0,1,.05)+'</div>'+
   '<button class="btn wide" data-a="restart">'+(M&&M.mode==='range'?'Restart range':'Restart mission')+'</button><button class="btn wide" data-a="nav" data-v="settings">All settings</button><button class="btn wide" data-a="nav" data-v="help">Manual</button><button class="btn warn wide" data-a="abort">Abort to hangar</button></div></div>';
  },
+ confirmAbort(){
+  const range=!!(M&&M.mode==='range');
+  return'<div class="scr mid dlg"><div class="panel narrow col" style="max-width:400px;text-align:center"><h2>Abandon mission?</h2><div class="abortwarn">'+(range?'This ends the practice range and returns you to the hangar.':'The current sortie will end and this mission will not be marked complete. Your pilot, unlocks and credits already banked are kept.')+'</div><span class="dim sml">'+(M?(M.mode==='range'?'Practice range':(M.hunt?'Free Hunt':'Mission '+(M.sea+1)+'-'+M.m)):'')+' is still paused.</span>'+
+  '<button class="btn primary wide" data-a="abortNo">Keep playing</button><button class="btn warn wide" data-a="abortYes">'+(range?'End practice range':'Abandon mission')+'</button></div></div>';
+ },
  end(a){
   const m=M;
   let d='',dg=0;for(const x of a.deeds)dg+=x.g;for(const x of a.deeds)d+='<div class="kv"><span>Deed: '+x.n+'</span><b style="color:var(--gold)">+◈ '+x.g+'</b></div>';
@@ -3022,6 +3028,7 @@ const ACT={
  back(){
   const c=UI.cur;UI.confirm=-1;
   if(c==='layout'){editLayout=false;persist();show('settings');layoutTouch();return;}
+  if(c==='confirmAbort'){ACT.abortNo();return;}
   if(c==='settings'||c==='help'){saveSettings();show(UI.ret||'title');return;}
   if(c==='pilots'){show('title');return;}
   if(c==='hangar'){persist();save=null;slotIdx=-1;show('pilots');return;}
@@ -3051,10 +3058,12 @@ const ACT={
  hunt(){show('brief',{lv:reached(),hunt:true});},
  cont(){show('brief',{lv:nextLv()});},
  launch(){const a=UI.arg;launchMission(a.lv,a.hunt);},
- resume(){if(state!=='pause')return;state='play';show('');acc=0;layoutTouch();},
+ resume(){if(state!=='pause')return;UI.abortConfirm=false;state='play';show('');acc=0;layoutTouch();},
  restart(){if(M&&M.mode==='range'){startPracticeRange();return;}launchMission(M.lv,M.hunt);},
  retry(){launchMission(M.lv,M.hunt);},
- abort(){if(M&&M.mode==='range'){leaveMission();show('hangar');return;}if(!save.free){save.cnt.voy++;persist();}leaveMission();show('hangar');},
+ abort(){UI.abortConfirm=true;show('confirmAbort');},
+ abortNo(){UI.abortConfirm=false;show('pause');},
+ abortYes(){UI.abortConfirm=false;if(M&&M.mode==='range'){leaveMission();show('hangar');return;}if(!save.free){save.cnt.voy++;persist();}leaveMission();show('hangar');},
  next(){const lv=M.lv+1;leaveMission();show('brief',{lv});},
  home(){leaveMission();show('hangar');},
  tab(v){UI.tab=v;show('shop');},
