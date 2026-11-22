@@ -91,8 +91,14 @@ html.kbnav #ui button:focus,#ui button.kb{outline:2px solid #7de3ff;outline-offs
 .manualnav{position:sticky;top:0;z-index:4;display:flex;gap:.3em;flex-wrap:wrap;justify-content:center;padding:.5em;margin-bottom:.7em;background:rgba(7,13,22,.93);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--ln);border-radius:10px}
 .setbar{position:sticky;top:0;z-index:3;display:flex;flex-direction:column;gap:.5em;padding:.55em .6em;margin:-.2em 0 .5em;background:rgba(7,13,22,.94);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);border:1px solid var(--ln);border-radius:10px}
 .setsearch{font-size:.95em;padding:.5em .7em}
+.setscr{height:calc(100dvh - 16px);min-height:0;padding-top:.5em;padding-bottom:.3em;justify-content:flex-start}
 .setgroup{margin-top:.2em}
 .setcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 1.4em;height:calc(100vh - 234px);min-height:110px;overflow:hidden;width:100%}
+.setpanel{flex:1 1 auto;min-height:0;height:auto;width:100%;max-width:1040px;display:flex;flex-direction:column;gap:.1em}
+.setpane{flex:1 1 auto;min-height:120px;overflow-y:auto;overflow-x:hidden;padding-right:6px}
+.settabs{justify-content:flex-start;gap:.25em}
+.settabs .btn{padding:.34em .55em;font-size:.74em}
+.setnote{font-size:.72em;line-height:1.3;color:var(--dim);margin:.15em 0 .45em}
 .setcol{overflow-y:auto;overflow-x:hidden;min-height:0;padding-right:6px}
 .setcol .set{flex-wrap:wrap;gap:.4em;align-items:flex-start}
 .setcol .set>span{flex:1 1 100%;margin-bottom:.05em}
@@ -480,7 +486,9 @@ const LS={
 const isTouch=!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
 var touchOn=isTouch,settings=null,audioSet=null,save=null,slotIdx=-1,SOFT_GL=false,SOFT_GPU='',SOFT_AUTO=false,SOFT_PREV='';
 function loadSettings(){
- settings=Object.assign({glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistClimb:true,assistFlak:true,assistBrace:true,assistRoll:true,hideAssisted:false,hc:false,lang:'en',cb:'none',tailCam:'float',gfx:isTouch?'low':'high',res:'1080',binds:{fire:'Space',lock:'KeyE',brace:'KeyF',flak:'KeyG',a1:'Digit7',a2:'Digit8'}},LS.get('pc_settings')||{});
+ var _rawSet=LS.get('pc_settings')||{};
+ settings=Object.assign({glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistClimb:true,assistCm:true,assistBrace:true,assistRoll:true,hideAssisted:false,hc:false,lang:'en',cb:'none',tailCam:'float',gfx:isTouch?'low':'high',res:'1080',binds:{fire:'Space',lock:'KeyE',brace:'KeyF',flak:'KeyG',a1:'Digit7',a2:'Digit8'}},_rawSet);
+ if(_rawSet.assistCm===undefined&&_rawSet.assistFlak!==undefined)settings.assistCm=_rawSet.assistFlak!==false;
  if(!/^(high|low|classic)$/.test(settings.gfx))settings.gfx='high';
  if(!/^(1080|native|720)$/.test(settings.res))settings.res='1080';
  try{document.body.classList.toggle('hc',!!settings.hc);}catch(e){}
@@ -797,7 +805,7 @@ function layoutTouch(){
  const put=(el,id,x,y,sz)=>{const p=t.pos&&t.pos[id];let fx=p?p[0]:x;const fy=p?p[1]:y;if(t.mirror)fx=1-fx;el.style.left=(fx*100)+'%';el.style.top=(fy*100)+'%';el.style.width=el.style.height=(sz*sc)+'px';el.style.fontSize=Math.max(9,sz*sc*.19)+'px';};
  for(const b of TB)put(TEL[b[0]],b[0],b[2],b[3],b[4]);
  put(TEL.stick,'stick',STICK[0],STICK[1],STICK[2]);
- if(TEL.cockpit)TEL.cockpit.classList.toggle('on',!!(cockpitOn||tailOn));const hid=settings.assist&&settings.hideAssisted&&!editLayout;const hmap={climb:'assistClimb',shield:'assistBrace',roll:'assistRoll',flak:'assistFlak'};for(const id in hmap)if(TEL[id])TEL[id].style.display=(hid&&settings[hmap[id]])?'none':'';
+ if(TEL.cockpit)TEL.cockpit.classList.toggle('on',!!(cockpitOn||tailOn));const hid=settings.assist&&settings.hideAssisted&&!editLayout;const hmap={climb:'assistClimb',shield:'assistBrace',roll:'assistRoll',flak:'assistCm',ab1:'assistCm'};for(const id in hmap)if(TEL[id])TEL[id].style.display=(hid&&settings[hmap[id]])?'none':'';
  TEL.stick.style.display=(t.stick===false&&!editLayout)?'none':'';
  if(TEL.thr)TEL.thr.style.display=((viewMode!==0)&&!editLayout)?'block':'none';
  root.style.display=((touchOn&&state==='play')||editLayout)?'block':'none';
@@ -1149,6 +1157,7 @@ function fireFlak(s,ang){
  s.flakCd=Math.round(500*(s.cdm||1));sfxAt('flak',s.x,s.y);
 }
 function nearPlasma(s,range){let best=null,bd=range;for(const p of projectiles){if(p.type!=='plasma'||p.team===s.team)continue;const d=Math.hypot(p.x-s.x,p.y-s.y);if(d<bd){bd=d;best=p;}}return best;}
+function nearMissile(s,range){let best=null,bd=range;for(const p of projectiles){if(p.dead||p.type!=='msl'||p.team===s.team)continue;const d=Math.hypot(p.x-s.x,p.y-s.y);if(d<bd){bd=d;best=p;}}return best;}
 
 /* ---------------- GUIDED MISSILES + SINGULARITY ---------------- */
 function singUnlocked(){return !!(save&&(save.free||(save.cnt&&save.cnt.boss>0)));}
@@ -1304,7 +1313,7 @@ function playerWeapons(p){
 }
 function autoDefend(){
  const p=player;if(!p||p.dead||!settings.assist)return;
- if(settings.assistFlak&&p.flakCd<=0){const pl=nearPlasma(p,420);if(pl)fireFlak(p,Math.atan2(pl.y-p.y,pl.x-p.x));}
+ if(settings.assist&&settings.assistCm){if(p.flakCd<=0){const pl=nearPlasma(p,420);if(pl)fireFlak(p,Math.atan2(pl.y-p.y,pl.x-p.x));}if((p.ab1cd||0)<=0&&nearMissile(p,260))useAbility(1);}
  let nd=1e9;for(const q of projectiles){if(q.team===0||q.life<=0)continue;const d=Math.hypot(q.x-p.x,q.y-p.y);if(d<nd)nd=d;}
  if(settings.assistBrace&&nd<200&&p.braceCd<=0){p.brace=90;p.braceCd=600;sfx('shield');}
  if(settings.assistRoll&&nd<110&&p.rollCd<=0){p.rollDir=Math.random()<.5?-1:1;p.roll=20;p.rollCd=140;const a=p.ang+p.rollDir*Math.PI/2;p.vx+=Math.cos(a)*5.5;p.vy+=Math.sin(a)*5.5;sfx('roll');}
@@ -2355,7 +2364,7 @@ function drawHUD(){
   c.fillStyle=wi===3?(p.vover>0?'#ff5a4a':'#ffd700'):w.c;c.fillRect(x+4,wy+23,31*(wi===4?clamp(p.msl/(p.mslMax||1),0,1):wi===3?f:1-f),2);
  }
  const mini=(x,label,f,col)=>{c.fillStyle='rgba(10,18,30,.6)';rr(c,x,wy+32,66,13,3);c.fill();c.fillStyle=col;c.globalAlpha=.3+.7*(f>=1?1:0);rr(c,x+2,wy+34,62*clamp(f,0,1),9,2);c.fill();c.globalAlpha=1;c.fillStyle='#ffffff';c.font='700 7px Orbitron';c.textAlign='center';c.fillText(label,x+33,wy+39);};
- mini(10,'FLAK AUTO',1-p.flakCd/500,settings.assistFlak?'#ffd700':'#5d522f');mini(80,'BRACE',p.brace>0?1:1-p.braceCd/600,'#ff9a3c');
+ mini(10,'CM AUTO',1-p.flakCd/500,settings.assistCm?'#ffd700':'#5d522f');mini(80,'BRACE',p.brace>0?1:1-p.braceCd/600,'#ff9a3c');
  mini(230,'FLARE 7',1-(p.ab1cd||0)/720,'#ffd166');mini(300,'OVRCHG 8',(!save||save.free||((save.cnt&&save.cnt.wins)||0)>=3)?1-(p.ab2cd||0)/1080:.0,'#b06bff');
  if(save.vulcanAuto){c.fillStyle='rgba(10,18,30,.6)';rr(c,150,wy+32,70,13,3);c.fill();c.fillStyle='#7de3ff';c.font='700 7px Orbitron';c.textAlign='center';c.fillText('VULCAN AUTO',185,wy+39);}
  let by=wy+50;c.textAlign='left';c.font='700 8px Orbitron';
@@ -2651,34 +2660,34 @@ const SCREENS={
  },
  settings(){
   const sl=(o,k,label,min,max,step)=>{const obj=o==='a'?audioSet:settings;return'<label class="set" data-n="'+label.toLowerCase()+'"><span>'+label+'</span><input type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+obj[k]+'" data-s="'+k+'" data-o="'+o+'"><b>'+Math.round(obj[k]*100)+'%</b></label>';};
-  const seg=(k,label,opts)=>'<div class="set" data-n="'+label.toLowerCase()+'"><span>'+label+'</span><div class="seg">'+opts.map(o=>'<button class="btn sm'+(String(settings[k])===String(o[0])?' on':'')+'" data-a="set" data-k="'+k+'" data-v="'+o[0]+'">'+o[1]+'</button>').join('')+'</div></div>';
-  const q=(UI.setQ||'').trim().toLowerCase(),tab=UI.setTab||'audio';
+  const seg=(k,label,opts,alt)=>'<div class="set" data-n="'+(label+(alt?' '+alt:'')).toLowerCase()+'"><span>'+label+'</span><div class="seg">'+opts.map(o=>'<button class="btn sm'+(String(settings[k])===String(o[0])?' on':'')+'" data-a="set" data-k="'+k+'" data-v="'+o[0]+'">'+o[1]+'</button>').join('')+'</div></div>';
+  const q=(UI.setQ||'').trim().toLowerCase(),tab=UI.setTab||'display';
   const keyName=c=>String(c||'').replace('Key','').replace('Digit','').replace('Numpad','NP');
   const bindRow=(a,l)=>'<div class="set" data-n="'+l.toLowerCase()+'"><span>'+l+'</span><button class="btn sm" data-a="bind" data-v="'+a+'">'+(UI.rebind===a?'PRESS A KEY':keyName(settings.binds&&settings.binds[a]))+'</button></div>';
   const G=[
    ['audio','Comms','<h3>Comms / Audio</h3>'+sl('a','music','Music volume',0,1,.05)+sl('a','sfx','SFX volume',0,1,.05)],
    ['display','Optics','<h3>Optics / Display</h3>'+'<div class="set" data-n="preset quality performance"><span>Preset</span><div class="seg"><button class="btn sm" data-a="preset" data-v="quality">Quality</button><button class="btn sm" data-a="preset" data-v="balanced">Balanced</button><button class="btn sm" data-a="preset" data-v="performance">Performance</button></div></div>'+seg('gfx','Graphics',[['high','High 3D'],['low','Low 3D'],['classic','Classic 2D']])+(SOFT_GL?'<p class="dim sml" style="color:#ffb96a">Software graphics detected'+(SOFT_AUTO?' — auto-switched to Classic 2D this session':'')+' ('+SOFT_GPU.slice(0,64)+'). Enable hardware acceleration in your browser for smooth 3D.</p>':'')+(window.R3D&&R3D.failed?'<p class="dim sml">3D unavailable on this device — running Classic 2D.</p>':'')+seg('res','Resolution',[['1080','1080p'],['native','Native'],['720','720p']])+'<div class="set" data-n="renderer"><span>Renderer</span><b style="flex:1;text-align:left;font-weight:400" class="dim">'+rendererLabel()+'</b></div>'+sl('s','hud','HUD size',.7,1.6,.05)+sl('s','shake','Screen shake',0,1.5,.05)+sl('s','text','Text size',.8,1.4,.05)+seg('glow','Player glow outline',[[true,'On'],[false,'Off']])+seg('hc','High contrast UI',[[true,'On'],[false,'Off']])+seg('cb','Colour-blind palette',[['none','Off'],['deuter','Deuteranopia'],['protan','Protanopia'],['tritan','Tritanopia']])+seg('tailCam','Tail camera',[['float','Floating'],['fixed','Fixed']])+seg('lang','Language',[['en','English'],['ur','اردو']])+'<div class="row" style="margin-top:.7em"><button class="btn sm warn" data-a="resetcfg">Reset all settings</button></div>'],
    ['flight','Flight','<h3>Flight Control</h3>'+sl('s','turn','Turn speed',.6,1.6,.05)+sl('s','thrust','Thrust power',.6,1.6,.05)+'<h3 style="margin-top:.6em">Bindings</h3>'+bindRow('fire','Fire')+bindRow('lock','Lock target')+bindRow('brace','Brace')+bindRow('flak','Flak')+bindRow('a1','Ability 1')+bindRow('a2','Ability 2')+'<p class="dim sml">Click a binding, then press the new key.</p>'],
-   ['autopilot','Autopilot','<h3>Autopilot</h3>'+seg('assist','Pilot assist',[[true,'On'],[false,'Off']])+(settings.assist||q?seg('assistClimb','Auto-climb obstacles',[[true,'On'],[false,'Off']])+seg('assistFlak','Auto-flak plasma',[[true,'On'],[false,'Off']])+seg('assistBrace','Auto-brace (shield)',[[true,'On'],[false,'Off']])+seg('assistRoll','Auto-roll dodge',[[true,'On'],[false,'Off']])+seg('hideAssisted','Hide assisted buttons',[[true,'On'],[false,'Off']]):'<p class="dim sml">Turn Pilot assist on to configure its individual behaviours.</p>')],
+   ['autopilot','Autopilot','<h3>Pilot Assist</h3>'+seg('assist','Pilot assist',[[true,'On'],[false,'Off']])+(settings.assist||q?seg('assistCm','Auto countermeasures',[[true,'On'],[false,'Off']],'flak flares missiles plasma countermeasures')+'<p class="setnote">Flak shoots down plasma; flares spoil missiles. Both fire automatically on their own cooldowns.</p>'+seg('assistClimb','Auto-climb obstacles',[[true,'On'],[false,'Off']])+seg('assistBrace','Auto-brace (shield)',[[true,'On'],[false,'Off']])+seg('assistRoll','Auto-roll dodge',[[true,'On'],[false,'Off']])+seg('hideAssisted','Hide assisted buttons',[[true,'On'],[false,'Off']]):'<p class="dim sml">Turn Pilot assist on to configure its individual behaviours.</p>')],
    ['controls','Bindings','<h3>Control Bindings</h3>'+seg('land','Force landscape',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.6em"><button class="btn sm" data-a="layout">Touch layout editor</button><button class="btn sm" data-a="fs">Fullscreen</button></div><p class="dim sml" style="margin-top:.7em">Key bindings are listed in the Manual (H).</p>']
   ];
-  let c1='',c2='',c3='';
-  const colmap={display:1,audio:2,flight:2,autopilot:3,controls:3};
-  function addCol(g,html){var w=colmap[g[0]]||2;if(w===1)c1+=html;else if(w===2)c2+=html;else c3+=html;}
+  const TABS=[['audio','Comms'],['display','Optics'],['flight','Flight'],['autopilot','Auto'],['controls','Bindings']];
+  let body='';
   if(q){
    for(const g of G){
     const rows=g[2].replace(/<h3>.*?<\/h3>/g,'').split(/(?=<label class="set"|<div class="set")/).filter(r=>r.indexOf('data-n="')>=0&&r.toLowerCase().indexOf(q)>=0);
-    if(rows.length)addCol(g,'<div class="setgroup"><h3>'+g[1]+'</h3>'+rows.join('')+'</div>');
+    if(rows.length)body+='<div class="setgroup"><h3>'+g[1]+'</h3>'+rows.join('')+'</div>';
    }
-   if(!c1&&!c2&&!c3)c1='<p class="dim setempty">No setting matches “'+esc(UI.setQ)+'”.</p>';
+   if(!body)body='<p class="dim setempty">No setting matches “'+esc(UI.setQ)+'”.</p>';
   }else{
-   for(const g of G)addCol(g,'<div class="setgroup">'+g[2]+'</div>');
+   const g=G.find(x=>x[0]===tab)||G[0];
+   body='<div class="setgroup">'+g[2]+'</div>';
   }
-  const body='<div class="setcols"><div class="setcol">'+c1+'</div><div class="setcol">'+c2+'</div><div class="setcol">'+c3+'</div></div>';
-  const tabs='';
-  return'<div class="scr">'+hdr('Ship Systems')+'<div class="panel col" style="max-width:1040px;gap:.1em">'+
-  '<div class="setbar"><input type="text" class="setsearch" id="setq" placeholder="Search settings — try “turn”, “flak”, “hud”…" value="'+esc(UI.setQ||'')+'" autocomplete="off">'+tabs+'</div>'+
-  body+'</div></div>';
+  const bodyHtml='<div class="setpane">'+body+'</div>';
+  const tabs='<div class="tabs settabs">'+TABS.map(([k,l])=>'<button class="btn sm'+((!q&&tab===k)?' on':'')+'" data-a="settab" data-v="'+k+'">'+l+'</button>').join('')+(q?'<button class="btn sm" data-a="setclear">Clear</button>':'')+'</div>';
+  return'<div class="scr setscr">'+hdr('Ship Systems')+'<div class="panel col setpanel">'+
+  '<div class="setbar"><input type="text" class="setsearch" id="setq" placeholder="Search all settings — “turn”, “flak”, “hud”…" value="'+esc(UI.setQ||'')+'" autocomplete="off">'+tabs+'</div>'+
+  bodyHtml+'</div></div>';
  },
  layout(){
   const t=save.touch;
@@ -2698,7 +2707,7 @@ const SCREENS={
   '<tr><td>B</td><td>Cycle view: diorama → cockpit → tail (3D for cockpit/tail)</td></tr><tr><td>M</td><td>Large map</td></tr><tr><td>H</td><td>This manual</td></tr><tr><td>Esc / P</td><td>Pause</td></tr></table>'+
   '<h3>Xbox gamepad</h3><table><tr><td>Left stick</td><td>Steer toward the stick, thrust with deflection</td></tr><tr><td>A / B / X / Y</td><td>Fire / flak / vulcan auto / lock target</td></tr><tr><td>LB · RB</td><td>Cycle weapons</td></tr><tr><td>LT · RT</td><td>Brake · afterburner</td></tr><tr><td>L3 · R3</td><td>Climb · brace</td></tr><tr><td>D-pad ◀ ▶</td><td>Barrel roll</td></tr><tr><td>Start</td><td>Pause</td></tr></table>'+
   '<h3>Touch</h3><p>Left stick steers and thrusts. Buttons: FIRE, WPN, FLAK, SHLD (brake + brace), ROLL, AIM, BURN, VULC, CLIMB, the eye (view cycle) and pause. Tap an enemy to lock it, tap the minimap to enlarge it. Rearrange everything in Settings → Touch layout editor (drag, mirror, resize, fixed or floating stick); the layout is saved per pilot.</p>'+
-  '<h3 id="sec-flight">Flight</h3><p>Ships drift: thrust adds speed along your heading and friction is mild, so brake or counter-thrust to stop. <b>Altitude</b> matters: above 35% you clear asteroids, above 65% you clear moons and planets. Planets are <b>gravity wells</b> that pull ships and bend ion and plasma shots. <b>Ramming</b> hurts both ships by closing speed; the Hull upgrade adds ram damage and the Reactive mod softens impacts. Your <b>shield</b> absorbs damage first and starts recharging 5 seconds after the last hit. Pilot Assist auto-climbs over obstacles and damps sideways drift.</p><p><b>Views (B / eye button):</b> cycles <b>diorama → cockpit → tail</b>. Cockpit is full 3D — W/S or the stick pitches the nose, A/D yaws, R/F sets throttle. Tail flies exactly the same 3D model from a chase camera outside the hull; floating yaw by default (set Fixed in Systems → Optics for a rigid mount).</p><p><b>Pilot Assist</b> auto-climbs obstacles, fires flak at incoming plasma, braces against hits and barrel-rolls to dodge. Each assist has its own toggle in Settings, and <i>Hide assisted buttons</i> hides the matching touch buttons for the assists you leave on.</p>'+
+  '<h3 id="sec-flight">Flight</h3><p>Ships drift: thrust adds speed along your heading and friction is mild, so brake or counter-thrust to stop. <b>Altitude</b> matters: above 35% you clear asteroids, above 65% you clear moons and planets. Planets are <b>gravity wells</b> that pull ships and bend ion and plasma shots. <b>Ramming</b> hurts both ships by closing speed; the Hull upgrade adds ram damage and the Reactive mod softens impacts. Your <b>shield</b> absorbs damage first and starts recharging 5 seconds after the last hit. Pilot Assist auto-climbs over obstacles, damps sideways drift, and (with Auto countermeasures on) fires flak at incoming plasma and pops flares at inbound missiles.</p><p><b>Views (B / eye button):</b> cycles <b>diorama → cockpit → tail</b>. Cockpit is full 3D — W/S or the stick pitches the nose, A/D yaws, R/F sets throttle. Tail flies exactly the same 3D model from a chase camera outside the hull; floating yaw by default (set Fixed in Systems → Optics for a rigid mount).</p><p><b>Pilot Assist</b> auto-climbs obstacles, fires flak at incoming plasma, pops flares at inbound missiles, braces against hits and barrel-rolls to dodge. Each assist has its own toggle in Settings, and <i>Hide assisted buttons</i> hides the matching touch buttons for the assists you leave on.</p>'+
   '<h3 id="sec-weapons">Weapons</h3><table>'+
   '<tr><td style="color:#7de3ff">LASER</td><td>Instant hit, range 1150, with a wider auto-aim cone than other weapons; cyan brackets mark the ship your next shot will hit. Tap for a pulse; hold for 3 pulses a second plus a charged beam whenever the ring fills. The Weapons upgrade raises its fire rate (up to 5 a second) and charge speed.</td></tr>'+
   '<tr><td style="color:#c87dff">ION</td><td>Fast bolt that slows the target. Bends in gravity.</td></tr>'+
@@ -2854,6 +2863,7 @@ const ACT={
  rangeReset(){if(!M||M.mode!=='range')return;player.x=M.rangeCenter.x;player.y=M.rangeCenter.y;player.vx=player.vy=0;M.rdps=0;rangeSpawn();msg('RANGE RESET',60);},
  wmod(v){const i=+v;if(hasWmod(i))return;const cost=wmodCost(i);if(!save.free&&dGold(save)<cost){sfx('deny');toast('Not enough credits');return;}if(!save.wmods)save.wmods={};if(!save.wmods[save.diff])save.wmods[save.diff]={};if(!save.free)dGoldAdd(save,-cost);save.wmods[save.diff][i]=1;persist();sfx('buy');toast(WEAPONS[i].n+' mod installed');refresh();},
  settab(v){UI.setTab=v;UI.setQ='';refresh();},
+ setclear(){UI.setQ='';refresh();},
  buyup(k){const u=UPG[k],du=dUp(save);if(!u||du[k]>=DMAX[save.diff]||upLock(k))return;if(!spend(upCost(k)))return;du[k]++;persist();sfx('buy');deedPing();refresh();},
  rebuild(){const cap=wingCap();if(!save||save.free)return;if((save.sq[save.diff]|0)>=cap){toast('Squadron at full strength');return;}const fee=rebuildFee();if(!spend(fee))return;save.sq[save.diff]=(save.sq[save.diff]|0)+1;persist();sfx('buy');toast('Wing rebuilt');refresh();},
  buyship(v){const c=SHIPS[+v],L=dList(save,'ships');if(!c||L.includes(c.i)||reached()<c.at||diffLock(c))return;if(!spend(c.cost))return;L.push(c.i);dSet(save,'ship',c.i);save.best[save.diff]=Math.max(save.best[save.diff]||0,c.i);persist();sfx('buy');toast(c.n+' commissioned');deedPing();refresh();},
@@ -2872,7 +2882,7 @@ const ACT={
  dksel(v){UI.dk=+v;refresh();},
  set(v,el){const k=el.dataset.k;settings[k]=v==='true'?true:v==='false'?false:v;if(k==='gfx'){SOFT_AUTO=false;if(v==='classic')LS.del('pc_force3d');else LS.set('pc_force3d',1);if(SOFT_GL&&v!=='classic')toast('Software graphics — 3D will stutter. Enable hardware acceleration.');}saveSettings();applyGfx();resize();refresh();},
  preset(v){SOFT_AUTO=false;const P={quality:{gfx:'high',res:isTouch?'1080':'native',shake:1,glow:true},balanced:{gfx:'high',res:'1080',shake:1,glow:true},performance:{gfx:'low',res:'720',shake:.3,glow:false}}[v];if(!P)return;Object.assign(settings,P);saveSettings();applyGfx();resize();refresh();toast('Preset: '+v.charAt(0).toUpperCase()+v.slice(1));},
- resetcfg(){SOFT_AUTO=false;Object.assign(settings,{glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistClimb:true,assistFlak:true,assistBrace:true,assistRoll:true,hideAssisted:false,gfx:isTouch?'low':'high',res:'1080'});Object.assign(audioSet,{music:.55,sfx:.8});saveSettings();applyGfx();setVol();resize();refresh();toast('Settings reset to defaults');},
+ resetcfg(){SOFT_AUTO=false;Object.assign(settings,{glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistClimb:true,assistCm:true,assistBrace:true,assistRoll:true,hideAssisted:false,gfx:isTouch?'low':'high',res:'1080'});Object.assign(audioSet,{music:.55,sfx:.8});saveSettings();applyGfx();setVol();resize();refresh();toast('Settings reset to defaults');},
  jump(v){const el=document.getElementById('sec-'+v);if(el&&el.scrollIntoView)el.scrollIntoView({block:'start',behavior:'smooth'});},
  layout(){if(!save){toast('Select a pilot first — layouts are saved per pilot');return;}editLayout=true;if(!TEL)buildTouch();show('layout');layoutTouch();},
  lmirror(){save.touch.mirror=!save.touch.mirror;layoutTouch();refresh();},
