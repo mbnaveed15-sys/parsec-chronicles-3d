@@ -653,19 +653,39 @@ function checkQuality(){
  if(q!==curQ||!composer){curQ=q;curPR=pr;curW=cw;curH=ch;build(q);return;}
  if(Math.abs(pr-curPR)>.001||cw!==curW||ch!==curH){curPR=pr;curW=cw;curH=ch;renderer.setPixelRatio(pr);renderer.setSize(cw,ch,false);composer.setPixelRatio(pr);composer.setSize(cw,ch);sizeUniforms();}
 }
-let ckPZ=null,ckPitch=0,tailYaw=null,tailPrev=false;
+let ckPZ=null,ckPitch=0,tailYaw=null,tailPrev=false,tailPull=1;
+/* pull the chase camera in when the ship-to-camera segment would enter a planet, rock or station */
+function tailClear(sx,sy,sz,cx,cy,cz){
+ let best=1;const dx=cx-sx,dy=cy-sy,dz=cz-sz,L2=dx*dx+dy*dy+dz*dz;if(L2<1)return 1;
+ const test=(bx,by,bz,R)=>{
+  const fx=sx-bx,fy=sy-by,fz=sz-bz,c=fx*fx+fy*fy+fz*fz-R*R;
+  if(c<=0)return; /* hull already inside the margin: do not fight it */
+  const b=2*(fx*dx+fy*dy+fz*dz),disc=b*b-4*L2*c;
+  if(disc<0)return;
+  const t=(-b-Math.sqrt(disc))/(2*L2);
+  if(t>.03&&t<best)best=t;
+ };
+ for(const g of gravityWells)test(g.x,(g.z||0)*ALT,g.y,g.r*1.12+24);
+ for(const r of rocks){if(r.dead)continue;test(r.x,(r.z||0)*ALT+(r.moon?-12:-4),r.y,r.r*1.45+10);}
+ for(const st of stations){if(st.dead)continue;test(st.x,(st.z||0)*ALT-6,st.y,Math.max(70,st.r*1.3)+10);}
+ return best;
+}
 function placeCam(){
  if(window.CINE_CAM){const q=window.CINE_CAM;cam.fov=52;cam.near=2;cam.aspect=W/H;cam.position.set(q.x,q.y,q.z);cam.up.set(0,1,0);cam.lookAt(q.lx,q.ly,q.lz);cam.updateProjectionMatrix();cam.updateMatrixWorld(true);sun.position.set(q.x-380,1250,q.z+440);sun.target.position.set(q.lx,0,q.lz);sun.target.updateMatrixWorld();updDust(q.x,q.z);return;}
  const tl=!!window.tailOn&&player&&!player.dead;
  if(tl){
   const p=player;
-  if(!tailPrev||window.__tailSnap){tailYaw=p.ang;window.__tailSnap=false;}
+  if(!tailPrev||window.__tailSnap){tailYaw=p.ang;tailPull=1;window.__tailSnap=false;}
   tailPrev=true;
   if(window.tailFixed)tailYaw=p.ang;
   else{let dd=p.ang-tailYaw;dd=((dd+PI)%(PI*2)+PI*2)%(PI*2)-PI;tailYaw+=dd*.14;}
   const ca=Math.cos(tailYaw),sa=Math.sin(tailYaw);
   const back=150+Math.min(90,(p.thr||0)*70)+(p.boost>0?20:0);
-  const px=p.x-ca*back,py=p.z*ALT+62,pz=p.y-sa*back;
+  let px=p.x-ca*back,py=p.z*ALT+62,pz=p.y-sa*back;
+  const sx=p.x,sy=p.z*ALT+16,sz=p.y;
+  const clear=tailClear(sx,sy,sz,px,py,pz);
+  if(clear<tailPull)tailPull=Math.max(.12,clear-.015);else tailPull=Math.min(1,tailPull+.05);
+  if(tailPull<.999){px=sx+(px-sx)*tailPull;py=Math.max(10,sy+(py-sy)*tailPull);pz=sz+(pz-sz)*tailPull;}
   cam.fov=60;cam.near=3;cam.far=30000;cam.aspect=W/H;
   cam.position.set(px,py,pz);cam.up.set(0,1,0);
   cam.lookAt(p.x+ca*120,p.z*ALT+8+Math.sin(p.pitch||0)*110,p.y+sa*120);
@@ -759,7 +779,7 @@ function preview(el,idx,cols){
  }catch(e){pvFail=true;return false;}
 }
 
-window.R3D={design:designShip,on:settings.gfx!=='classic',failed:false,ready:true,render,resize(){curW=-1;},w2s:w2sB,s2w:s2wB,preview,stats(){return{mines:minePool.filter(o=>o.g.visible).length,nodes:scanPool.filter(o=>o.g.visible).length,bubbles:typeof ships!=='undefined'?ships.filter(s=>s.special==='shield'||(s.team===1&&typeof projectorGuard==='function'&&projectorGuard(s))).length:0,cam:{x:cam.position.x,y:cam.position.y,z:cam.position.z},yaw:tailYaw};}};
+window.R3D={design:designShip,on:settings.gfx!=='classic',failed:false,ready:true,render,resize(){curW=-1;},w2s:w2sB,s2w:s2wB,preview,stats(){return{mines:minePool.filter(o=>o.g.visible).length,nodes:scanPool.filter(o=>o.g.visible).length,bubbles:typeof ships!=='undefined'?ships.filter(s=>s.special==='shield'||(s.team===1&&typeof projectorGuard==='function'&&projectorGuard(s))).length:0,cam:{x:cam.position.x,y:cam.position.y,z:cam.position.z},yaw:tailYaw,pull:tailPull};}};
 try{r3dReady();}catch(e){}
 }catch(e){if(window.console)console.warn('Parsec: 3D renderer unavailable, using classic 2D.',e);fail();}
 })();
