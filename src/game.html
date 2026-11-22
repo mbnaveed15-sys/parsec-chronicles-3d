@@ -276,6 +276,61 @@ body.hc{--dim:#c9d6e0;--tx:#ffffff;--ln:rgba(255,255,255,.4)}
 body.hc #ui .btn{border-color:rgba(255,255,255,.45)}
 body.hc #ui .panel{background:rgba(6,12,20,.92)}
 .hstats{max-width:560px}
+/* ===== hangar command bay ===== */
+.bayhero{max-width:1180px;display:grid;grid-template-columns:minmax(280px,1.2fr) minmax(250px,1fr) minmax(240px,.92fr);gap:1em;padding:1em;overflow:hidden;background:radial-gradient(120% 140% at 0% 0%,rgba(40,120,170,.16),transparent 55%),repeating-linear-gradient(90deg,rgba(125,227,255,.025) 0 1px,transparent 1px 48px),var(--pn)}
+.bayframe{position:relative;min-height:230px;border:1px solid rgba(125,227,255,.32);border-radius:12px;padding:.7em .7em 2.9em;overflow:hidden;background:linear-gradient(160deg,rgba(20,55,84,.55),rgba(4,10,18,.75))}
+.bayframe:before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(125,227,255,.06) 1px,transparent 1px),linear-gradient(rgba(125,227,255,.06) 1px,transparent 1px);background-size:26px 26px;mask-image:linear-gradient(to bottom,transparent,#000 18%,#000 82%,transparent);pointer-events:none}
+.bayframe:after{content:"";position:absolute;left:0;right:0;top:-30%;height:32%;background:linear-gradient(180deg,transparent,rgba(125,227,255,.10),transparent);animation:bayscan 5.5s linear infinite;pointer-events:none}
+@keyframes bayscan{0%{top:-35%}100%{top:112%}}
+.bayframe canvas{position:relative;z-index:1;width:100%;display:block;border-radius:8px;background:radial-gradient(circle at 50% 60%,rgba(60,120,165,.25),rgba(5,12,20,.5))}
+.baytag{position:absolute;left:.85em;top:.8em;z-index:2;font:700 .58em Orbitron,sans-serif;letter-spacing:.18em;color:var(--c);border:1px solid var(--ln);border-radius:4px;padding:.32em .5em;background:rgba(4,12,20,.72)}
+.baytag:before{content:"";display:inline-block;width:5px;height:5px;margin-right:.45em;border-radius:50%;background:var(--grn);box-shadow:0 0 8px var(--grn);vertical-align:1px}
+.bayship{position:absolute;left:.9em;right:.9em;bottom:.75em;z-index:2;display:flex;align-items:flex-end;justify-content:space-between;gap:.8em}
+.bayship b{font:700 .86em Orbitron,sans-serif;letter-spacing:.08em;color:#fff;text-transform:uppercase}
+.bayship span{display:block;font-size:.62em;letter-spacing:.16em;color:var(--dim);text-transform:uppercase;margin-top:.2em}
+.bayship em{font-style:normal;font:700 .62em Orbitron,sans-serif;color:var(--gold);letter-spacing:.1em;white-space:nowrap}
+.baydata{display:flex;flex-direction:column;gap:.5em;min-width:0}
+.eyebrow{font:700 .58em Orbitron,sans-serif;letter-spacing:.2em;color:var(--dim);text-transform:uppercase}
+.baydata h2{font-size:1.5em;line-height:1.15;margin-top:-.1em}
+.baydata h2 span{display:inline-block;font-size:.5em;letter-spacing:.1em;color:var(--c);border:1px solid var(--ln);border-radius:4px;padding:.18em .4em;vertical-align:middle;margin-left:.45em}
+.sbar{display:flex;flex-direction:column;gap:.22em}
+.sbar .sl{display:flex;justify-content:space-between;font:700 .58em Orbitron,sans-serif;letter-spacing:.12em;color:var(--dim);text-transform:uppercase}
+.sbar .sl b{color:#dfeef8;font-weight:700}
+.sbar .trk{height:5px;border-radius:3px;background:rgba(255,255,255,.10);overflow:hidden;border:1px solid rgba(255,255,255,.05)}
+.sbar .trk i{display:block;height:100%;border-radius:3px;background:linear-gradient(90deg,#2aa7cf,#9fefff);box-shadow:0 0 10px rgba(125,227,255,.5)}
+.sbar.hull .trk i{background:linear-gradient(90deg,#2f9b68,#8bf0b4);box-shadow:0 0 10px rgba(111,224,138,.45)}
+.sbar.shield .trk i{background:linear-gradient(90deg,#2d6fbf,#8fd0ff);box-shadow:0 0 10px rgba(90,160,255,.45)}
+.sbar.heat .trk i{background:linear-gradient(90deg,#b87522,#ffd166);box-shadow:0 0 10px rgba(255,209,102,.4)}
+.bayspecs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.35em;margin-top:auto}
+.bayspecs div{border:1px solid rgba(255,255,255,.07);border-radius:6px;padding:.32em .45em;background:rgba(255,255,255,.035);min-width:0}
+.bayspecs span{display:block;font-size:.56em;letter-spacing:.13em;color:var(--dim);text-transform:uppercase;font-family:Orbitron,sans-serif}
+.bayspecs b{display:block;font:700 .78em Orbitron,sans-serif;color:#eaf7ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bayops{display:flex;flex-direction:column;gap:.45em;min-width:0;border:1px solid rgba(255,209,102,.22);border-radius:12px;padding:.85em;background:linear-gradient(165deg,rgba(89,66,16,.22),rgba(5,12,20,.55) 60%)}
+.bayops .opsrow{display:flex;align-items:center;justify-content:space-between;gap:.5em}
+.bayops .sector{font:900 2.35em/1 Orbitron,sans-serif;color:#fff;letter-spacing:.02em;text-shadow:0 0 20px rgba(255,209,102,.35)}
+.bayops h3{color:#fff;font-size:1.02em;line-height:1.2;margin-top:.05em}
+.bayops .opobj{font-size:.76em;color:var(--dim);line-height:1.35;min-height:2.6em}
+.bayops .kv{padding:.18em 0;border-bottom:1px solid rgba(255,255,255,.06);font-size:.7em}
+.bayops .kv:last-of-type{border-bottom:0}
+.bayops .btn{margin-top:.2em}
+.bayops .row{gap:.35em;flex-wrap:nowrap}
+.bayops .row .btn{flex:1;padding:.55em .4em;font-size:.63em;letter-spacing:.06em;min-height:2.2em}
+.baylower{max-width:1180px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8em}
+.baycard{padding:.8em .9em;max-width:none}
+.baycard h3{display:flex;align-items:center;gap:.5em;font-size:.8em;letter-spacing:.14em}
+.baycard h3:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c);box-shadow:0 0 9px var(--c)}
+.baycard .kv{font-size:.72em;padding:.2em 0;border-bottom:1px solid rgba(255,255,255,.055)}
+.baycard .kv:last-child{border-bottom:0}
+.wdots{display:flex;flex-wrap:wrap;gap:.3em;margin:.35em 0 .45em}
+.wdots span{font:700 .55em Orbitron,sans-serif;letter-spacing:.06em;border:1px solid var(--ln);border-radius:4px;padding:.18em .38em;color:var(--c)}
+.wdots span.down{opacity:.32;color:var(--red);border-color:rgba(255,106,90,.3)}
+.weplist{display:flex;flex-wrap:wrap;gap:.28em;margin:.35em 0 .5em}
+.weplist span{font:700 .56em Orbitron,sans-serif;letter-spacing:.05em;border:1px solid rgba(125,227,255,.2);border-radius:4px;padding:.2em .42em;color:#dff4ff;background:rgba(125,227,255,.06)}
+.bayprog{height:4px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden;margin:.2em 0 .45em}
+.bayprog i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),#ff9e6b)}
+@media(max-width:1000px){.bayhero{grid-template-columns:1.1fr .9fr}.bayops{grid-column:1/-1}.baylower{grid-template-columns:1fr 1fr}}
+@media(max-width:700px){.bayhero{grid-template-columns:1fr}.bayops{grid-column:auto}.baylower{grid-template-columns:1fr}}
+@media(max-height:430px){.bayhero{grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:.5em;padding:.55em}.bayops{grid-column:1/-1;display:grid;grid-template-columns:auto 1fr;grid-auto-rows:min-content;column-gap:.6em;padding:.55em .65em}.bayops .eyebrow{grid-column:1/-1}.bayops .opsrow{grid-column:1;grid-row:2}.bayops .sector{font-size:1.8em}.bayops h3{grid-column:2;grid-row:2;align-self:center;margin:0}.bayops .opobj{grid-column:1/-1;min-height:0;font-size:.68em}.bayops .kv{display:none}.bayops .btn{grid-column:1/-1;margin-top:.1em}.bayops .row{grid-column:1/-1}.bayframe{min-height:150px;padding:.5em .5em 2.2em}.bayspecs{display:none}.baylower{grid-template-columns:1fr 1fr}}
 #gameCanvas.cb-deut,#glCanvas.cb-deut{filter:url(#cbDeut)}
 #gameCanvas.cb-prot,#glCanvas.cb-prot{filter:url(#cbProt)}
 #gameCanvas.cb-trit,#glCanvas.cb-trit{filter:url(#cbTrit)}
@@ -323,6 +378,13 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
  .scr.mid h2{font-size:1.05em;margin:.05em 0}
  .scr.mid .panel .btn{margin:.06em 0}
  #toast{top:3%;bottom:auto;font-size:.72em;max-width:86vw;white-space:normal;text-align:center}
+}
+@media(max-height:430px){
+ #ui .bayframe{min-height:0!important;padding:.45em .45em 1.9em!important}
+ #ui .bayframe canvas.pv{display:block!important;width:100%!important;max-width:100%!important;height:auto!important;max-height:132px!important;margin:0!important;border-radius:6px!important}
+ #ui .bayship{left:.6em;right:.6em;bottom:.5em}
+ #ui .bayship b{font-size:.72em}
+ #ui .bayship em{font-size:.55em}
 }
 </style>
 </head>
@@ -2611,19 +2673,36 @@ const SCREENS={
  hangar(){
   const s=save,sh=SHIPS[dGet(s,'ship',0)],r=reached(),u=dUp(s),mods=(s.mods[s.diff]&&s.mods[s.diff][dGet(s,'ship',0)])||[];
   let d='';for(const k in DIFFS)d+='<button class="btn sm'+(s.diff===k?' on':'')+'" data-a="diff" data-v="'+k+'" title="Separate loadout, ships and unlocks">'+DIFFS[k].n+'</button>';
-  const sqc=wingCap(),sqh=squadHealthy(),sqFee=rebuildFee(),sqMiss=Math.max(0,sqc-sqh);let dots='';for(let i=0;i<sqc;i++)dots+='<span style="'+(i<sqh?'':'opacity:.35')+'">'+(i<sqh?'WING':'DOWN')+'</span>';
+  const sqc=wingCap(),sqh=squadHealthy(),sqFee=rebuildFee(),sqMiss=Math.max(0,sqc-sqh);let dots='';for(let i=0;i<sqc;i++)dots+='<span class="'+(i<sqh?'':'down')+'">'+(i<sqh?'WING':'DOWN')+'</span>';
+  const nl=nextLv(),nsea=Math.min(9,(nl-1)/50|0),nm=(nl-1)%50+1,nmode=modeFor(nm),NS=SEAS[nsea],MO=MODES[nmode];
+  const hull=Math.round((sh.hp+u.hull*20)*(mods.includes(0)?1.1:1)),shield=Math.round(sh.hp*.4+u.hull*12);
+  const tech=UPK.reduce((a,k)=>a+(u[k]||0),0),techMax=DMAX[s.diff]*UPK.length;
+  const load=loadoutFor(),pct=(v,m)=>Math.max(4,Math.min(100,Math.round(v/m*100)));
   return'<div class="scr">'+hdr('Hangar · '+esc(s.name))+
-  '<div class="panel"><div class="row" style="align-items:stretch"><div class="pvwrap" style="flex:1 1 260px;min-width:200px"><canvas class="pv" data-idx="'+dGet(s,'ship',0)+'" width="416" height="256"></canvas></div>'+
-  '<div class="col hstats" style="flex:1 1 260px"><h3>'+sh.n+' <span class="tag">'+ROLES[sh.role]+'</span></h3>'+
-  '<div class="kv"><span>Hull / shield</span><b>'+Math.round((sh.hp+u.hull*20)*(mods.includes(0)?1.1:1))+' / '+Math.round(sh.hp*.4+u.hull*12)+'</b></div>'+
-  '<div class="kv"><span>Squadron</span><b>'+squadHealthy()+' / '+wingCap()+' ready</b></div><div class="kv"><span>Tech ceiling</span><b>'+DMAX[s.diff]+' / track</b></div>'+
-  '<div class="kv"><span>Next mission</span><b>'+((r-1)/50+1|0)+'-'+((r-1)%50+1)+' · '+SEAS[(r-1)/50|0].n+'</b></div>'+
-  '<div class="kv"><span>Difficulty</span><b>enemy ×'+DIFFS[s.diff].e+' · reward ×'+DIFFS[s.diff].r+'</b></div><div class="row">'+d+'</div><span class="dim sml">Each difficulty keeps its own upgrades, ships, mods and unlocks.</span>'+
-  (s.free?'<span class="tag g">Free Roam — progress is not saved</span>':'')+
-  '<div class="row" style="margin-top:.5em;gap:.5em"><button class="btn primary" data-a="cont">Continue<small>Mission '+((nextLv()-1)/50+1|0)+'-'+((nextLv()-1)%50+1)+'</small></button><button class="btn" data-a="hunt">Hunt<small>Free hunt</small></button><button class="btn" data-a="range">Practice<small>Weapon range</small></button>'+(reachedOf(s)>=500?'<button class="btn" data-a="ngplus">New Game+<small>Reset, keep cosmetics</small></button>':'')+'</div>'+
-  '</div></div></div>'+
-  '<div class="panel" style="max-width:980px"><div class="row"><h3 style="flex:1">Squadron</h3><span class="tag">SQ LV '+(s.squadLvl||1)+'</span><span class="tag">'+sqh+' / '+sqc+' ready</span></div><div class="chips" style="margin:.35em 0 .25em">'+(dots||'<span>NO WINGS</span>')+'</div>'+(sqc===0?'<span class="dim sml">Upgrade Wing in the Shop to field escort ships.</span>':sqMiss>0?'<button class="btn sm gold'+(!s.free&&dGold(s)<sqFee?' warn':'')+'" data-a="rebuild">Rebuild wing · ◈ '+fmtNum(sqFee)+'</button> <span class="dim sml">lost pilots cost credits to replace</span>':'<span class="dim sml">All wings ready.'+(s.memorial?' · Memorial '+s.memorial:'')+'</span>')+'</div>'+
-  '</div>';
+  '<div class="bayhero panel">'+
+   '<div class="bayframe"><span class="baytag">BAY 01 · READY</span><canvas class="pv" data-idx="'+dGet(s,'ship',0)+'" width="416" height="256"></canvas>'+
+    '<div class="bayship"><div><b>'+esc(sh.n)+'</b><span>'+ROLES[sh.role]+' · '+mods.length+' mods fitted</span></div><em>CLEARANCE '+DIFFS[s.diff].n.toUpperCase()+'</em></div></div>'+
+   '<div class="baydata"><span class="eyebrow">Active airframe</span><h2>'+esc(sh.n)+' <span>'+ROLES[sh.role]+'</span></h2>'+
+    '<div class="sbar hull"><div class="sl"><span>Hull integrity</span><b>'+hull+'</b></div><div class="trk"><i style="width:'+pct(hull,320)+'%"></i></div></div>'+
+    '<div class="sbar shield"><div class="sl"><span>Shield output</span><b>'+shield+'</b></div><div class="trk"><i style="width:'+pct(shield,220)+'%"></i></div></div>'+
+    '<div class="sbar heat"><div class="sl"><span>Tech systems</span><b>'+tech+' / '+techMax+'</b></div><div class="trk"><i style="width:'+pct(tech,techMax)+'%"></i></div></div>'+
+    '<div class="bayspecs"><div><span>Role</span><b>'+ROLES[sh.role]+'</b></div><div><span>Speed</span><b>'+sh.spd+'</b></div><div><span>Firepower</span><b>'+sh.dmg+'</b></div><div><span>Hardpoints</span><b>'+load.length+' / '+slotCount()+'</b></div></div>'+
+    (s.free?'<span class="tag g">Free Roam — progress is not saved</span>':'')+
+   '</div>'+
+   '<div class="bayops"><span class="eyebrow">Next operation</span><div class="opsrow"><b class="sector">'+(nsea+1)+'-'+nm+'</b><span class="tag">'+MO.ic+' '+MO.n+'</span></div>'+
+    '<h3>'+esc(NS.n)+'</h3><p class="opobj">'+esc(modeObj(nmode,nl))+'</p>'+
+    '<div class="kv"><span>Threat</span><b>ENEMY ×'+DIFFS[s.diff].e+'</b></div><div class="kv"><span>Estimated pay</span><b style="color:var(--gold)">◈ '+fmtNum(missionReward(nl,nmode,s.diff))+'</b></div><div class="kv"><span>Best rating</span><b>'+starStr(starsOf(nl))+'</b></div>'+
+    '<button class="btn primary wide" data-a="cont">Deploy operation<small>Mission '+(nsea+1)+'-'+nm+'</small></button>'+
+    '<div class="row"><button class="btn sm" data-a="hunt">Hunt</button><button class="btn sm" data-a="range">Practice range</button></div>'+
+   '</div></div>'+
+  '<div class="baylower">'+
+   '<div class="panel baycard"><h3>Pilot dossier</h3><div class="kv"><span>Callsign</span><b>'+esc(s.name)+'</b></div><div class="kv"><span>Clearance</span><b>'+DIFFS[s.diff].n+'</b></div><div class="kv"><span>Credits</span><b style="color:var(--gold)">◈ '+fmtGold(dGold(s))+'</b></div>'+
+    '<div class="kv"><span>Career</span><b>'+Math.min(500,r)+' / 500</b></div><div class="bayprog"><i style="width:'+(Math.min(500,r)/5)+'%"></i></div><div class="row">'+d+'</div><span class="dim sml">Each difficulty keeps its own upgrades, ships, mods and unlocks.</span>'+
+    (reachedOf(s)>=500?'<button class="btn sm wide" data-a="ngplus" style="margin-top:.45em">New Game+ · reset, keep cosmetics</button>':'')+'</div>'+
+   '<div class="panel baycard"><h3>Squadron</h3><div class="row" style="justify-content:space-between"><span class="tag">SQ LV '+(s.squadLvl||1)+'</span><span class="tag">'+sqh+' / '+sqc+' ready</span></div><div class="wdots">'+(dots||'<span class="down">NO WINGS</span>')+'</div>'+
+    (sqc===0?'<span class="dim sml">Upgrade Wing in the Shop to field escort ships.</span>':sqMiss>0?'<button class="btn sm gold'+(!s.free&&dGold(s)<sqFee?' warn':'')+'" data-a="rebuild">Rebuild wing · ◈ '+fmtNum(sqFee)+'</button> <span class="dim sml">lost pilots cost credits</span>':'<span class="dim sml">All wings ready.'+(s.memorial?' · Memorial '+s.memorial:'')+'</span>')+'</div>'+
+   '<div class="panel baycard"><h3>Hardpoints</h3><div class="weplist">'+(load.map(i=>'<span>'+WEAPONS[i].n+'</span>').join('')||'<span>EMPTY</span>')+'</div><div class="kv"><span>Tech ceiling</span><b>'+DMAX[s.diff]+' / track</b></div><div class="kv"><span>Wing cap</span><b>'+sqc+' escorts</b></div><button class="btn sm wide" data-a="nav" data-v="shop" style="margin-top:.4em">Refit in shop</button></div>'+
+  '</div></div>';
  },
  sectors(){
   let h='<div class="scr">'+hdr('Sector Map · '+DIFFS[save.diff].n)+'<div class="grid g2" style="max-width:980px">';
