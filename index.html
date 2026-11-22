@@ -95,6 +95,9 @@ html.kbnav #ui button:focus,#ui button.kb{outline:2px solid #7de3ff;outline-offs
 .setgroup{margin-top:.2em}
 .setcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:0 1.4em;height:calc(100vh - 234px);min-height:110px;overflow:hidden;width:100%}
 .setpanel{flex:1 1 auto;min-height:0;height:auto;width:100%;max-width:1040px;display:flex;flex-direction:column;gap:.1em}
+.setwrap{display:flex;gap:.7em;flex:1 1 auto;min-height:0;width:100%}
+.setnav{flex:0 0 158px;display:flex;flex-direction:column;gap:.3em;overflow-y:auto;padding-right:2px}
+.setnav .btn{justify-content:flex-start;text-align:left;padding:.5em .6em;font-size:.78em}
 .setpane{flex:1 1 auto;min-height:120px;overflow-y:auto;overflow-x:hidden;padding-right:6px}
 .settabs{justify-content:flex-start;gap:.25em}
 .settabs .btn{padding:.34em .55em;font-size:.74em}
@@ -281,10 +284,12 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
  .hubnav{padding:.24em .26em;margin:0 0 .25em;gap:.18em}
  .hubnav .btn.sm{padding:.3em .48em;font-size:.7em}
  .setcols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));height:calc(100dvh - 156px);min-height:120px;overflow:hidden}
+ .setnav{flex-basis:128px}
+ .setnav .btn{font-size:.72em;padding:.42em .45em}
  .setcol{overflow-y:auto;padding-right:6px;margin-bottom:0}
  .dockcols{height:auto;max-height:none;overflow:visible}
  .termhead,.tagline,.scr.mid .logo small{display:none}
- .scr.mid .logo{font-size:1.7em;line-height:1}
+ .scr.mid .logo{font-size:1.7em;line-height:1;margin-bottom:.45em}
  .kv{padding:.1em 0;font-size:.8em}
  .btn{padding:.5em .85em}
  .card{padding:.55em .65em}
@@ -295,10 +300,11 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
 }
 @media (max-height:430px){
  #ui canvas.pv{display:none!important}
- .pvwrap{display:none!important}
+ #ui .pvwrap{display:flex!important;align-items:center!important;justify-content:center!important;flex:0 0 220px!important;min-width:0!important;max-width:220px!important}
+ #ui .pvwrap canvas.pv{display:block!important;width:100%!important;max-width:220px!important;max-height:140px!important;height:auto!important;margin:0 auto}
  .cosgrid{min-height:calc(100dvh - 96px)}
  .scr>.panel.narrow p.lore{display:none}
- .scr.mid{justify-content:flex-start;padding-top:.2em;padding-bottom:.2em}
+ .scr.mid.dlg{justify-content:flex-start;padding-top:.2em;padding-bottom:.2em}
  #ui .cosm-pv canvas.pv{display:block!important;width:100%!important;max-width:236px!important;max-height:none!important;height:auto!important;margin:0 auto}
  .scr{padding:.4em .4em .8em;gap:.25em}
  .panel{padding:.4em .5em}
@@ -2684,10 +2690,11 @@ const SCREENS={
    body='<div class="setgroup">'+g[2]+'</div>';
   }
   const bodyHtml='<div class="setpane">'+body+'</div>';
-  const tabs='<div class="tabs settabs">'+TABS.map(([k,l])=>'<button class="btn sm'+((!q&&tab===k)?' on':'')+'" data-a="settab" data-v="'+k+'">'+l+'</button>').join('')+(q?'<button class="btn sm" data-a="setclear">Clear</button>':'')+'</div>';
+  const nav='<div class="setnav">'+TABS.map(([k,l])=>'<button class="btn sm'+((!q&&tab===k)?' on':'')+'" data-a="settab" data-v="'+k+'">'+l+'</button>').join('')+'</div>';
+  const clear=q?'<button class="btn sm" data-a="setclear">Clear</button>':'';
   return'<div class="scr setscr">'+hdr('Ship Systems')+'<div class="panel col setpanel">'+
-  '<div class="setbar"><input type="text" class="setsearch" id="setq" placeholder="Search all settings — “turn”, “flak”, “hud”…" value="'+esc(UI.setQ||'')+'" autocomplete="off">'+tabs+'</div>'+
-  bodyHtml+'</div></div>';
+  '<div class="setbar"><div class="row" style="gap:.4em;align-items:stretch"><input type="text" class="setsearch" id="setq" style="flex:1" placeholder="Search all settings — “turn”, “flak”, “hud”…" value="'+esc(UI.setQ||'')+'" autocomplete="off">'+clear+'</div></div>'+
+  '<div class="setwrap">'+nav+bodyHtml+'</div></div></div>';
  },
  layout(){
   const t=save.touch;
@@ -2729,7 +2736,7 @@ const SCREENS={
  pause(){
   const qsl=(o,k,label,min,max,step)=>{const obj=o==='a'?audioSet:settings;return'<label class="set"><span>'+label+'</span><input type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+obj[k]+'" data-s="'+k+'" data-o="'+o+'"><b>'+Math.round(obj[k]*100)+'%</b></label>';};
   const ms=M?(()=>{const secs=M.clock/60,st=starTimes(M.mode,M.sea),tier=secs<st[0]?3:secs<st[1]?2:1;return '<div class="mstat"><div class="kv"><span>Objective</span><b style="text-align:right">'+esc(objText())+'</b></div><div class="kv"><span>Elapsed</span><b>'+fmtTime(secs)+'</b></div><div class="kv"><span>Stars</span><b style="color:var(--gold)">'+'★'.repeat(tier)+'<span style="color:#3c4654">'+'★'.repeat(3-tier)+'</span></b></div><div class="kv"><span>Kills</span><b>'+M.kills+'</b></div></div>';})():'';
-  return'<div class="scr mid"><div class="panel narrow col" style="max-width:380px;text-align:center"><h2>Paused</h2><span class="dim sml">'+(M?(M.hunt?'Free Hunt':'Mission '+(M.sea+1)+'-'+M.m)+' · '+MODES[M.mode].n:'')+'</span>'+ms+
+  return'<div class="scr mid dlg"><div class="panel narrow col" style="max-width:380px;text-align:center"><h2>Paused</h2><span class="dim sml">'+(M?(M.hunt?'Free Hunt':'Mission '+(M.sea+1)+'-'+M.m)+' · '+MODES[M.mode].n:'')+'</span>'+ms+
   '<button class="btn primary wide" data-a="resume">Resume</button>'+
   '<div class="qset"><div class="set"><span>Pilot assist</span><div class="seg"><button class="btn sm'+(settings.assist?' on':'')+'" data-a="set" data-k="assist" data-v="true">On</button><button class="btn sm'+(!settings.assist?' on':'')+'" data-a="set" data-k="assist" data-v="false">Off</button></div></div>'+
   qsl('s','hud','HUD size',.7,1.6,.05)+qsl('a','music','Music',0,1,.05)+qsl('a','sfx','SFX',0,1,.05)+'</div>'+
@@ -2738,7 +2745,7 @@ const SCREENS={
  end(a){
   const m=M;
   let d='',dg=0;for(const x of a.deeds)dg+=x.g;for(const x of a.deeds)d+='<div class="kv"><span>Deed: '+x.n+'</span><b style="color:var(--gold)">+◈ '+x.g+'</b></div>';
-  return'<div class="scr mid"><div class="panel narrow col" style="max-width:460px;text-align:center"><div class="verdict '+(a.win?'w':'l')+'">'+(a.win?'Victory':'Defeat')+'</div>'+
+  return'<div class="scr mid dlg"><div class="panel narrow col" style="max-width:460px;text-align:center"><div class="verdict '+(a.win?'w':'l')+'">'+(a.win?'Victory':'Defeat')+'</div>'+
   (a.win?'<div class="stars big">'+[0,1,2].slice(0,a.stars).map(i=>'<b style="animation-delay:'+(.25+i*.3)+'s">★</b>').join('')+'<i>'+'★'.repeat(3-a.stars)+'</i></div>':'<span class="dim">'+esc(m.why||'Mission failed')+'</span>')+
   '<div class="kv"><span>'+(m.hunt?'Free Hunt':'Mission '+(m.sea+1)+'-'+m.m+' · '+MODES[m.mode].n)+'</span><b>'+DIFFS[m.diff].n+'</b></div>'+
   '<div class="kv"><span>Time</span><b>'+fmtTime(a.secs)+'</b></div><div class="kv"><span>Kills</span><b>'+m.kills+(m.ram?' ('+m.ram+' rammed)':'')+'</b></div>'+(m.wingLost?'<div class="kv"><span>Squadron losses</span><b style="color:#ff8a7a">-'+m.wingLost+' · rebuild in Hangar</b></div>':'')+
