@@ -315,7 +315,7 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
 .bayops .btn{margin-top:.2em}
 .bayops .row{gap:.35em;flex-wrap:nowrap}
 .bayops .row .btn{flex:1;padding:.55em .4em;font-size:.63em;letter-spacing:.06em;min-height:2.2em}
-.baylower{max-width:1180px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8em}
+.baylower{width:100%;max-width:1180px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.8em}
 .baycard{padding:.8em .9em;max-width:none}
 .baycard h3{display:flex;align-items:center;gap:.5em;font-size:.8em;letter-spacing:.14em}
 .baycard h3:before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c);box-shadow:0 0 9px var(--c)}
@@ -380,11 +380,21 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
  #toast{top:3%;bottom:auto;font-size:.72em;max-width:86vw;white-space:normal;text-align:center}
 }
 @media(max-height:430px){
+ #ui.on ~ #toast{top:auto;bottom:5%;z-index:9}
  #ui .bayframe{min-height:0!important;padding:.45em .45em 1.9em!important}
  #ui .bayframe canvas.pv{display:block!important;width:100%!important;max-width:100%!important;height:auto!important;max-height:132px!important;margin:0!important;border-radius:6px!important}
  #ui .bayship{left:.6em;right:.6em;bottom:.5em}
  #ui .bayship b{font-size:.72em}
  #ui .bayship em{font-size:.55em}
+ .bayhero{grid-template-columns:minmax(0,1fr) minmax(0,.88fr) minmax(0,1fr)!important;gap:.45em!important;padding:.55em!important}
+ .bayops{grid-column:auto!important;display:flex!important;flex-direction:column!important;gap:.35em!important;padding:.55em!important}
+ .bayops .opobj,.bayops .kv{display:none!important}
+ .bayops .sector{font-size:1.7em}
+ .bayops h3{font-size:.82em;margin:0}
+ .bayops .btn{margin-top:.15em;font-size:.58em;padding:.5em .35em;min-height:2em}
+ .bayops .row .btn{font-size:.55em;min-height:2em}
+ .bayops .opsrow{gap:.3em}
+ .bayops .opsrow .tag{font-size:.52em;padding:.2em .35em}
 }
 </style>
 </head>
