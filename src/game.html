@@ -581,9 +581,11 @@ const LS={
 };
 const isTouch=!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
 var touchOn=isTouch,settings=null,audioSet=null,save=null,slotIdx=-1,SOFT_GL=false,SOFT_GPU='',SOFT_AUTO=false,SOFT_PREV='';
+const DEF_BINDS={fire:'Space',lock:'KeyE',brace:'KeyF',flak:'KeyG',a1:'Digit7',a2:'Digit8'};
 function loadSettings(){
  var _rawSet=LS.get('pc_settings')||{};
  settings=Object.assign({glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistAim:true,assistClimb:true,assistCm:true,assistBrace:true,assistRoll:true,hideAssisted:false,hc:false,lang:'en',cb:'none',tailCam:'float',gfx:isTouch?'low':'high',res:'1080',binds:{fire:'Space',lock:'KeyE',brace:'KeyF',flak:'KeyG',a1:'Digit7',a2:'Digit8'}},_rawSet);
+ settings.binds=Object.assign({},DEF_BINDS,(_rawSet.binds&&typeof _rawSet.binds==='object')?_rawSet.binds:{});
  if(_rawSet.assistCm===undefined&&_rawSet.assistFlak!==undefined)settings.assistCm=_rawSet.assistFlak!==false;
  if(!/^(high|low|classic)$/.test(settings.gfx))settings.gfx='high';
  if(!/^(1080|native|720)$/.test(settings.res))settings.res='1080';
@@ -802,8 +804,8 @@ addEventListener('keydown',e=>{
  if(/^(Space|Arrow|Tab)/.test(e.code)&&state==='play')e.preventDefault();
  if(e.repeat)return;
  keys[e.code]=true;audioInit();
- if(UI.rebind){const act=UI.rebind;UI.rebind=null;settings.binds=settings.binds||{};settings.binds[act]=e.code;saveSettings();toast('BOUND '+act.toUpperCase()+' → '+e.code);refresh();e.preventDefault();return;}
- if(state==='play'){const B=settings.binds||{};if(B.lock&&e.code===B.lock){toggleLock();return;}if(B.brace&&e.code===B.brace){playerBrace();return;}if(B.flak&&e.code===B.flak){playerFlak();return;}if(B.a1&&e.code===B.a1){useAbility(1);return;}if(B.a2&&e.code===B.a2){useAbility(2);return;}}
+ if(UI.rebind){const act=UI.rebind;UI.rebind=null;e.preventDefault();if(e.code==='Escape'){toast('Rebind cancelled');refresh();return;}settings.binds=settings.binds||{};const old=settings.binds[act];let sw='';for(const k in settings.binds)if(k!==act&&settings.binds[k]===e.code){settings.binds[k]=old;sw=' (swapped with '+k.toUpperCase()+')';}settings.binds[act]=e.code;const busy=/^(Key[WASDQRCVBTZXMHP]|Shift(Left|Right)|Arrow(Up|Down|Left|Right)|Digit[1-6])$/.test(e.code);saveSettings();toast('BOUND '+act.toUpperCase()+' → '+e.code+sw+(busy?' — note: that key also has a built-in action':''));refresh();return;}
+ if(state==='play'&&!(viewMode!==0&&(e.code==='KeyR'||e.code==='KeyF'))){const B=settings.binds||{};if(B.lock&&e.code===B.lock){toggleLock();return;}if(B.brace&&e.code===B.brace){playerBrace();return;}if(B.flak&&e.code===B.flak){playerFlak();return;}if(B.a1&&e.code===B.a1){useAbility(1);return;}if(B.a2&&e.code===B.a2){useAbility(2);return;}}
  if(state==='cine'){skipCine();return;}
  const menu=state!=='play'&&UI.cur;
  if(menu){
@@ -819,13 +821,12 @@ addEventListener('keydown',e=>{
  }
  if(state==='play'){
   switch(e.code){
-   case'KeyC':cycleWeapon(1);break;case'KeyV':toggleVulcan();break;case'KeyG':playerFlak();break;case'KeyT':cycleSub();break;case'KeyB':cycleView();break;
-   case'KeyE':toggleLock();break;case'KeyF':playerBrace();break;case'KeyZ':playerRoll(-1);break;case'KeyX':playerRoll(1);break;case'KeyM':bigMap=!bigMap;break;
+   case'KeyC':cycleWeapon(1);break;case'KeyV':toggleVulcan();break;case'KeyT':cycleSub();break;case'KeyB':cycleView();break;
+   case'KeyZ':playerRoll(-1);break;case'KeyX':playerRoll(1);break;case'KeyM':bigMap=!bigMap;break;
    case'KeyH':openHelp();break;case'Escape':case'KeyP':pauseGame();break;
    case'F9':photoMode=!photoMode;msg(photoMode?'PHOTO MODE — F10 SAVES':'HUD ON',70);break;
    case'F10':if(state==='play'){try{const a=document.createElement('a');a.download='parsec-'+Date.now()+'.png';a.href=cv.toDataURL('image/png');a.click();}catch(e){}}break;
    case'Digit1':case'Digit2':case'Digit3':case'Digit4':case'Digit5':case'Digit6':setWeapon(+e.code.slice(5)-1);break;
-   case'Digit7':useAbility(1);break;case'Digit8':useAbility(2);break;
   }
  }else if(state==='pause'&&(e.code==='Escape'||e.code==='KeyP')){if(UI.cur==='confirmAbort')ACT.abortNo();else ACT.resume();}
  else if(e.code==='Escape'){const b=document.querySelector('#ui [data-a=back]');if(b)b.click();}
@@ -912,7 +913,7 @@ function layoutTouch(){
  put(TEL.stick,'stick',STICK[0],STICK[1],STICK[2]);
  if(TEL.cockpit)TEL.cockpit.classList.toggle('on',!!(cockpitOn||tailOn));const hid=settings.assist&&settings.hideAssisted&&!editLayout;const hmap={climb:'assistClimb',shield:'assistBrace',roll:'assistRoll',flak:'assistCm',ab1:'assistCm'};for(const id in hmap)if(TEL[id])TEL[id].style.display=(hid&&settings[hmap[id]])?'none':'';if(TEL.aim)TEL.aim.style.display=(settings.assist&&settings.assistAim&&!editLayout)?'none':'';if(TEL.cockpit)TEL.cockpit.style.display=view3D()?'':'none';
  TEL.stick.style.display=(t.stick===false&&!editLayout)?'none':'';
- if(TEL.thr){TEL.thr.style.display=((viewMode!==0)&&!editLayout)?'block':'none';TEL.thr.style.width=(30*base)+'px';}
+ if(TEL.thr){const th=TEL.thr,tw=30*base;th.style.display=((viewMode!==0)&&!editLayout)?'block':'none';th.style.width=tw+'px';if(t.stick!==false){/* sit the throttle lever beside the fixed stick so it does not cover the left HUD */const sp=t.pos&&t.pos.stick,ssz=STICK[2]*sc*base;let sx=sp?sp[0]:STICK[0];const sy=(sp?sp[1]:STICK[1])*ch;if(t.mirror)sx=1-sx;sx*=cw;const lh=Math.min(ssz*1.25,ch*.5);const lx=clamp(t.mirror?sx-ssz/2-12-tw:sx+ssz/2+12,4,cw-tw-4);th.style.left=lx+'px';th.style.top=clamp(sy-lh/2,4,ch-lh-4)+'px';th.style.height=lh+'px';}else{th.style.left='8px';th.style.top='24%';th.style.height='44%';}}
  root.style.display=((touchOn&&state==='play')||editLayout)?'block':'none';
  root.classList.toggle('edit',editLayout);
 }
@@ -933,7 +934,7 @@ function pollPad(){
  const e=[];for(let i=0;i<17;i++){const v=!!(p.buttons[i]&&p.buttons[i].pressed);e[i]=v&&!PAD.prev[i];PAD.prev[i]=v;}
  if(e.some(Boolean))audioInit();
  if(state==='play'){
-  if(e[1])playerFlak();if(e[2])toggleVulcan();if(e[3])toggleLock();if(e[4])cycleWeapon(-1);if(e[5])cycleWeapon(1);if(e[6])useAbility(1);if(e[13])useAbility(2);if(e[9])pauseGame();if(e[11])playerBrace();if(e[14])playerRoll(-1);if(e[15])playerRoll(1);
+  if(e[1])playerFlak();if(e[2])toggleVulcan();if(e[3])toggleLock();if(e[4])cycleWeapon(-1);if(e[5])cycleWeapon(1);if(e[12])useAbility(1);if(e[13])useAbility(2);if(e[9])pauseGame();if(e[11])playerBrace();if(e[14])playerRoll(-1);if(e[15])playerRoll(1);
  }else{
   if(state==='cine'){if(e[0]||e[9])skipCine();return;}
   if(e[9]&&state==='pause'){ACT.resume();return;}
@@ -1127,7 +1128,7 @@ function spawnWave(no){
 /* ---------------- DAMAGE ---------------- */
 function hasWmod(i){return !!(save&&save.wmods&&save.wmods[save.diff]&&save.wmods[save.diff][i]);}
 function wmodCost(i){return 900+i*250;}
-function dtMul(t,dt){if(!dt)return 1;if(t.kind==='ship'){if(dt==='laser'&&t.sh>0)return 1.2;if(dt==='ion'&&t.sh>0)return .82;if(dt==='plasma')return 1.08;if(dt==='kinetic')return .94;}if(t.kind==='station'){if(dt==='ion')return 1.25;if(dt==='missile')return .8;}return 1;}
+function dtMul(t,dt){if(!dt)return 1;if(t.kind==='ship'){if(dt==='laser'&&t.sh>0)return 1.2;if(dt==='ion'&&t.sh>0)return .82;if(dt==='plasma')return 1.08;if(dt==='vulcan')return .94;}if(t.kind==='station'){if(dt==='ion')return 1.25;if(dt==='msl')return .8;}return 1;}
 function projectorGuard(t){if(t.team!==1)return false;for(const e of enemies){if(e.dead||e.special!=='shield')continue;if(Math.hypot(e.x-t.x,e.y-t.y)<340)return true;}return false;}
 function damage(t,amt,src,o){
  if(t.dead||!(amt>0))return;o=o||0;
@@ -1136,7 +1137,7 @@ function damage(t,amt,src,o){
  if(t.kind==='ship'&&projectorGuard(t))amt*=.55;
  if(t.isPlayer&&M&&M.dmgTaken)amt*=M.dmgTaken;
  if(t.isPlayer&&M.done&&M.win)return;
- if(src&&src.isPlayer){M.dealt+=amt;M.hitCount=(M.hitCount||0)+1;if(M.mode==='range')M.rdps=(M.rdps||0)*.92+amt*.08;}if(t.isPlayer){M.taken+=amt;if(src&&src.x!==undefined&&M.hits.length<6)M.hits.push({a:Math.atan2(src.y-t.y,src.x-t.x),t:40});}
+ if(src&&src.isPlayer){M.dealt+=amt;if(M.mode==='range')M.rdps=(M.rdps||0)*.92+amt*.08;}if(t.isPlayer){M.taken+=amt;if(src&&src.x!==undefined&&M.hits.length<6)M.hits.push({a:Math.atan2(src.y-t.y,src.x-t.x),t:40});}
  if(t.kind==='ship'){
   if(t.brace>0)amt*=.5;
   const st=stationOf(t.team);if(st&&!st.dead&&Math.hypot(t.x-st.x,t.y-st.y)<st.aura)amt*=.65;
@@ -1168,6 +1169,7 @@ function damage(t,amt,src,o){
  }
  if(t.hp<=0)kill(t,src,o);
 }
+function hitTally(src){if(src&&src.isPlayer&&M)M.hitCount=(M.hitCount||0)+1;}
 function flushDmg(t){if(t.dAcc>=.5&&M.t%9===0){dmgText(t.x,t.y,t.z||0,String(Math.max(1,Math.round(t.dAcc))),t.dCrit?'#ffd700':(t.team===0?'#ff8a7a':'#ffffff'),t.dCrit);t.dAcc=0;t.dCrit=false;}}
 function kill(t,src,o){
  if(t.dead)return;t.dead=true;o=o||0;
@@ -1238,7 +1240,8 @@ function fireLaser(s,charged,tg){
  const ex=ox+dx*best,ey=oy+dy*best,hz=hit&&hit.kind==='ship'?hit.z:s.z;
  addBeam(ox,oy,s.z,ex,ey,hz,s.team?'#ff6a5a':WEAPONS[0].c,charged?18:9,charged?5.5:2.4);
  burst(ex,ey,hz,charged?8:4,s.team?'#ff9a8a':'#bff2ff',2,16,3);
- if(hit){let d=pl?wd(s,charged?ls.beam:ls.dmg,0):(charged?wd(s,38,4.2):wd(s,12,1.6));const crit=Math.random()<s.crit;if(crit)d*=s.critM;damage(hit,d,s,{crit});}
+ if(pl&&M)M.shots=(M.shots||0)+1;
+ if(hit){if(hit.kind!=='rock')hitTally(s);let d=pl?wd(s,charged?ls.beam:ls.dmg,0):(charged?wd(s,38,4.2):wd(s,12,1.6));const crit=Math.random()<s.crit;if(crit)d*=s.critM;damage(hit,d,s,{crit,dt:pl?'laser':0});}
  sfxAt(charged?'beam':'laser',s.x,s.y);
 }
 function shoot(type,team,owner,x,y,z,ang,sp,life,dmg,col,r){
@@ -1370,9 +1373,9 @@ function toggleCockpit(){cycleView();}
 function cycleSub(){if(!lockT||lockT.kind!=='station'){msg('LOCK A STATION FIRST',50);return;}const seq=['auto',0,1,2,'gen'],cur=lockT.sub===undefined?'auto':lockT.sub,i=seq.indexOf(cur);lockT.sub=seq[(i+1)%seq.length];msg('FOCUS: '+(lockT.sub==='auto'?'AUTO':lockT.sub==='gen'?'GENERATOR':'TURRET '+(lockT.sub+1)),60);sfx('click');}
 function useAbility(n){
  const p=player;if(!p||p.dead||state!=='play')return;
- if(n===2&&(!save||save.free||((save.cnt&&save.cnt.wins)||0)<3)){sfx('deny');msg('ABILITY 2 LOCKED — WIN 3 MISSIONS',70);return;}
+ if(n===2&&(!save||(!save.free&&((save.cnt&&save.cnt.wins)||0)<3))){sfx('deny');msg('ABILITY 2 LOCKED — WIN 3 MISSIONS',70);return;}
  const cd=n===1?'ab1cd':'ab2cd';if(p[cd]>0){sfx('deny');return;}
- if(n===1){let hits=0;for(const q of projectiles){if(q.dead||q.type!=='msl'||q.team===p.team)continue;if(Math.hypot(q.x-p.x,q.y-p.y)<260){q.dead=true;hits++;burst(q.x,q.y,q.z,10,'#ffd700',1.8,22,3);}}p.ab1cd=720;msg(hits?'FLARES — '+hits+' MISSILE'+(hits>1?'S':'')+' SPOILED':'FLARES OUT',60);sfx('flak');}
+ if(n===1){let hits=0;for(const q of projectiles){if(q.dead||q.type!=='msl'||q.team===p.team)continue;if(Math.hypot(q.x-p.x,q.y-p.y)<260){q.dead=true;q.life=0;hits++;burst(q.x,q.y,q.z,10,'#ffd700',1.8,22,3);}}p.ab1cd=720;msg(hits?'FLARES — '+hits+' MISSILE'+(hits>1?'S':'')+' SPOILED':'FLARES OUT',60);sfx('flak');}
  else{p.oc=420;p.ab2cd=1080;msg('OVERCHARGE — WEAPONS HOT',60);sfx('power');}
 }
 function playerFlak(){
@@ -1744,13 +1747,13 @@ function stepProjectiles(){
    dead=true;break;
   }
   if(!dead)for(const r of rocks){if(r.dead)continue;const rd=Math.hypot(r.x-p.x,r.y-p.y);if(rd>r.r+p.r)continue;if(p.z*140>Math.sqrt(Math.max(0,r.r*r.r-rd*rd)))continue;dead=true;if(!r.moon)damage(r,p.dmg*(p.type==='vulcan'?3:1),p.owner,0);break;}
-  if(!dead)for(const st of stations){if(st.dead||st.team===p.team||p.z*140>110)continue;const dx=st.x-p.x,dy=st.y-p.y;if(dx*dx+dy*dy<(st.r+p.r)*(st.r+p.r)){dead=true;damage(st,p.dmg,p.owner,{crit:p.crit,acc:p.type==='vulcan'});break;}}
+  if(!dead)for(const st of stations){if(st.dead||st.team===p.team||p.z*140>110)continue;const dx=st.x-p.x,dy=st.y-p.y;if(dx*dx+dy*dy<(st.r+p.r)*(st.r+p.r)){dead=true;hitTally(p.owner);damage(st,p.dmg,p.owner,{crit:p.crit,acc:p.type==='vulcan',dt:p.type});break;}}
   if(!dead){
    const foes=p.team?team0:enemies;
    for(const s of foes){
     if(s.dead||s.roll>0)continue;const dx=s.x-p.x,dy=s.y-p.y,rr=s.r*.95+p.r;if(dx>rr||dx<-rr||dy>rr||dy<-rr)continue;
     if(dx*dx+dy*dy>rr*rr||Math.abs(s.z-p.z)>((viewMode!==0)?2.4:.45))continue;
-    dead=true;let d=p.dmg;
+    dead=true;hitTally(p.owner);let d=p.dmg;
     if(p.type==='vulcan'&&Math.hypot(p.x-p.x0,p.y-p.y0)>380)d*=.35;
     if(p.type==='ion')s.slow=160+((p.owner&&p.owner.wl)||0)*3;
     if(p.type==='plasma'){s.burn=5;s.burnT=20;s.burnDmg=p.burn;s.burnBy=p.owner;}
@@ -2602,12 +2605,13 @@ const HUB_ORDER=['hangar','shop','cosm','deeds','sectors','contracts','settings'
 const SWIPE={x:0,y:0,t:0,on:false,block:false};
 document.addEventListener('pointerdown',function(e){
  if(e.pointerType==='mouse'||state!=='menu'||!UI.cur||!HUBNAME[UI.cur])return;
- SWIPE.x=e.clientX;SWIPE.y=e.clientY;SWIPE.t=Date.now();SWIPE.on=true;
+ if(e.target&&e.target.closest&&e.target.closest('input,select,textarea'))return;
+ const sa=evApp(e);SWIPE.x=sa[0];SWIPE.y=sa[1];SWIPE.t=Date.now();SWIPE.on=true;
 },{passive:true});
 document.addEventListener('pointerup',function(e){
  if(!SWIPE.on)return;SWIPE.on=false;
  if(e.pointerType==='mouse')return;
- const dx=e.clientX-SWIPE.x,dy=e.clientY-SWIPE.y,dt=Date.now()-SWIPE.t;
+ const sa=evApp(e),dx=sa[0]-SWIPE.x,dy=sa[1]-SWIPE.y,dt=Date.now()-SWIPE.t;
  if(dt>800||Math.abs(dx)<55||Math.abs(dx)<Math.abs(dy)*1.5)return;
  const i=HUB_ORDER.indexOf(UI.cur);if(i<0)return;
  const ni=(i+(dx<0?1:-1)+HUB_ORDER.length)%HUB_ORDER.length;
@@ -2927,11 +2931,11 @@ const SCREENS={
   '<h3 id="sec-controls">Keyboard &amp; mouse — diorama</h3><table>'+
   '<tr><td>W / S</td><td>Thrust forward / reverse</td></tr><tr><td>A / D</td><td>Yaw left / right (the ship banks into turns)</td></tr>'+
   '<tr><td>Space</td><td>Fire. The laser shoots the moment you press; hold for rapid pulses, with a heavy beam each time the charge ring fills</td></tr>'+
-  '<tr><td>C / wheel / 1–4</td><td>Cycle or pick weapon</td></tr><tr><td>V</td><td>Toggle vulcan auto-fire</td></tr><tr><td>G</td><td>Flak burst (also detonates enemy plasma)</td></tr>'+
+  '<tr><td>C / wheel / 1–6</td><td>Cycle or pick weapon</td></tr><tr><td>7 / 8</td><td>Ability 1 (flares) / Ability 2 (overcharge)</td></tr><tr><td>V</td><td>Toggle vulcan auto-fire</td></tr><tr><td>G</td><td>Flak burst (also detonates enemy plasma)</td></tr>'+
   '<tr><td>Shift</td><td>Space brake</td></tr><tr><td>Q</td><td>Afterburner (builds heat; overheating locks it)</td></tr><tr><td>R</td><td>Climb. Release to sink back</td></tr>'+
   '<tr><td>E / click</td><td>Aim assist: lock the nearest enemy, or click one to lock it</td></tr><tr><td>F</td><td>Brace: halve incoming damage for a moment</td></tr><tr><td>Z / X</td><td>Barrel roll left / right: a sideways dash that shots pass through</td></tr>'+
   (view3D()?'<tr><td>B</td><td>Cycle view: diorama → cockpit → tail (3D only)</td></tr>':'')+'<tr><td>M</td><td>Large map</td></tr><tr><td>H</td><td>This manual</td></tr><tr><td>Esc / P</td><td>Pause</td></tr></table>'+
-  '<h3>Xbox gamepad</h3><table><tr><td>Left stick</td><td>Steer toward the stick, thrust with deflection</td></tr><tr><td>A / B / X / Y</td><td>Fire / flak / vulcan auto / lock target</td></tr><tr><td>LB · RB</td><td>Cycle weapons</td></tr><tr><td>LT · RT</td><td>Brake · afterburner</td></tr><tr><td>L3 · R3</td><td>Climb · brace</td></tr><tr><td>D-pad ◀ ▶</td><td>Barrel roll</td></tr><tr><td>Start</td><td>Pause</td></tr></table>'+
+  '<h3>Xbox gamepad</h3><table><tr><td>Left stick</td><td>Steer toward the stick, thrust with deflection</td></tr><tr><td>A / B / X / Y</td><td>Fire / flak / vulcan auto / lock target</td></tr><tr><td>LB · RB</td><td>Cycle weapons</td></tr><tr><td>LT · RT</td><td>Brake · afterburner</td></tr><tr><td>L3 · R3</td><td>Climb · brace</td></tr><tr><td>D-pad ◀ ▶</td><td>Barrel roll</td></tr><tr><td>D-pad ▲ · ▼</td><td>Ability 1 (flares) · Ability 2 (overcharge)</td></tr><tr><td>Start</td><td>Pause</td></tr></table>'+
   (view3D()?'<h3>Cockpit controls (3D)</h3><table><tr><td>W / S</td><td>Pitch nose up / down</td></tr><tr><td>A / D</td><td>Yaw left / right</td></tr><tr><td>R / F</td><td>Throttle up / down — starts at zero</td></tr><tr><td>Q / Shift</td><td>Afterburner / brake</td></tr><tr><td>Space</td><td>Fire</td></tr><tr><td>Z / X</td><td>Barrel roll</td></tr><tr><td>B</td><td>Cycle view: cockpit → tail → diorama</td></tr></table>':'<p class="dim sml">Classic 2D is the diorama scheme: W/S thrust, A/D turn, R climb and F brace. Cockpit pitch and throttle are 3D-only.</p>')+
   '<h3>Touch</h3><p>Left stick steers and thrusts. Buttons: FIRE, WPN (tap to cycle; swipe left/right to move through weapons), FLAK, SHLD (brake + brace), ROLL, AIM (shown when Auto-aim is off), BURN, VULC, CLIMB'+(view3D()?', the eye (view cycle)':'')+' and pause. Tap an enemy to lock it, tap the minimap to enlarge it. With Pilot assist on, Auto-aim can be toggled in Settings → Auto; when it is on the AIM button is hidden. Rearrange everything in Settings → Touch layout editor (drag, mirror, resize, fixed or floating stick); the layout is saved per pilot.</p>'+
   '<h3 id="sec-flight">Flight</h3><p>Ships drift: thrust adds speed along your heading and friction is mild, so brake or counter-thrust to stop. <b>Altitude</b> matters: above 35% you clear asteroids, above 65% you clear moons and planets. Planets are <b>gravity wells</b> that pull ships and bend ion and plasma shots. <b>Ramming</b> hurts both ships by closing speed; the Hull upgrade adds ram damage and the Reactive mod softens impacts. Your <b>shield</b> absorbs damage first and starts recharging 5 seconds after the last hit. Pilot Assist auto-climbs over obstacles, damps sideways drift, and (with Auto countermeasures on) fires flak at incoming plasma and pops flares at inbound missiles.</p>'+(view3D()?'<p><b>Views (B / eye button):</b> cycles <b>diorama → cockpit → tail</b>. Cockpit is full 3D — W/S or the stick pitches the nose, A/D yaws, R/F sets throttle. Tail flies exactly the same 3D model from a chase camera outside the hull; floating yaw by default (set Fixed in Systems → Optics for a rigid mount).</p>':'<p><b>View cycling is a 3D/diorama control.</b> Classic 2D always uses the diorama.</p>')+'<p><b>Pilot Assist</b> can auto-lock the nearest hostile and turn onto its lead, auto-climbs obstacles, fires flak at incoming plasma, pops flares at inbound missiles, braces against hits and barrel-rolls to dodge. Auto-aim has its own toggle in Settings → Auto; the AIM touch button is hidden only while it is on. <i>Hide assisted buttons</i> hides the matching touch buttons for the assists you leave on.</p>'+
@@ -2975,7 +2979,7 @@ const SCREENS={
   (a.win?'<div class="stars big">'+[0,1,2].slice(0,a.stars).map(i=>'<b style="animation-delay:'+(.25+i*.3)+'s">★</b>').join('')+'<i>'+'★'.repeat(3-a.stars)+'</i></div>':'<span class="dim">'+esc(m.why||'Mission failed')+'</span>')+
   '<div class="kv"><span>'+(m.hunt?'Free Hunt':'Mission '+(m.sea+1)+'-'+m.m+' · '+MODES[m.mode].n)+'</span><b>'+DIFFS[m.diff].n+'</b></div>'+
   '<div class="kv"><span>Time</span><b>'+fmtTime(a.secs)+'</b></div><div class="kv"><span>Kills</span><b>'+m.kills+(m.ram?' ('+m.ram+' rammed)':'')+'</b></div>'+(m.wingLost?'<div class="kv"><span>Squadron losses</span><b style="color:#ff8a7a">-'+m.wingLost+' · rebuild in Hangar</b></div>':'')+
-  '<div class="sgrid"><div><b>'+fmtNum(m.dealt)+'</b>damage dealt</div><div><b>'+fmtNum(m.taken)+'</b>damage taken</div><div><b>×'+Math.max(1,m.best)+'</b>best streak</div><div><b>'+(m.shots?Math.round((m.hitCount||0)/m.shots*100):0)+'%</b>accuracy</div></div>'+'<div class="kv"><span>Mission pay</span><b>◈ '+fmtNum(a.reward)+'</b></div><div class="kv"><span>Salvage &amp; bounties</span><b>◈ '+fmtNum(a.bonus)+'</b></div>'+d+
+  '<div class="sgrid"><div><b>'+fmtNum(m.dealt)+'</b>damage dealt</div><div><b>'+fmtNum(m.taken)+'</b>damage taken</div><div><b>×'+Math.max(1,m.best)+'</b>best streak</div><div><b>'+(m.shots?Math.min(100,Math.round((m.hitCount||0)/m.shots*100)):0)+'%</b>accuracy</div></div>'+'<div class="kv"><span>Mission pay</span><b>◈ '+fmtNum(a.reward)+'</b></div><div class="kv"><span>Salvage &amp; bounties</span><b>◈ '+fmtNum(a.bonus)+'</b></div>'+d+
   '<div class="kv" style="font-size:1.1em"><span>Total</span><b style="color:var(--gold)">◈ '+fmtNum(a.total+dg)+'</b></div>'+
   (save.free?'<span class="tag g">Free Roam — nothing saved</span>':'')+
   '<div class="row c" style="margin-top:.4em">'+(a.win&&!m.hunt&&m.lv<500?'<button class="btn primary" data-a="next">Next mission</button><button class="btn" data-a="retry">Replay</button>':'<button class="btn primary" data-a="retry">'+(a.win?'Hunt again':'Retry')+'</button>')+'<button class="btn" data-a="home">Hangar</button></div></div></div>';
@@ -3004,7 +3008,7 @@ function applyContract(c){
  if(c.mode==='recon'){M.scanNodes=[];M.detected=0;const rn=Math.max(1,M.scanTotal||3);for(let i=0;i<rn;i++){const a=rand(TAU),d=420+i*230;M.scanNodes.push({x:clamp(player.x+Math.cos(a)*d,-WORLD_HALF+150,WORLD_HALF-150),y:clamp(player.y+Math.sin(a)*d,-WORLD_HALF+150,WORLD_HALF-150),prog:0,done:false});}}
  msg('CONTRACT: '+c.mods.map(m=>m[1]).join(' · '),110);
 }
-function launchMission(lv,hunt){startMission(lv,hunt);window.__perf=16;if(PENDING_CONTRACT){applyContract(PENDING_CONTRACT);PENDING_CONTRACT=null;QA_MODE=null;}if(viewMode!==0&&player){applyCockpitWorld(true);player.z=Math.max(player.z,.4);}state='play';show('');acc=0;if(touchOn&&!TEL)buildTouch();layoutTouch();audioInit();missionBoot();}
+function launchMission(lv,hunt){cockpitThrottle=0;if(TEL&&TEL.thr)TEL.thr.value=0;startMission(lv,hunt);window.__perf=16;if(PENDING_CONTRACT){applyContract(PENDING_CONTRACT);PENDING_CONTRACT=null;QA_MODE=null;}if(viewMode!==0&&player){applyCockpitWorld(true);player.z=Math.max(player.z,.4);}state='play';show('');acc=0;if(touchOn&&!TEL)buildTouch();layoutTouch();audioInit();missionBoot();}
 function leaveMission(){state='menu';M=null;player=null;lockT=null;layoutTouch();}
 function checkDeeds(r){
  const got=[];r=r||{};
@@ -3038,7 +3042,7 @@ function showEnd(){
 }
 
 const ACT={
- nav(v){if(v==='settings'||v==='help')UI.ret=UI.cur;UI.confirm=-1;UI.pvH=UI.pvT=UI.pvR=-1;show(v);},
+ nav(v){if((v==='settings'||v==='help')&&UI.cur!=='settings'&&UI.cur!=='help')UI.ret=UI.cur;UI.confirm=-1;UI.pvH=UI.pvT=UI.pvR=-1;show(v);},
  contract(v){const c=contractList()[+v];if(!c)return;PENDING_CONTRACT=c;QA_MODE=c.mode;launchMission(c.lv,false);},
  ngplus(){if(UI.confirm!==7){UI.confirm=7;refresh();toast('Press again to reset this difficulty');return;}const d=save.diff;save.prog.campaign[d]={};for(const k of UPK)save.gear[d][k]=0;save.climb=(save.climb||0)+1;UI.confirm=-1;persist();toast('NEW GAME+ '+(save.climb+1)+' — modifiers rise');show('hangar');},
  load(v){
@@ -3118,7 +3122,7 @@ const ACT={
  dksel(v){UI.dk=+v;refresh();},
  set(v,el){const k=el.dataset.k;settings[k]=v==='true'?true:v==='false'?false:v;if(k==='gfx'){SOFT_AUTO=false;if(v==='classic')LS.del('pc_force3d');else LS.set('pc_force3d',1);if(SOFT_GL&&v!=='classic')toast('Software graphics — 3D will stutter. Enable hardware acceleration.');}saveSettings();applyGfx();resize();refresh();},
  preset(v){SOFT_AUTO=false;const P={quality:{gfx:'high',res:isTouch?'1080':'native',shake:1,glow:true},balanced:{gfx:'high',res:'1080',shake:1,glow:true},performance:{gfx:'low',res:'720',shake:.3,glow:false}}[v];if(!P)return;Object.assign(settings,P);saveSettings();applyGfx();resize();refresh();toast('Preset: '+v.charAt(0).toUpperCase()+v.slice(1));},
- resetcfg(){SOFT_AUTO=false;Object.assign(settings,{glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistAim:true,assistClimb:true,assistCm:true,assistBrace:true,assistRoll:true,hideAssisted:false,gfx:isTouch?'low':'high',res:'1080'});Object.assign(audioSet,{music:.55,sfx:.8});saveSettings();applyGfx();setVol();resize();refresh();toast('Settings reset to defaults');},
+ resetcfg(){SOFT_AUTO=false;Object.assign(settings,{glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistAim:true,assistClimb:true,assistCm:true,assistBrace:true,assistRoll:true,hideAssisted:false,gfx:isTouch?'low':'high',res:'1080',hc:false,lang:'en',cb:'none',tailCam:'float',binds:Object.assign({},DEF_BINDS)});Object.assign(audioSet,{music:.55,sfx:.8});saveSettings();applyGfx();setVol();resize();refresh();toast('Settings reset to defaults');},
  jump(v){const el=document.getElementById('sec-'+v);if(el&&el.scrollIntoView)el.scrollIntoView({block:'start',behavior:'smooth'});},
  layout(){if(!save){toast('Select a pilot first — layouts are saved per pilot');return;}editLayout=true;if(!TEL)buildTouch();show('layout');layoutTouch();},
  lmirror(){save.touch.mirror=!save.touch.mirror;layoutTouch();refresh();},
