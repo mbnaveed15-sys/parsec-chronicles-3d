@@ -55,7 +55,7 @@ into one `index.html`. Works on desktop and mobile.
 | Q / Shift | Afterburner / brake |
 | Space | Fire |
 | Z / X | Barrel roll |
-| B | Return to diorama |
+| B | Cycle view: cockpit → tail → diorama |
 
 On touch: the left stick pitches/yaws, a **throttle lever** appears on the left, and FIRE / BURN /
 SHLD buttons handle weapons, boost and brake. Mission 1 walks you through the cockpit scheme.
