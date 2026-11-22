@@ -981,7 +981,13 @@ function dmgText(x,y,z,txt,col,big){
 }
 function drop(x,y,type){if(flotsams.length>40)return;const a=rand(TAU),v=rand(.4,1.4);flotsams.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,type,life:1300,rot:rand(TAU)});}
 function mkPower(x,y,type){return{x,y,type,life:1800,bob:rand(TAU)};}
-function pickPwr(){const r=Math.random();if(r<.05)return'sing';if(r<.12)return'msl';return PWR[Math.random()*PWR.length|0];}
+function pickPwr(){
+ const lo=loadoutFor(),pool=['medkit','medkit','boost','damage','shield','gold'];
+ if(lo.includes(2))pool.push('plasma','plasma');
+ if(lo.includes(4))pool.push('msl','msl');
+ if(lo.includes(5)&&singUnlocked())pool.push('sing');
+ return pool[Math.random()*pool.length|0];
+}
 
 /* ---------------- ENTITIES ---------------- */
 function mkShip(idx,team,x,y,ang){
@@ -1278,7 +1284,7 @@ function fireSing(){
  let tx,ty,tz;
  if(lockT&&!lockT.dead){tx=lockT.x;ty=lockT.y;tz=lockT.z||0;}
  else{const t=autoTarget(p,950);if(t){tx=t.x;ty=t.y;tz=t.z||0;}else{tx=p.x+Math.cos(p.ang)*320;ty=p.y+Math.sin(p.ang)*320;tz=p.z;}}
- p.sing--;p.singCd=420;spawnSing(p,tx,ty,tz,false);msg('SINGULARITY DEPLOYED',90);
+ p.sing--;p.singCd=420;spawnSing(p,tx,ty,tz,false);msg('SINGULARITY DEPLOYED',90);if(p.sing<=0)fallbackToLaser(p,'SINGULARITY EMPTY');
 }
 function stepSing(){
  for(let i=singularities.length-1;i>=0;i--){
@@ -1376,6 +1382,20 @@ function clickWorld(sx,sy){
 function pauseGame(){if(state!=='play')return;state='pause';T.fire=T.burn=T.climb=T.brake=false;T.son=false;UI.ret='pause';show('pause');layoutTouch();}
 function openHelp(){if(state!=='play')return;state='pause';UI.ret='pause';show('help');layoutTouch();}
 
+function pickFallback(p){
+ const lo=p.loadout||[0];
+ let i=lo.indexOf(0);
+ if(i<0){i=clamp(p.slot||0,0,lo.length-1);lo[i]=0;p.loadout=lo;}
+ return i;
+}
+function fallbackToLaser(p,why){
+ if(!p||p.dead)return false;
+ const i=pickFallback(p);
+ if(p.slot===i&&p.wep===0)return false;
+ setWeapon(i);
+ if(why)msg(why+' — MAIN LASERS',90);
+ return true;
+}
 function playerWeapons(p){
  for(let i=0;i<6;i++)if(p.cd[i]>0)p.cd[i]--;
  if(p.singCd>0)p.singCd--;
@@ -1394,9 +1414,9 @@ function playerWeapons(p){
   p.charge=0;
   if(fire){
    if(w===1&&p.cd[1]<=0){fireBolt(p,1);p.cd[1]=Math.round(52*p.cdm);}
-   else if(w===2&&p.cd[2]<=0){if(p.plasma>0){fireBolt(p,2);p.plasma--;p.cd[2]=Math.round(70*p.cdm);}else{p.cd[2]=30;sfx('deny');msg('PLASMA EMPTY — DOCK TO RESTOCK',70);}}
+   else if(w===2&&p.cd[2]<=0){if(p.plasma>0){fireBolt(p,2);p.plasma--;p.cd[2]=Math.round(70*p.cdm);if(p.plasma<=0)fallbackToLaser(p,'PLASMA EMPTY');}else{p.cd[2]=30;fallbackToLaser(p,'PLASMA EMPTY');}}
    else if(w===3)fireVulcan(p);
-   else if(w===4&&p.cd[4]<=0){if(p.msl>0){fireMissile(p);p.msl--;p.cd[4]=Math.round(105*p.cdm);}else{sfx('deny');msg('MISSILE RACK EMPTY — DOCK OR FIND RELOADS',90);p.cd[4]=40;}}
+   else if(w===4&&p.cd[4]<=0){if(p.msl>0){fireMissile(p);p.msl--;p.cd[4]=Math.round(105*p.cdm);if(p.msl<=0)fallbackToLaser(p,'MISSILE RACK EMPTY');}else{fallbackToLaser(p,'MISSILE RACK EMPTY');p.cd[4]=40;}}
   }
  }
  if(w===5&&press)fireSing();
@@ -2894,6 +2914,7 @@ const SCREENS={
   '<tr><td style="color:#ffd700">VULCAN</td><td>Bullet stream, best inside 380 m. Overheats. V lets it fire by itself.</td></tr>'+
   '<tr><td style="color:#ffb36b">MISSILE</td><td>Guided warhead: homes on your lock or the nearest hostile, 26+ damage with a small splash. Rack holds 4 per sortie and rearms while you dock or from missile pickups. Carry it in a loadout slot.</td></tr>'+
   '<tr><td style="color:#b06bff">SING</td><td>Singularity bomb: a 215 m well that drags ships in and grinds them — allies take 25%. One charge a mission once you have broken a captain; rare purple pickups add charges. Captains, elites and bosses can throw one back at you.</td></tr></table>'+
+  '<p><b>Ammo fallback:</b> when plasma, missile or singularity charges run out, the weapon selector automatically returns to your main lasers. Ammo pickups are filtered to the weapons actually fitted in your loadout.</p>'+
   '<p><b>Flak</b> is a point-defence countermeasure, not a slot weapon: it bursts automatically at incoming plasma when the assist is on, or on G. Nine pellets, 8 s cooldown.</p>'+
   '<p>Shots auto-aim at targets inside your <b>fire arc</b> (widen it with the Fire Arc upgrade). A ghost diamond shows where ion and plasma will land. Targeting upgrades add critical hits, shown in gold.</p>'+
   '<h3 id="sec-stations">Stations</h3><p>Each side may hold a station with three turrets. Its <b>defense field</b> (the ring) burns enemy ships inside it and reduces damage to friends inside by 35%. Park inside your own ring to <b>dock</b>: hull repairs, shields recharge and plasma restocks.</p>'+
