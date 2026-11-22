@@ -877,9 +877,17 @@ function buildTouch(){
  st.addEventListener('pointerup',end);st.addEventListener('pointercancel',end);
  for(const b of TB){
   const el=document.createElement('div');el.className='tb';el.textContent=b[1];el.dataset.id=b[0];root.appendChild(el);TEL[b[0]]=el;
-  const id=b[0];
-  el.addEventListener('pointerdown',e=>{e.preventDefault();audioInit();if(editLayout){startDrag(id,e);return;}try{el.setPointerCapture(e.pointerId);}catch(_){ }el.classList.add('on');tpress(id,true);});
-  const up=()=>{if(editLayout)return;el.classList.remove('on');tpress(id,false);};
+  const id=b[0],isW=id==='weapon';let ws=null;
+  el.addEventListener('pointerdown',e=>{e.preventDefault();audioInit();if(editLayout){startDrag(id,e);return;}
+   if(isW){ws={id:e.pointerId,x:e.clientX,y:e.clientY};el.classList.add('on');try{el.setPointerCapture(e.pointerId);}catch(_){ }return;}
+   try{el.setPointerCapture(e.pointerId);}catch(_){ }el.classList.add('on');tpress(id,true);});
+  el.addEventListener('pointerup',e=>{
+   if(!isW||!ws||ws.id!==e.pointerId)return;
+   const dx=e.clientX-ws.x,dy=e.clientY-ws.y,thr=Math.max(24,(el.offsetWidth||40)*.4);ws=null;
+   if(Math.abs(dx)>thr&&Math.abs(dx)>Math.abs(dy))cycleWeapon(dx<0?1:-1);else cycleWeapon(1);
+  });
+  el.addEventListener('pointercancel',()=>{ws=null;});
+  const up=()=>{if(editLayout)return;el.classList.remove('on');if(!isW)tpress(id,false);};
   el.addEventListener('pointerup',up);el.addEventListener('pointercancel',up);
  }
  const thr=document.createElement('input');thr.type='range';thr.min='0';thr.max='100';thr.value='0';thr.id='thrLever';
@@ -902,7 +910,7 @@ function layoutTouch(){
  const put=(el,id,x,y,sz)=>{const p=t.pos&&t.pos[id],cp=cw<700&&COMPACT[id];let fx=p?p[0]:(cp?cp[0]:x);const fy=p?p[1]:(cp?cp[1]:y);if(t.mirror)fx=1-fx;el.style.left=(fx*100)+'%';el.style.top=(fy*100)+'%';el.style.width=el.style.height=(sz*sc*base)+'px';el.style.fontSize=Math.max(9,sz*sc*base*.19)+'px';};
  for(const b of TB)put(TEL[b[0]],b[0],b[2],b[3],b[4]);
  put(TEL.stick,'stick',STICK[0],STICK[1],STICK[2]);
- if(TEL.cockpit)TEL.cockpit.classList.toggle('on',!!(cockpitOn||tailOn));const hid=settings.assist&&settings.hideAssisted&&!editLayout;const hmap={climb:'assistClimb',shield:'assistBrace',roll:'assistRoll',flak:'assistCm',ab1:'assistCm'};for(const id in hmap)if(TEL[id])TEL[id].style.display=(hid&&settings[hmap[id]])?'none':'';if(TEL.cockpit)TEL.cockpit.style.display=view3D()?'':'none';
+ if(TEL.cockpit)TEL.cockpit.classList.toggle('on',!!(cockpitOn||tailOn));const hid=settings.assist&&settings.hideAssisted&&!editLayout;const hmap={climb:'assistClimb',shield:'assistBrace',roll:'assistRoll',flak:'assistCm',ab1:'assistCm'};for(const id in hmap)if(TEL[id])TEL[id].style.display=(hid&&settings[hmap[id]])?'none':'';if(TEL.aim)TEL.aim.style.display=(settings.assist&&!editLayout)?'none':'';if(TEL.cockpit)TEL.cockpit.style.display=view3D()?'':'none';
  TEL.stick.style.display=(t.stick===false&&!editLayout)?'none':'';
  if(TEL.thr){TEL.thr.style.display=((viewMode!==0)&&!editLayout)?'block':'none';TEL.thr.style.width=(30*base)+'px';}
  root.style.display=((touchOn&&state==='play')||editLayout)?'block':'none';
@@ -1380,6 +1388,14 @@ function toggleLock(){
  if(best===lockT)best=second;
  lockT=best;sfx(best?'lock':'click');if(!best)msg('NO TARGET',50);
 }
+function autoAim(){
+ if(!settings.assist)return;const p=player;if(!p||p.dead)return;
+ if(lockT&&!lockT.dead&&Math.hypot(lockT.x-p.x,lockT.y-p.y)<2200)return;
+ let best=null,bd=1700;
+ const consider=t=>{if(t.dead)return;const d=Math.hypot(t.x-p.x,t.y-p.y);if(d<bd){bd=d;best=t;}};
+ for(const e of enemies)consider(e);for(const s of stations)if(s.team===1)consider(s);
+ lockT=best;
+}
 function clickWorld(sx,sy){
  s2w(sx,sy);let best=null,bd=110;
  for(const e of enemies){if(e.dead)continue;const d=Math.hypot(e.x-WX,e.y-WY)-e.r;if(d<bd){bd=d;best=e;}}
@@ -1441,7 +1457,7 @@ function autoDefend(){
 }
 function playerStep(){
  const p=player,inp=PIN;
- autoDefend();
+ autoDefend();autoAim();
  if(p.ab1cd>0)p.ab1cd--;if(p.ab2cd>0)p.ab2cd--;if(p.oc>0)p.oc--;
  p.turn=p.turn0*settings.turn;p.acc=p.acc0*settings.thrust;
  if(viewMode!==0){inp.turn=IN.turn;inp.pitch=IN.pitch;if(keys.KeyR)cockpitThrottle=clamp(cockpitThrottle+.022,0,1);if(keys.KeyF)cockpitThrottle=clamp(cockpitThrottle-.03,0,1);if(TEL&&TEL.thr)TEL.thr.value=Math.round(cockpitThrottle*100);inp.thrust=IN.brake?0:cockpitThrottle;inp.brake=IN.brake;inp.burn=IN.burn;inp.climb=false;if(p.boost>0)p.boost--;if(p.dbuff>0)p.dbuff--;stepShip(p,inp);playerWeapons(p);if(lockT&&(lockT.dead||Math.hypot(lockT.x-p.x,lockT.y-p.y)>2200))lockT=null;return;}
@@ -2877,7 +2893,7 @@ const SCREENS={
    ['audio','Comms','<h3>Comms / Audio</h3>'+sl('a','music','Music volume',0,1,.05)+sl('a','sfx','SFX volume',0,1,.05)],
    ['display','Optics','<h3>Optics / Display</h3>'+'<div class="set" data-n="preset quality performance"><span>Preset</span><div class="seg"><button class="btn sm" data-a="preset" data-v="quality">Quality</button><button class="btn sm" data-a="preset" data-v="balanced">Balanced</button><button class="btn sm" data-a="preset" data-v="performance">Performance</button></div></div>'+seg('gfx','Graphics',[['high','High 3D'],['low','Low 3D'],['classic','Classic 2D']])+(SOFT_GL?'<p class="dim sml" style="color:#ffb96a">Software graphics detected'+(SOFT_AUTO?' — auto-switched to Classic 2D this session':'')+' ('+SOFT_GPU.slice(0,64)+'). Enable hardware acceleration in your browser for smooth 3D.</p>':'')+(window.R3D&&R3D.failed?'<p class="dim sml">3D unavailable on this device — running Classic 2D.</p>':'')+seg('res','Resolution',[['1080','1080p'],['native','Native'],['720','720p']])+'<div class="set" data-n="renderer"><span>Renderer</span><b style="flex:1;text-align:left;font-weight:400" class="dim">'+rendererLabel()+'</b></div>'+sl('s','hud','HUD size',.7,1.6,.05)+sl('s','shake','Screen shake',0,1.5,.05)+sl('s','text','Text size',.8,1.4,.05)+seg('glow','Player glow outline',[[true,'On'],[false,'Off']])+seg('hc','High contrast UI',[[true,'On'],[false,'Off']])+seg('cb','Colour-blind palette',[['none','Off'],['deuter','Deuteranopia'],['protan','Protanopia'],['tritan','Tritanopia']])+seg('tailCam','Tail camera',[['float','Floating'],['fixed','Fixed']])+seg('lang','Language',[['en','English'],['ur','اردو']])+'<div class="row" style="margin-top:.7em"><button class="btn sm warn" data-a="resetcfg">Reset all settings</button></div>'],
    ['flight','Flight','<h3>Flight Control</h3>'+sl('s','turn','Turn speed',.6,1.6,.05)+sl('s','thrust','Thrust power',.6,1.6,.05)+'<h3 style="margin-top:.6em">Bindings</h3>'+bindRow('fire','Fire')+bindRow('lock','Lock target')+bindRow('brace','Brace')+bindRow('flak','Flak')+bindRow('a1','Ability 1')+bindRow('a2','Ability 2')+'<p class="dim sml">Click a binding, then press the new key.</p><p class="dim sml">Classic 2D uses the diorama scheme: W/S thrust, A/D turn, R/F climb and brace. Cockpit pitch and throttle are 3D-only.</p>'],
-   ['autopilot','Autopilot','<h3>Pilot Assist</h3>'+seg('assist','Pilot assist',[[true,'On'],[false,'Off']])+(settings.assist||q?seg('assistCm','Auto countermeasures',[[true,'On'],[false,'Off']],'flak flares missiles plasma countermeasures')+'<p class="setnote">Flak shoots down plasma; flares spoil missiles. Both fire automatically on their own cooldowns.</p>'+seg('assistClimb','Auto-climb obstacles',[[true,'On'],[false,'Off']])+seg('assistBrace','Auto-brace (shield)',[[true,'On'],[false,'Off']])+seg('assistRoll','Auto-roll dodge',[[true,'On'],[false,'Off']])+seg('hideAssisted','Hide assisted buttons',[[true,'On'],[false,'Off']]):'<p class="dim sml">Turn Pilot assist on to configure its individual behaviours.</p>')],
+   ['autopilot','Autopilot','<h3>Pilot Assist</h3><p class="setnote">Auto-locks the nearest hostile and flies the lead solution. The AIM touch button is hidden while this is on.</p>'+seg('assist','Pilot assist',[[true,'On'],[false,'Off']])+(settings.assist||q?seg('assistCm','Auto countermeasures',[[true,'On'],[false,'Off']],'flak flares missiles plasma countermeasures')+'<p class="setnote">Flak shoots down plasma; flares spoil missiles. Both fire automatically on their own cooldowns.</p>'+seg('assistClimb','Auto-climb obstacles',[[true,'On'],[false,'Off']])+seg('assistBrace','Auto-brace (shield)',[[true,'On'],[false,'Off']])+seg('assistRoll','Auto-roll dodge',[[true,'On'],[false,'Off']])+seg('hideAssisted','Hide assisted buttons',[[true,'On'],[false,'Off']]):'<p class="dim sml">Turn Pilot assist on to configure its individual behaviours.</p>')],
    ['controls','Bindings','<h3>Control Bindings</h3>'+seg('land','Force landscape',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.6em"><button class="btn sm" data-a="layout">Touch layout editor</button><button class="btn sm" data-a="fs">Fullscreen</button></div><p class="dim sml" style="margin-top:.7em">Key bindings are listed in the Manual (H).</p>']
   ];
   const TABS=[['audio','Comms'],['display','Optics'],['flight','Flight'],['autopilot','Auto'],['controls','Bindings']];
@@ -2917,8 +2933,8 @@ const SCREENS={
   (view3D()?'<tr><td>B</td><td>Cycle view: diorama → cockpit → tail (3D only)</td></tr>':'')+'<tr><td>M</td><td>Large map</td></tr><tr><td>H</td><td>This manual</td></tr><tr><td>Esc / P</td><td>Pause</td></tr></table>'+
   '<h3>Xbox gamepad</h3><table><tr><td>Left stick</td><td>Steer toward the stick, thrust with deflection</td></tr><tr><td>A / B / X / Y</td><td>Fire / flak / vulcan auto / lock target</td></tr><tr><td>LB · RB</td><td>Cycle weapons</td></tr><tr><td>LT · RT</td><td>Brake · afterburner</td></tr><tr><td>L3 · R3</td><td>Climb · brace</td></tr><tr><td>D-pad ◀ ▶</td><td>Barrel roll</td></tr><tr><td>Start</td><td>Pause</td></tr></table>'+
   (view3D()?'<h3>Cockpit controls (3D)</h3><table><tr><td>W / S</td><td>Pitch nose up / down</td></tr><tr><td>A / D</td><td>Yaw left / right</td></tr><tr><td>R / F</td><td>Throttle up / down — starts at zero</td></tr><tr><td>Q / Shift</td><td>Afterburner / brake</td></tr><tr><td>Space</td><td>Fire</td></tr><tr><td>Z / X</td><td>Barrel roll</td></tr><tr><td>B</td><td>Cycle view: cockpit → tail → diorama</td></tr></table>':'<p class="dim sml">Classic 2D is the diorama scheme: W/S thrust, A/D turn, R climb and F brace. Cockpit pitch and throttle are 3D-only.</p>')+
-  '<h3>Touch</h3><p>Left stick steers and thrusts. Buttons: FIRE, WPN, FLAK, SHLD (brake + brace), ROLL, AIM, BURN, VULC, CLIMB'+(view3D()?', the eye (view cycle)':'')+' and pause. Tap an enemy to lock it, tap the minimap to enlarge it. Rearrange everything in Settings → Touch layout editor (drag, mirror, resize, fixed or floating stick); the layout is saved per pilot.</p>'+
-  '<h3 id="sec-flight">Flight</h3><p>Ships drift: thrust adds speed along your heading and friction is mild, so brake or counter-thrust to stop. <b>Altitude</b> matters: above 35% you clear asteroids, above 65% you clear moons and planets. Planets are <b>gravity wells</b> that pull ships and bend ion and plasma shots. <b>Ramming</b> hurts both ships by closing speed; the Hull upgrade adds ram damage and the Reactive mod softens impacts. Your <b>shield</b> absorbs damage first and starts recharging 5 seconds after the last hit. Pilot Assist auto-climbs over obstacles, damps sideways drift, and (with Auto countermeasures on) fires flak at incoming plasma and pops flares at inbound missiles.</p>'+(view3D()?'<p><b>Views (B / eye button):</b> cycles <b>diorama → cockpit → tail</b>. Cockpit is full 3D — W/S or the stick pitches the nose, A/D yaws, R/F sets throttle. Tail flies exactly the same 3D model from a chase camera outside the hull; floating yaw by default (set Fixed in Systems → Optics for a rigid mount).</p>':'<p><b>View cycling is a 3D/diorama control.</b> Classic 2D always uses the diorama.</p>')+'<p><b>Pilot Assist</b> auto-climbs obstacles, fires flak at incoming plasma, pops flares at inbound missiles, braces against hits and barrel-rolls to dodge. Each assist has its own toggle in Settings, and <i>Hide assisted buttons</i> hides the matching touch buttons for the assists you leave on.</p>'+
+  '<h3>Touch</h3><p>Left stick steers and thrusts. Buttons: FIRE, WPN (tap to cycle; swipe left/right to move through weapons), FLAK, SHLD (brake + brace), ROLL, AIM (shown when Pilot assist is off), BURN, VULC, CLIMB'+(view3D()?', the eye (view cycle)':'')+' and pause. Tap an enemy to lock it, tap the minimap to enlarge it. With Pilot assist on, aiming is automatic — the AIM button is hidden. Rearrange everything in Settings → Touch layout editor (drag, mirror, resize, fixed or floating stick); the layout is saved per pilot.</p>'+
+  '<h3 id="sec-flight">Flight</h3><p>Ships drift: thrust adds speed along your heading and friction is mild, so brake or counter-thrust to stop. <b>Altitude</b> matters: above 35% you clear asteroids, above 65% you clear moons and planets. Planets are <b>gravity wells</b> that pull ships and bend ion and plasma shots. <b>Ramming</b> hurts both ships by closing speed; the Hull upgrade adds ram damage and the Reactive mod softens impacts. Your <b>shield</b> absorbs damage first and starts recharging 5 seconds after the last hit. Pilot Assist auto-climbs over obstacles, damps sideways drift, and (with Auto countermeasures on) fires flak at incoming plasma and pops flares at inbound missiles.</p>'+(view3D()?'<p><b>Views (B / eye button):</b> cycles <b>diorama → cockpit → tail</b>. Cockpit is full 3D — W/S or the stick pitches the nose, A/D yaws, R/F sets throttle. Tail flies exactly the same 3D model from a chase camera outside the hull; floating yaw by default (set Fixed in Systems → Optics for a rigid mount).</p>':'<p><b>View cycling is a 3D/diorama control.</b> Classic 2D always uses the diorama.</p>')+'<p><b>Pilot Assist</b> auto-locks the nearest hostile and turns onto its lead, auto-climbs obstacles, fires flak at incoming plasma, pops flares at inbound missiles, braces against hits and barrel-rolls to dodge. Each assist has its own toggle in Settings, and <i>Hide assisted buttons</i> hides the matching touch buttons for the assists you leave on.</p>'+
   '<h3 id="sec-weapons">Weapons</h3><table>'+
   '<tr><td style="color:#7de3ff">LASER</td><td>Instant hit, range 1150, with a wider auto-aim cone than other weapons; cyan brackets mark the ship your next shot will hit. Tap for a pulse; hold for 3 pulses a second plus a charged beam whenever the ring fills. The Weapons upgrade raises its fire rate (up to 5 a second) and charge speed.</td></tr>'+
   '<tr><td style="color:#c87dff">ION</td><td>Fast bolt that slows the target. Bends in gravity.</td></tr>'+
