@@ -429,6 +429,16 @@ const MODES={
  hunt:{n:'HUNT',ic:'∞',obj:'Free hunt. Reach the kill target.',bonus:1,t:[30,45]},
  recon:{n:'RECON',ic:'◎',obj:'Scan three relay nodes without being detected.',bonus:1.2,t:[60,90]}
 };
+ /* playable area and objective budgets derived from the same curve as the map */
+ function areaKFor(lv){const wh=Math.min(1600+(lv|0)*5,3600);return Math.pow(wh/1605,2);}
+ function huntTarget(lv){return 20+((lv|0)/10|0)*5+Math.round((areaKFor(lv)-1)*10);}
+ function defWavesFor(lv){return 3+Math.min(2,Math.round((areaKFor(lv)-1)*.6));}
+ function scanTotalFor(lv){return 3+Math.min(3,Math.round((areaKFor(lv)-1)*.8));}
+ function modeObj(mode,lv){
+  if(mode==='defend')return'Repel '+defWavesFor(lv)+' assault waves — fighters hunt your squadron, rammers dive the station.';
+  if(mode==='recon')return'Scan '+scanTotalFor(lv)+' relay nodes without being detected.';
+  return MODES[mode].obj;
+ }
 const WEAPONS=[{n:'LASER',c:'#7de3ff'},{n:'ION',c:'#c87dff'},{n:'PLASMA',c:'#ff7043'},{n:'VULCAN',c:'#ffd700'},{n:'MISSILE',c:'#ffb36b'},{n:'SING',c:'#b06bff'}];
 const PWR=['medkit','plasma','boost','damage','shield','gold'];
 const PWRC={medkit:'#6fe08a',plasma:'#ff7043',boost:'#7de3ff',damage:'#ff5a5a',shield:'#5aa0ff',gold:'#ffd700',sing:'#b06bff',msl:'#ffb36b'};
@@ -585,7 +595,7 @@ function rebuildFee(){const b=SHIPS[(dGet(save,'ship',0)/3|0)*3]||SHIPS[0];retur
 function upLock(k){const u=dUp(save),l=u[k],cap=DMAX[save.diff];if(l>=cap)return'';if(k==='wing'&&l<cap&&reached()<=WING_AT[l])return'Unlocks after mission '+WING_AT[l];if(k==='squad'&&u.wing<1)return'Needs a wingmate first';return'';}
 function diffLock(o){const r=DIFFS[save.diff].rank,n=o.rank||0;return r<n?'Requires '+DIFFS[DRANKS[n]].n+' difficulty':'';}
 function modeFor(m){return m%10===0?'boss':m%10===3?'escort':m%10===5?'hunted':m%10===7?'totalwar':m%10===9?'defend':'battle';}
-function starTimes(mode,sea){return mode==='defend'?[120+sea*20,180+sea*30]:MODES[mode].t;}
+function starTimes(mode,sea,lv){const k=areaKFor(lv||1);if(mode==='defend'){const dw=defWavesFor(lv||1);return[Math.round((120+sea*20)*(dw/3)),Math.round((180+sea*30)*(dw/3))];}if(mode==='recon'){const sn=scanTotalFor(lv||1);return[Math.round(60+sea*15+(sn-3)*20),Math.round(90+sea*20+(sn-3)*28)];}if(mode==='escort'||mode==='hunt'){const sc=Math.min(3,Math.max(1,k));return MODES[mode].t.map(t=>Math.round(t*sc));}return MODES[mode].t;}
 function missionReward(lv,mode,diff){return Math.round((200+lv*10)*DIFFS[diff].r*MODES[mode].bonus);}
 function loreFor(lv){const sea=(lv-1)/50|0,m=(lv-1)%50+1;if(m===1)return SEAS[sea].intro;if(m===50)return SEAS[sea].boss+' holds the far end of this sector. Nothing leaves without passing that guns.'.replace('that guns','those guns');if(m%10===0)return'A lieutenant of '+SEAS[sea].boss+' commands here. Break the line and the sector opens further.';return LORE[(lv*7+sea)%LORE.length];}
 
@@ -963,8 +973,10 @@ function startMission(lv,hunt){
  for(const p of projectiles)jpool.push(p);projectiles=[];for(const p of particles)ppool.push(p);particles=[];beams=[];textParticles=[];
  lockT=null;bigMap=false;shake=0;camLX=camLY=0;
  WORLD_HALF=Math.min(1600+lv*5,3600);const WH=WORLD_HALF;
- M={lv,sea,m,mode,hunt:!!hunt,diff:save.diff,D,t:0,clock:0,kills:0,gold:0,ram:0,noHit:true,done:false,win:false,endT:0,why:'',
-  wave:0,waveT:240,spawnT:0,msg:'',msgT:0,flash:0,strikes:[],stormT:260,target:hunt?20+(lv/10|0)*5:0,
+ /* keep density roughly constant: object budgets scale with playable area, then cap for draw-call sanity */
+ const areaK=Math.pow(WH/1605,2),defWaves=defWavesFor(lv),scanTotal=scanTotalFor(lv);
+ M={lv,sea,m,mode,hunt:!!hunt,diff:save.diff,D,t:0,clock:0,kills:0,gold:0,ram:0,noHit:true,done:false,win:false,endT:0,why:'',areaK,defWaves,scanTotal,
+  wave:0,waveT:240,spawnT:0,msg:'',msgT:0,flash:0,strikes:[],stormT:260,target:hunt?huntTarget(lv):0,
   eHull:(1+sea*.28)*D.e*Math.min(1,.7+lv*.03),eDmg:(1+sea*.11)*D.e*Math.min(1,.6+lv*.04),eIdx:Math.min(13,(lv/40|0)+1),weather:'clear',beacon:null,cargo:null,mark:null,boss:null,docked:false,combo:0,comboT:0,best:0,dealt:0,taken:0,hits:[],bossHalf:false,tut:0,tutOn:false,wingLost:0,id:++missionId};
  const w=rng();M.weather=w<.16?'storm':w<.34?'fog':'clear';
  M.hazard=mode==='recon'?'none':['none','none','radiation','drift','derelict'][rng()*5|0];
@@ -976,14 +988,15 @@ function startMission(lv,hunt){
  /* seeded map: planets (gravity wells), moons, asteroids */
  const keep=[[PS.x,PS.y,560],[ES.x,ES.y,560]];
  const place=(r,pad)=>{for(let i=0;i<50;i++){const x=(rng()*2-1)*WH*.82,y=(rng()*2-1)*WH*.82;let ok=true;for(const k of keep)if(Math.hypot(x-k[0],y-k[1])<r+k[2]+pad){ok=false;break;}if(ok){keep.push([x,y,r]);return{x,y};}}return null;};
- const np=1+(rng()<.5?1:0);
+ const np=Math.min(6,1+(rng()<.5?1:0)+Math.round((areaK-1)*1.15));
  for(let i=0;i<np;i++){const r=180+rng()*80,p=place(r,170),pal=PLANET_PAL[rng()*PLANET_PAL.length|0],gas=rng()<.5,ring=gas&&rng()<.13,tilt=(rng()-.5)*.7,seed=rng()*1e6|0;if(p)gravityWells.push({kind:'planet',x:p.x,y:p.y,r,gas,ring,tilt,seed,c1:pal[0],c2:pal[1],rot:rng()*TAU});}
  if(!hunt&&rng()<.09){const br=110+rng()*70,bp=place(br,300);if(bp)gravityWells.push({kind:'planet',bh:true,x:bp.x,y:bp.y,r:br,gas:false,ring:false,tilt:0,seed:rng()*1e6|0,c1:'#000000',c2:'#ff7a2a',rot:0});}
- const nm=1+(rng()*3|0);
+ const nm=Math.min(8,1+(rng()*3|0)+Math.round((areaK-1)*1.6));
  for(let i=0;i<nm;i++){const r=70+rng()*40,p=place(r,90),seed=rng()*1e6|0;if(p)rocks.push({kind:'rock',moon:true,x:p.x,y:p.y,r,hp:1e9,maxHp:1e9,rot:rng()*TAU,spin:.001+rng()*.002,seed,pts:null,dead:false,flash:0});}
- const na=4+(rng()*9|0);
+ const na=Math.min(44,Math.round((4+(rng()*9|0))*areaK));
  for(let i=0;i<na;i++){const r=25+rng()*35,p=place(r,40),seed=rng()*1e6|0,pts=[];for(let k=0;k<10;k++)pts.push(.72+rng()*.38);if(p)rocks.push({kind:'rock',moon:false,x:p.x,y:p.y,r,hp:r*2.4,maxHp:r*2.4,rot:rng()*TAU,spin:(rng()-.5)*.02,seed,pts,dead:false,flash:0});}
- for(let i=0;i<2;i++){const p=place(20,60);if(p)powerups.push(mkPower(p.x,p.y,pickPwr()));}
+ const nPow=Math.min(6,2+Math.round((areaK-1)*1.1));
+ for(let i=0;i<nPow;i++){const p=place(20,60);if(p)powerups.push(mkPower(p.x,p.y,pickPwr()));}
  /* fleets */
  const pa=Math.atan2(ES.y-PS.y,ES.x-PS.x);
  player=mkPlayer(PS.x+Math.cos(pa)*300,PS.y+Math.sin(pa)*300,pa);player.sing=singUnlocked()?1:0;
@@ -991,7 +1004,7 @@ function startMission(lv,hunt){
  player.plasmaMax=5+Math.floor((player.capLv||0)/20);player.plasma=player.plasmaMax;
  const lo=loadoutFor();player.loadout=lo;player.slot=0;player.wep=lo[0]||0;
  const nW=Math.min(wingCount(),squadHealthy());for(let i=0;i<nW;i++)allies.push(mkWing(i,pa));
- const n=3+Math.min(4,lv/60|0),ei=M.eIdx;
+ const n=3+Math.min(4,lv/60|0)+Math.min(4,Math.round((areaK-1)*1.2)),ei=M.eIdx;
  const form=(cx,cy,cnt,o)=>{const a=Math.atan2(PS.y-cy,PS.x-cx);for(let i=0;i<cnt;i++){const col=i%3-1,row=i/3|0,lx=-row*100,ly=col*100;spawnEnemy(ei-(i%3===2?1:0),cx+Math.cos(a)*lx-Math.sin(a)*ly,cy+Math.sin(a)*lx+Math.cos(a)*ly,a,o);}};
  const EC={x:ES.x-Math.cos(pa)*340,y:ES.y-Math.sin(pa)*340};
  if(mode==='battle')form(EC.x,EC.y,n);
@@ -1006,7 +1019,7 @@ function startMission(lv,hunt){
  }
  else if(mode==='hunt'){form(EC.x,EC.y,3);M.spawnT=120;}
  M.tutOn=lv===1&&!hunt&&!save.free&&save.cnt.voy===0;camTX=player.x;camTY=player.y;camX=camTX-W/2;camY=camTY-H/2;
- msg(MODES[mode].n+' — '+(hunt?'DESTROY '+M.target+' HOSTILES':MODES[mode].obj.toUpperCase()),230);
+ msg(MODES[mode].n+' — '+(hunt?'DESTROY '+M.target+' HOSTILES':modeObj(mode,lv).toUpperCase()),230);
 }
 function edgePoint(){
  const WH=WORLD_HALF*.94;
@@ -1014,7 +1027,7 @@ function edgePoint(){
  return{x:WH,y:0};
 }
 function spawnWave(no){
- const cnt=2+Math.min(3,M.lv/25|0)+no,e=edgePoint(),ps=stationOf(0),a=Math.atan2(ps.y-e.y,ps.x-e.x);
+ const cnt=2+Math.min(3,M.lv/25|0)+no+Math.min(3,Math.round((M.areaK-1)*.8)),e=edgePoint(),ps=stationOf(0),a=Math.atan2(ps.y-e.y,ps.x-e.x);
  for(let i=0;i<cnt;i++){const col=i%3-1,row=i/3|0,lx=-row*95,ly=col*95;spawnEnemy(M.eIdx+(no===3?1:0),e.x+Math.cos(a)*lx-Math.sin(a)*ly,e.y+Math.sin(a)*lx+Math.cos(a)*ly,a,{ram:i%2===0});}
  sfx('warn');
 }
@@ -1809,23 +1822,23 @@ function stepMode(){
    if(!m.cargo||m.cargo.dead){finish(false,'FREIGHTER LOST');break;}
    if(Math.hypot(m.cargo.x-m.beacon.x,m.cargo.y-m.beacon.y)<95){finish(true);break;}
    if(m.cargo.hp<m.cargo.maxHp&&Math.hypot(player.x-m.cargo.x,player.y-m.cargo.y)<170&&!enemies.some(e=>!e.dead&&Math.hypot(e.x-m.cargo.x,e.y-m.cargo.y)<400))m.cargo.hp=Math.min(m.cargo.maxHp,m.cargo.hp+.4);
-   if(--m.spawnT<=0){m.spawnT=280+(Math.random()*160|0);if(enemies.length<7){const c=m.cargo,bh=Math.atan2(m.beacon.y-c.y,m.beacon.x-c.x),ahead=480+Math.random()*420,lat=(Math.random()<.5?-1:1)*(240+Math.random()*340),B=WORLD_HALF*.95;const ex=clamp(c.x+Math.cos(bh)*ahead-Math.sin(bh)*lat,-B,B),ey=clamp(c.y+Math.sin(bh)*ahead+Math.cos(bh)*lat,-B,B),cnt=2+(m.lv>40&&Math.random()<.5?1:0),a=Math.atan2(c.y-ey,c.x-ex);for(let i=0;i<cnt;i++)spawnEnemy(m.eIdx-(Math.random()<.25?1:0),ex+(i%3-1)*85,ey+(i/3|0)*85,a);msg('HOSTILES INBOUND',90);sfx('warn');}}
+   if(--m.spawnT<=0){m.spawnT=280+(Math.random()*160|0);if(enemies.length<7+Math.min(4,Math.round((m.areaK-1)*.8))){const c=m.cargo,bh=Math.atan2(m.beacon.y-c.y,m.beacon.x-c.x),ahead=480+Math.random()*420,lat=(Math.random()<.5?-1:1)*(240+Math.random()*340),B=WORLD_HALF*.95;const ex=clamp(c.x+Math.cos(bh)*ahead-Math.sin(bh)*lat,-B,B),ey=clamp(c.y+Math.sin(bh)*ahead+Math.cos(bh)*lat,-B,B),cnt=2+(m.lv>40&&Math.random()<.5?1:0),a=Math.atan2(c.y-ey,c.x-ex);for(let i=0;i<cnt;i++)spawnEnemy(m.eIdx-(Math.random()<.25?1:0),ex+(i%3-1)*85,ey+(i/3|0)*85,a);msg('HOSTILES INBOUND',90);sfx('warn');}}
    break;
   case'hunted':if(!m.mark||m.mark.dead)finish(true);break;
   case'defend':{
    const ps=stationOf(0);if(!ps||ps.dead){finish(false,'STATION LOST');break;}
-   if(enemies.length===0){if(m.wave>=3)finish(true);else if(--m.waveT<=0){m.wave++;spawnWave(m.wave);m.waveT=540;msg('WAVE '+m.wave+' / 3 INBOUND',130);}}
+   if(enemies.length===0){if(m.wave>=m.defWaves)finish(true);else if(--m.waveT<=0){m.wave++;spawnWave(m.wave);m.waveT=540;msg('WAVE '+m.wave+' / '+m.defWaves+' INBOUND',130);}}
    break;}
   case'hunt':
    if(m.kills>=m.target){finish(true);break;}
-   if(enemies.length<4+Math.min(3,m.lv/100|0)&&--m.spawnT<=0){m.spawnT=80;const e=edgePoint();spawnEnemy(m.eIdx-(Math.random()<.3?1:0),e.x,e.y,Math.atan2(player.y-e.y,player.x-e.x));}
+   if(enemies.length<4+Math.min(3,m.lv/100|0)+Math.min(3,Math.round((m.areaK-1)*.8))&&--m.spawnT<=0){m.spawnT=80;const e=edgePoint();spawnEnemy(m.eIdx-(Math.random()<.3?1:0),e.x,e.y,Math.atan2(player.y-e.y,player.x-e.x));}
    break;
   case'recon':{
-   for(const n of (m.scanNodes||[])){if(n.done)continue;const dd=Math.hypot(player.x-n.x,player.y-n.y);if(dd<130)n.prog=Math.min(90,n.prog+1);else n.prog=Math.max(0,n.prog-1);if(n.prog>=90){n.done=true;m.scanned=(m.scanned||0)+1;msg('RELAY SCANNED '+m.scanned+' / 3',90);sfx('power');}}
-   if((m.scanned||0)>=3){finish(true);break;}
+   for(const n of (m.scanNodes||[])){if(n.done)continue;const dd=Math.hypot(player.x-n.x,player.y-n.y);if(dd<130)n.prog=Math.min(90,n.prog+1);else n.prog=Math.max(0,n.prog-1);if(n.prog>=90){n.done=true;m.scanned=(m.scanned||0)+1;msg('RELAY SCANNED '+m.scanned+' / '+m.scanTotal,90);sfx('power');}}
+   if((m.scanned||0)>=m.scanTotal){finish(true);break;}
    let seen=false;for(const e of enemies)if(!e.dead&&Math.hypot(e.x-player.x,e.y-player.y)<430){seen=true;break;}
    m.detected=clamp((m.detected||0)+(seen?1.1:-.7),0,100);
-   if(m.detected>=100){m.detected=0;const e=edgePoint();for(let i=0;i<2;i++)spawnEnemy(m.eIdx,e.x+i*70,e.y,Math.atan2(player.y-e.y,player.x-e.x));msg('DETECTED — INTERCEPTORS INBOUND',110);sfx('warn');}
+   if(m.detected>=100){m.detected=0;const e=edgePoint(),ic=2+Math.min(2,Math.round((m.areaK-1)*.5));for(let i=0;i<ic;i++)spawnEnemy(m.eIdx,e.x+i*70,e.y,Math.atan2(player.y-e.y,player.x-e.x));msg('DETECTED — INTERCEPTORS INBOUND',110);sfx('warn');}
    break;}
   case'range':
    if(enemies.length<3&&m.t%90===0)rangeSpawn();
@@ -1841,8 +1854,8 @@ function objText(){
   case'boss':return(m.boss&&!m.boss.dead?'CAPTAIN '+Math.ceil(m.boss.hp/m.boss.maxHp*100)+'%':'CAPTAIN DOWN')+'  ·  ESCORT '+Math.max(0,n-(m.boss&&!m.boss.dead?1:0))+(es?'  ·  STATION '+(es.dead?'DOWN':Math.ceil(es.hp/es.maxHp*100)+'%'):'');
   case'escort':return m.cargo?'FREIGHTER '+Math.ceil(Math.max(0,m.cargo.hp)/m.cargo.maxHp*100)+'%  ·  '+Math.round(Math.hypot(m.cargo.x-m.beacon.x,m.cargo.y-m.beacon.y))+' m TO BEACON':'';
   case'hunted':return m.mark&&!m.mark.dead?'MARKED SHIP '+Math.ceil(m.mark.hp/m.mark.maxHp*100)+'%':'MARKED SHIP DOWN';
-  case'defend':{const ps=stationOf(0);return'WAVE '+Math.max(1,m.wave)+' / 3  ·  HOSTILES '+n+'  ·  STATION '+(ps&&!ps.dead?Math.ceil(ps.hp/ps.maxHp*100)+'%':'LOST');}
-  case'recon':return'RELAYS '+((m.scanned||0))+' / 3  ·  DETECTION '+Math.round(m.detected||0)+'%';
+  case'defend':{const ps=stationOf(0);return'WAVE '+Math.max(1,m.wave)+' / '+m.defWaves+'  ·  HOSTILES '+n+'  ·  STATION '+(ps&&!ps.dead?Math.ceil(ps.hp/ps.maxHp*100)+'%':'LOST');}
+  case'recon':return'RELAYS '+((m.scanned||0))+' / '+m.scanTotal+'  ·  DETECTION '+Math.round(m.detected||0)+'%';
   case'range':return'PRACTICE · DPS '+Math.round(m.rdps||0)+' · DRONES '+enemies.length+' · F9 CLEAN SHOT';
   default:return'KILLS '+m.kills+' / '+m.target;
  }
@@ -2597,15 +2610,15 @@ const SCREENS={
   return h+'</div></div></div>';
  },
  brief(a){
-  const lv=a.lv,hunt=!!a.hunt,sea=(lv-1)/50|0,m=(lv-1)%50+1,mode=hunt?'hunt':modeFor(m),MD=MODES[mode],st=starTimes(mode,sea),S=SEAS[sea];
+  const lv=a.lv,hunt=!!a.hunt,sea=(lv-1)/50|0,m=(lv-1)%50+1,mode=hunt?'hunt':modeFor(m),MD=MODES[mode],st=starTimes(mode,sea,lv),S=SEAS[sea];
   UI.sea=sea;
   const wr=mulberry32(lv*7919+13)(),weather=wr<.16?'Ion storm — EMP lightning':wr<.34?'Dust fog — reduced visibility':'Clear';
   const newIntro=!hunt&&m===1&&!save.lore[sea];if(newIntro){save.lore[sea]=1;persist();}
-  const target=20+(lv/10|0)*5,rew=hunt?'('+'kills × 10 + 150) × '+DIFFS[save.diff].r:fmtNum(missionReward(lv,mode,save.diff));
+  const target=hunt?huntTarget(lv):0,rew=hunt?'('+'kills × 10 + 150) × '+DIFFS[save.diff].r:fmtNum(missionReward(lv,mode,save.diff));
   const LO=loadoutFor(),MAXS=slotCount();
   return'<div class="scr">'+hdr(hunt?'Free Hunt':'Mission '+(sea+1)+'-'+m)+
   '<div class="panel narrow col" style="max-width:640px"><div class="row"><span style="font-size:2.2em;line-height:1;color:var(--c)">'+MD.ic+'</span><div><h3>'+MD.n+'</h3><span class="dim sml">'+S.n+' · '+DIFFS[save.diff].n+'</span></div>'+(newIntro?'<span class="tag g">New transmission</span>':'')+'</div>'+
-  '<p><b>Objective:</b> '+(hunt?'Destroy '+target+' hostiles. They never stop coming.':MD.obj)+'</p>'+
+  '<p><b>Objective:</b> '+(hunt?'Destroy '+target+' hostiles. They never stop coming.':modeObj(mode,lv))+'</p>'+
   '<p class="lore">'+esc(hunt?'No orders, no flag, no witnesses. Just you and whatever comes over the edge of the scope.':loreFor(lv))+'</p>'+
   (mode==='boss'?'<div class="kv"><span>Sector captain</span><b>'+(m===50?S.boss:'Lieutenant of '+S.boss)+'</b></div>':'')+
   '<div class="kv"><span>Conditions</span><b>'+weather+'</b></div>'+
@@ -2769,7 +2782,7 @@ const SCREENS={
  },
  pause(){
   const qsl=(o,k,label,min,max,step)=>{const obj=o==='a'?audioSet:settings;return'<label class="set"><span>'+label+'</span><input type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+obj[k]+'" data-s="'+k+'" data-o="'+o+'"><b>'+Math.round(obj[k]*100)+'%</b></label>';};
-  const ms=M?(()=>{const secs=M.clock/60,st=starTimes(M.mode,M.sea),tier=secs<st[0]?3:secs<st[1]?2:1;return '<div class="mstat"><div class="kv"><span>Objective</span><b style="text-align:right">'+esc(objText())+'</b></div><div class="kv"><span>Elapsed</span><b>'+fmtTime(secs)+'</b></div><div class="kv"><span>Stars</span><b style="color:var(--gold)">'+'★'.repeat(tier)+'<span style="color:#3c4654">'+'★'.repeat(3-tier)+'</span></b></div><div class="kv"><span>Kills</span><b>'+M.kills+'</b></div></div>';})():'';
+  const ms=M?(()=>{const secs=M.clock/60,st=starTimes(M.mode,M.sea,M.lv),tier=secs<st[0]?3:secs<st[1]?2:1;return '<div class="mstat"><div class="kv"><span>Objective</span><b style="text-align:right">'+esc(objText())+'</b></div><div class="kv"><span>Elapsed</span><b>'+fmtTime(secs)+'</b></div><div class="kv"><span>Stars</span><b style="color:var(--gold)">'+'★'.repeat(tier)+'<span style="color:#3c4654">'+'★'.repeat(3-tier)+'</span></b></div><div class="kv"><span>Kills</span><b>'+M.kills+'</b></div></div>';})():'';
   return'<div class="scr mid dlg"><div class="panel narrow col" style="max-width:380px;text-align:center"><h2>Paused</h2><span class="dim sml">'+(M?(M.hunt?'Free Hunt':'Mission '+(M.sea+1)+'-'+M.m)+' · '+MODES[M.mode].n:'')+'</span>'+ms+
   '<button class="btn primary wide" data-a="resume">Resume</button>'+
   '<div class="qset"><div class="set"><span>Pilot assist</span><div class="seg"><button class="btn sm'+(settings.assist?' on':'')+'" data-a="set" data-k="assist" data-v="true">On</button><button class="btn sm'+(!settings.assist?' on':'')+'" data-a="set" data-k="assist" data-v="false">Off</button></div></div>'+
@@ -2809,7 +2822,7 @@ function applyContract(c){
  if(c.mods.some(m=>m[0]==='GLASS'))M.dmgTaken=1.3;
  if(c.mods.some(m=>m[0]==='ION'))M.ionStorm=true;
  if(c.mods.some(m=>m[0]==='RAMMERS')){for(let i=0;i<2;i++){const e=spawnEnemy(0,player.x+rand(-260,260),player.y+rand(-260,260),rand(TAU),{ram:true});if(e){e.maxHp=e.hp=Math.round(e.maxHp*1.3);}}}
- if(c.mode==='recon'){M.scanNodes=[];M.detected=0;for(let i=0;i<3;i++){const a=rand(TAU),d=420+i*260;M.scanNodes.push({x:clamp(player.x+Math.cos(a)*d,-WORLD_HALF+150,WORLD_HALF-150),y:clamp(player.y+Math.sin(a)*d,-WORLD_HALF+150,WORLD_HALF-150),prog:0,done:false});}}
+ if(c.mode==='recon'){M.scanNodes=[];M.detected=0;const rn=Math.max(1,M.scanTotal||3);for(let i=0;i<rn;i++){const a=rand(TAU),d=420+i*230;M.scanNodes.push({x:clamp(player.x+Math.cos(a)*d,-WORLD_HALF+150,WORLD_HALF-150),y:clamp(player.y+Math.sin(a)*d,-WORLD_HALF+150,WORLD_HALF-150),prog:0,done:false});}}
  msg('CONTRACT: '+c.mods.map(m=>m[1]).join(' · '),110);
 }
 function launchMission(lv,hunt){startMission(lv,hunt);window.__perf=16;if(PENDING_CONTRACT){applyContract(PENDING_CONTRACT);PENDING_CONTRACT=null;QA_MODE=null;}if(viewMode!==0&&player){applyCockpitWorld(true);player.z=Math.max(player.z,.4);}state='play';show('');acc=0;if(touchOn&&!TEL)buildTouch();layoutTouch();audioInit();missionBoot();}
@@ -2824,7 +2837,7 @@ function checkDeeds(r){
 function deedPing(){if(!save||save.free)return;const g=checkDeeds();if(g.length){persist();sfx('buy');toast('Deed earned: '+g.map(d=>d.n).join(', ')+' (+◈ '+fmtNum(g.reduce((a,d)=>a+d.g,0))+')');}}
 function showEnd(){
  const m=M,win=m.win,hunt=m.hunt,secs=m.clock/60;let stars=0,reward=0,deeds=[];const sqLost=Math.max(0,m.wingLost||0);if(sqLost>0&&!save.free&&!m.tutOn){save.sq[save.diff]=Math.max(0,(save.sq[save.diff]|0)-sqLost);save.memorial=(save.memorial||0)+sqLost;persist();}
- if(win){const st=starTimes(m.mode,m.sea);stars=secs<st[0]?3:secs<st[1]?2:1;reward=hunt?Math.round((m.kills*10+150)*m.D.r):missionReward(m.lv,m.mode,m.diff);
+ if(win){const st=starTimes(m.mode,m.sea,m.lv);stars=secs<st[0]?3:secs<st[1]?2:1;reward=hunt?Math.round((m.kills*10+150)*m.D.r):missionReward(m.lv,m.mode,m.diff);
   if(m.contract){reward=Math.round(reward*m.contract.pay);save.contracts[m.contract.key+'-'+m.contract.i]={score:m.kills,stars};}
   save.squadXP=(save.squadXP||0)+stars*60;save.squadLvl=1+Math.floor(save.squadXP/400);
  }
