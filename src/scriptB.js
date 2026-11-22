@@ -668,7 +668,7 @@ function placeCam(){
   const px=p.x-ca*back,py=p.z*ALT+62,pz=p.y-sa*back;
   cam.fov=60;cam.near=3;cam.far=30000;cam.aspect=W/H;
   cam.position.set(px,py,pz);cam.up.set(0,1,0);
-  cam.lookAt(p.x+ca*120,p.z*ALT+8,p.y+sa*120);
+  cam.lookAt(p.x+ca*120,p.z*ALT+8+Math.sin(p.pitch||0)*110,p.y+sa*120);
   cam.updateProjectionMatrix();cam.updateMatrixWorld(true);
   sun.position.set(px-380,1250,pz+440);sun.target.position.set(p.x,0,p.y);sun.target.updateMatrixWorld();
   updDust(px,pz);floor.position.x=Math.round(px/3250)*3250;floor.position.z=Math.round(pz/3250)*3250;
