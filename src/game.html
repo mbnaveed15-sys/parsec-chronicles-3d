@@ -2470,6 +2470,14 @@ document.addEventListener('pointermove',function(e){if(tipTarget)tipPlace(e.clie
 document.addEventListener('pointerout',function(e){if(tipTarget&&(!e.relatedTarget||!tipTarget.contains(e.relatedTarget)))tipHide();});
 document.addEventListener('pointerdown',tipHide,true);
 document.addEventListener('scroll',tipHide,true);
+let TIPT=0;
+document.addEventListener('pointerdown',function(e){
+ if(e.pointerType!=='touch')return;
+ const el=e.target&&e.target.closest?e.target.closest('[data-tip]'):null;
+ if(!el)return;
+ tipTarget=el;TIPEL.textContent=el.getAttribute('data-tip')||'';TIPEL.classList.add('on');tipPlace(e.clientX,e.clientY);
+ clearTimeout(TIPT);TIPT=setTimeout(tipHide,2600);
+},true);
 function fitScrolls(){
  const ui=document.getElementById('ui');if(!ui||!ui.offsetHeight)return;
  const appH=(function(){var a=document.getElementById('app');return (a&&a.clientHeight)||(typeof ch==='number'&&ch>0?ch:window.innerHeight||ui.offsetHeight);})();
@@ -2804,7 +2812,7 @@ function applyContract(c){
  if(c.mode==='recon'){M.scanNodes=[];M.detected=0;for(let i=0;i<3;i++){const a=rand(TAU),d=420+i*260;M.scanNodes.push({x:clamp(player.x+Math.cos(a)*d,-WORLD_HALF+150,WORLD_HALF-150),y:clamp(player.y+Math.sin(a)*d,-WORLD_HALF+150,WORLD_HALF-150),prog:0,done:false});}}
  msg('CONTRACT: '+c.mods.map(m=>m[1]).join(' · '),110);
 }
-function launchMission(lv,hunt){startMission(lv,hunt);if(PENDING_CONTRACT){applyContract(PENDING_CONTRACT);PENDING_CONTRACT=null;QA_MODE=null;}if(viewMode!==0&&player){applyCockpitWorld(true);player.z=Math.max(player.z,.4);}state='play';show('');acc=0;if(touchOn&&!TEL)buildTouch();layoutTouch();audioInit();missionBoot();}
+function launchMission(lv,hunt){startMission(lv,hunt);window.__perf=16;if(PENDING_CONTRACT){applyContract(PENDING_CONTRACT);PENDING_CONTRACT=null;QA_MODE=null;}if(viewMode!==0&&player){applyCockpitWorld(true);player.z=Math.max(player.z,.4);}state='play';show('');acc=0;if(touchOn&&!TEL)buildTouch();layoutTouch();audioInit();missionBoot();}
 function leaveMission(){state='menu';M=null;player=null;lockT=null;layoutTouch();}
 function checkDeeds(r){
  const got=[];r=r||{};
@@ -2949,7 +2957,7 @@ function frame(t){
  requestAnimationFrame(frame);
  const dt=Math.min(250,t-lastT);lastT=t;
  window.__perf=(window.__perf||16)*.95+dt*.05;
- if(state==='play'&&window.__perf>32&&settings.gfx==='high'&&!SOFT_AUTO&&!window.__autoQ){window.__autoQ=1;settings.gfx='low';applyGfx();toast('Auto quality: low (frame time)');}
+ if(state==='play'&&M.t>6&&window.__perf>32&&settings.gfx==='high'&&!SOFT_AUTO&&!window.__autoQ){window.__autoQ=1;settings.gfx='low';applyGfx();toast('Auto quality: low (frame time)');}
  pollPad();
  if(state==='play'&&M){
   acc+=dt;let n=0;

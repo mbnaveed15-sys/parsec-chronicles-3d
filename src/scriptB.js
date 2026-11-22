@@ -33,6 +33,7 @@ const renderer=new THREE.WebGLRenderer({canvas:glc,antialias:false,alpha:false,p
 renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const ALT=140,FLOOR=-170,PITCH=55*Math.PI/180,HALF_FOV=16*Math.PI/180,PI=Math.PI;
+const SUNV=new THREE.Vector3(0,1,0);
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x03050a);
 const cam=new THREE.PerspectiveCamera(32,16/9,40,30000);
 const pmrem=new THREE.PMREMGenerator(renderer);
@@ -525,21 +526,48 @@ function blackHoleObj(g){
  root.position.set(g.x,0,g.y);
  return{o:root,sp:core,cl:null,own:[rm,dt,dmat],bh:disk};
 }
+/* atmosphere: sun-lit rim with a sunset terminator instead of a flat fresnel shell */
+const ATMOS_V='varying vec3 vNW;varying vec3 vWP;void main(){vNW=normalize(mat3(modelMatrix)*normal);vec4 wp=modelMatrix*vec4(position,1.0);vWP=wp.xyz;gl_Position=projectionMatrix*viewMatrix*wp;}';
+const ATMOS_F='uniform vec3 col;uniform vec3 sunDir;uniform float op;varying vec3 vNW;varying vec3 vWP;void main(){vec3 N=normalize(vNW),V=normalize(cameraPosition-vWP);float rim=pow(1.0-max(dot(N,V),0.0),2.4);float sd=dot(N,normalize(sunDir));float day=smoothstep(-0.25,0.45,sd);vec3 warm=mix(vec3(1.0,.52,.24),vec3(.45,.75,1.0),smoothstep(-.12,.5,sd));float a=op*(rim*(.18+.82*day)+pow(max(sd,0.0),3.0)*.10);gl_FragColor=vec4(col*warm*(.45+day*.95),a);}';
+function atmosMat(hex){return new THREE.ShaderMaterial({uniforms:{col:{value:new THREE.Color(hex)},sunDir:{value:new THREE.Vector3(0,1,0)},op:{value:.8}},vertexShader:ATMOS_V,fragmentShader:ATMOS_F,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.FrontSide});}
+/* ring material: samples the procedural ring texture and darkens where the planet blocks the sun */
+const RING_V='varying vec2 vUv;varying vec3 vWP;void main(){vUv=uv;vec4 wp=modelMatrix*vec4(position,1.0);vWP=wp.xyz;gl_Position=projectionMatrix*viewMatrix*wp;}';
+const RING_F='uniform sampler2D map;uniform vec3 sunDir;uniform vec3 center;uniform float radius;uniform float op;varying vec2 vUv;varying vec3 vWP;void main(){vec4 t=texture2D(map,vUv);if(t.a<.02)discard;vec3 L=normalize(sunDir),oc=vWP-center;float b=dot(oc,L),c=dot(oc,oc)-radius*radius,h=b*b-c;float sh=1.0;if(h>0.0&&(-b-sqrt(h))>0.0)sh=.22;gl_FragColor=vec4(t.rgb*sh,t.a*op);}';
+function ringMat(tex){return new THREE.ShaderMaterial({uniforms:{map:{value:tex},sunDir:{value:new THREE.Vector3(0,1,0)},center:{value:new THREE.Vector3()},radius:{value:1},op:{value:.55}},vertexShader:RING_V,fragmentShader:RING_F,transparent:true,depthWrite:false,side:THREE.DoubleSide});}
+/* planet material injection: ring shadow across the lit surface */
+const RING_SHADOW_CHUNK='float rs=1.0;float dn=dot(normalize(uSunDir),normalize(uRingN));if(abs(dn)>1e-4){float tt=dot(uRingC-vRingW,normalize(uRingN))/dn;if(tt>0.0){vec3 hp=vRingW+normalize(uSunDir)*tt;float rad=length(hp-uRingC);if(rad>uRingR.x&&rad<uRingR.y)rs=.28;}}diffuseColor.rgb*=rs;';
 function planetObj(g){
  if(g.bh)return blackHoleObj(g);
  const root=new THREE.Group(),body=new THREE.Group(),tilt=new THREE.Group(),pt=planetTex(g),tex=pt.map,own=[tex];
  const m=new THREE.MeshStandardMaterial({map:tex,roughness:g.gas?.75:1,metalness:0,envMapIntensity:g.gas?.2:.3});if(pt.aux){m.roughnessMap=pt.aux;m.bumpMap=pt.aux;m.bumpScale=3;own.push(pt.aux);}own.push(m);
+ /* ringed worlds tip their rings away from the sun so the planet shadow lands on the camera-facing hemisphere */
+ const rtilt=g.ring?(.44+((g.seed||0)%97)/97*.12):0,rrz=g.ring?-.235*Math.sin(rtilt):g.tilt,rrx=g.ring?-.972*Math.sin(rtilt):g.tilt*.4;
+ if(g.ring){
+  const shRef={v:null},ringN=new THREE.Vector3(0,1,0).applyEuler(new THREE.Euler(rrx,0,rrz)).normalize();
+  m.onBeforeCompile=function(sh){
+   sh.uniforms.uSunDir={value:new THREE.Vector3(0,1,0)};sh.uniforms.uRingC={value:new THREE.Vector3()};sh.uniforms.uRingN={value:ringN.clone()};sh.uniforms.uRingR={value:new THREE.Vector2(g.r*1.22,g.r*1.72)};
+   sh.vertexShader='varying vec3 vRingW;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n vRingW=(modelMatrix*vec4(position,1.0)).xyz;');
+   sh.fragmentShader='uniform vec3 uSunDir;uniform vec3 uRingC;uniform vec3 uRingN;uniform vec2 uRingR;varying vec3 vRingW;\n'+sh.fragmentShader.replace('#include <color_fragment>','#include <color_fragment>\n '+RING_SHADOW_CHUNK);
+   shRef.v=sh;
+  };
+  m.userData.ringShader=shRef;
+ }
  const sp=new THREE.Mesh(GEO.sphHi,m);sp.castShadow=true;sp.receiveShadow=true;sp.rotation.y=g.rot;tilt.add(sp);
- const am=fresMat(new THREE.Color(g.c1).lerp(new THREE.Color(0xbfe0ff),.5).getHex(),.55,2.6),at=new THREE.Mesh(GEO.sphHi,am);at.scale.setScalar(1.045);tilt.add(at);own.push(am);
- const hm=fresMat(new THREE.Color(g.c1).lerp(new THREE.Color(0xbfe0ff),.6).getHex(),.16,5),ha=new THREE.Mesh(GEO.sphHi,hm);ha.scale.setScalar(1.12);tilt.add(ha);own.push(hm);
+ const am=atmosMat(new THREE.Color(g.c1).lerp(new THREE.Color(0xbfe0ff),.45).getHex()),at=new THREE.Mesh(GEO.sphHi,am);at.scale.setScalar(1.06);tilt.add(at);own.push(am);
  let cl=null;if(!g.gas){const ct=cloudTex(g),cm=new THREE.MeshStandardMaterial({map:ct,transparent:true,depthWrite:false,roughness:1,metalness:0,envMapIntensity:.2});cl=new THREE.Mesh(GEO.sphHi,cm);cl.scale.setScalar(1.02);tilt.add(cl);own.push(ct,cm);}
- if(g.ring){const rt=ringTex(g),rm=new THREE.MeshBasicMaterial({map:rt,transparent:true,opacity:.2,side:THREE.DoubleSide,depthWrite:false});tilt.add(new THREE.Mesh(GEO.pring,rm));own.push(rt,rm);}
- tilt.rotation.z=g.tilt;tilt.rotation.x=g.tilt*.4;body.add(tilt);body.scale.set(g.r,g.r,g.r);body.position.y=0;root.add(body);
+ let ring=null,rm=null;if(g.ring){const rt=ringTex(g);rm=ringMat(rt);ring=new THREE.Mesh(GEO.pring,rm);tilt.add(ring);own.push(rt,rm);}
+ tilt.rotation.z=rrz;tilt.rotation.x=rrx;body.add(tilt);body.scale.set(g.r,g.r,g.r);body.position.y=0;root.add(body);
  const wm=new THREE.Mesh(GEO.plane,wellMat);wm.scale.setScalar(g.r*2.6);wm.position.y=-8;wm.visible=false;root.add(wm);
  root.position.set(g.x,0,g.y);
- return{o:root,sp,cl,own};
+ return{o:root,sp,cl,own,atm:am,ringUni:rm?rm.uniforms:null,ringShader:m.userData.ringShader||null};
 }
-function updPlanet(o,g){o.o.position.y=(g.z||0)*ALT;o.sp.rotation.y+=.0006;if(o.cl)o.cl.rotation.y+=.0011;if(o.bh)o.bh.rotation.z+=.012;}
+function updPlanet(o,g){
+ const y=(g.z||0)*ALT;o.o.position.y=y;o.sp.rotation.y+=.0006;if(o.cl)o.cl.rotation.y+=.0011;if(o.bh)o.bh.rotation.z+=.012;
+ if(o.atm)o.atm.uniforms.sunDir.value.copy(SUNV);
+ if(o.ringUni){o.ringUni.sunDir.value.copy(SUNV);o.ringUni.center.value.set(o.o.position.x,y,o.o.position.z);o.ringUni.radius.value=g.r;}
+ const sh=o.ringShader&&o.ringShader.v;
+ if(sh){sh.uniforms.uSunDir.value.copy(SUNV);sh.uniforms.uRingC.value.set(o.o.position.x,y,o.o.position.z);}
+}
 function rockObj(r){
  if(r.moon){const m=new THREE.Mesh(GEO.sphHi,moonMat(r.seed%3));m.scale.set(r.r,r.r,r.r);m.position.set(r.x,-12,r.y);m.rotation.y=r.rot;m.castShadow=true;m.receiveShadow=true;return{o:m};}
  const v=r.seed%6,mat=r.seed%5===0?MT.rockOre:MT.rock,g=new THREE.Group(),rs=mulberry32(r.seed);
@@ -761,7 +789,7 @@ function tailClear(sx,sy,sz,cx,cy,cz){
  return best;
 }
 function placeCam(){
- if(window.CINE_CAM){const q=window.CINE_CAM;cam.fov=52;cam.near=2;cam.aspect=W/H;cam.position.set(q.x,q.y,q.z);cam.up.set(0,1,0);cam.lookAt(q.lx,q.ly,q.lz);cam.updateProjectionMatrix();cam.updateMatrixWorld(true);sun.position.set(q.x-380,1250,q.z+440);sun.target.position.set(q.lx,0,q.lz);sun.target.updateMatrixWorld();updDust(q.x,q.z);return;}
+ if(window.CINE_CAM){const q=window.CINE_CAM;cam.fov=52;cam.near=2;cam.aspect=W/H;cam.position.set(q.x,q.y,q.z);cam.up.set(0,1,0);cam.lookAt(q.lx,q.ly,q.lz);cam.updateProjectionMatrix();cam.updateMatrixWorld(true);sun.position.set(q.x-760,720,q.z+640);sun.target.position.set(q.lx,0,q.lz);sun.target.updateMatrixWorld();updDust(q.x,q.z);return;}
  const tl=!!window.tailOn&&player&&!player.dead;
  if(tl){
   const p=player;
@@ -780,7 +808,7 @@ function placeCam(){
   cam.position.set(px,py,pz);cam.up.set(0,1,0);
   cam.lookAt(p.x+ca*120,p.z*ALT+8+Math.sin(p.pitch||0)*110,p.y+sa*120);
   cam.updateProjectionMatrix();cam.updateMatrixWorld(true);
-  sun.position.set(px-380,1250,pz+440);sun.target.position.set(p.x,0,p.y);sun.target.updateMatrixWorld();
+  sun.position.set(px-760,720,pz+640);sun.target.position.set(p.x,0,p.y);sun.target.updateMatrixWorld();
   updDust(px,pz);floor.position.x=Math.round(px/3250)*3250;floor.position.z=Math.round(pz/3250)*3250;
   return;
  }
@@ -796,14 +824,14 @@ function placeCam(){
   cam.up.set(-sp*ca*cr-sa*sr,cp*cr,-sp*sa*cr+ca*sr);
   cam.lookAt(px+cp*ca*200,py+sp*200,pz+cp*sa*200);
   cam.updateProjectionMatrix();cam.updateMatrixWorld(true);
-  sun.position.set(px-380,1250,pz+440);sun.target.position.set(px,0,pz);sun.target.updateMatrixWorld();
+  sun.position.set(px-760,720,pz+640);sun.target.position.set(px,0,pz);sun.target.updateMatrixWorld();
   updDust(px,pz);floor.position.x=Math.round(px/3250)*3250;floor.position.z=Math.round(pz/3250)*3250;
   return;
  }
  ckPZ=null;ckPitch=0;cam.fov=32;cam.near=40;
  const d=H/(2*Math.tan(HALF_FOV)),tx=camX+W/2,tz=camY+H/2;
  cam.aspect=W/H;cam.position.set(tx,d*Math.sin(PITCH),tz+d*Math.cos(PITCH));cam.lookAt(tx,0,tz);cam.updateProjectionMatrix();cam.updateMatrixWorld(true);
- sun.position.set(tx-380,1250,tz+440);sun.target.position.set(tx,0,tz);sun.target.updateMatrixWorld();
+ sun.position.set(tx-760,720,tz+640);sun.target.position.set(tx,0,tz);sun.target.updateMatrixWorld();
  updDust(tx,tz);floor.position.x=Math.round(tx/3250)*3250;floor.position.z=Math.round(tz/3250)*3250;
 }
 const out={x:0,y:0},out2={x:0,y:0};
@@ -821,6 +849,7 @@ function render(){
  frameNo++;checkQuality();
  if(M.id!==curMission){curMission=M.id;setSector(M.sea);}
  placeCam();
+ SUNV.set(sun.position.x-sun.target.position.x,sun.position.y-sun.target.position.y,sun.position.z-sun.target.position.z).normalize();
  nebula.position.copy(cam.position);nebula2.position.copy(cam.position);
  for(let si=0;si<stars.length;si++)stars[si].position.copy(cam.position);
  nebula.rotation.y+=.00003;nebula2.rotation.y-=.000022;
