@@ -168,7 +168,7 @@ function ringTex(g){
 
 /* ---------- geometry kit ---------- */
 const GEO={
- box:new THREE.BoxGeometry(1,1,1),sph:new THREE.SphereGeometry(1,14,10),sphMid:new THREE.SphereGeometry(1,24,16),sphHi:new THREE.SphereGeometry(1,56,36),
+ box:new THREE.BoxGeometry(1,1,1),sph:new THREE.SphereGeometry(1,14,10),sphMid:new THREE.SphereGeometry(1,24,16),sphHi:new THREE.SphereGeometry(1,56,36),sphShell:new THREE.SphereGeometry(1,40,26),
  cylX:new THREE.CylinderGeometry(1,1,1,10).rotateZ(-PI/2),disc:new THREE.CircleGeometry(1,14),
  flame:new THREE.ConeGeometry(1,1,10,1,true).translate(0,.5,0).rotateZ(PI/2),
  arc:new THREE.TorusGeometry(1.5,.045,6,20,PI*.9).rotateZ(-PI*.45).rotateX(PI/2),
@@ -553,8 +553,8 @@ function planetObj(g){
   m.userData.ringShader=shRef;
  }
  const sp=new THREE.Mesh(GEO.sphHi,m);sp.castShadow=true;sp.receiveShadow=true;sp.rotation.y=g.rot;tilt.add(sp);
- const am=atmosMat(new THREE.Color(g.c1).lerp(new THREE.Color(0xbfe0ff),.45).getHex()),at=new THREE.Mesh(GEO.sphHi,am);at.scale.setScalar(1.06);tilt.add(at);own.push(am);
- let cl=null;if(!g.gas){const ct=cloudTex(g),cm=new THREE.MeshStandardMaterial({map:ct,transparent:true,depthWrite:false,roughness:1,metalness:0,envMapIntensity:.2});cl=new THREE.Mesh(GEO.sphHi,cm);cl.scale.setScalar(1.02);tilt.add(cl);own.push(ct,cm);}
+ const am=atmosMat(new THREE.Color(g.c1).lerp(new THREE.Color(0xbfe0ff),.45).getHex()),at=new THREE.Mesh(GEO.sphShell,am);at.scale.setScalar(1.06);tilt.add(at);own.push(am);
+ let cl=null;if(!g.gas){const ct=cloudTex(g),cm=new THREE.MeshStandardMaterial({map:ct,transparent:true,depthWrite:false,roughness:1,metalness:0,envMapIntensity:.2});cl=new THREE.Mesh(GEO.sphShell,cm);cl.scale.setScalar(1.02);tilt.add(cl);own.push(ct,cm);}
  let ring=null,rm=null;if(g.ring){const rt=ringTex(g);rm=ringMat(rt);ring=new THREE.Mesh(GEO.pring,rm);tilt.add(ring);own.push(rt,rm);}
  tilt.rotation.z=rrz;tilt.rotation.x=rrx;body.add(tilt);body.scale.set(g.r,g.r,g.r);body.position.y=0;root.add(body);
  const wm=new THREE.Mesh(GEO.plane,wellMat);wm.scale.setScalar(g.r*2.6);wm.position.y=-8;wm.visible=false;root.add(wm);
@@ -569,7 +569,7 @@ function updPlanet(o,g){
  if(sh){sh.uniforms.uSunDir.value.copy(SUNV);sh.uniforms.uRingC.value.set(o.o.position.x,y,o.o.position.z);}
 }
 function rockObj(r){
- if(r.moon){const m=new THREE.Mesh(GEO.sphHi,moonMat(r.seed%3));m.scale.set(r.r,r.r,r.r);m.position.set(r.x,-12,r.y);m.rotation.y=r.rot;m.castShadow=true;m.receiveShadow=true;return{o:m};}
+ if(r.moon){const m=new THREE.Mesh(GEO.sphShell,moonMat(r.seed%3));m.scale.set(r.r,r.r,r.r);m.position.set(r.x,-12,r.y);m.rotation.y=r.rot;m.castShadow=true;m.receiveShadow=true;return{o:m};}
  const v=r.seed%6,mat=r.seed%5===0?MT.rockOre:MT.rock,g=new THREE.Group(),rs=mulberry32(r.seed);
  const m=new THREE.Mesh(GEO.ast[v],mat);m.scale.setScalar(r.r*1.08);m.castShadow=true;m.receiveShadow=true;g.add(m);
  for(let i=0;i<2;i++){const a=rs()*PI*2,e=(rs()-.5)*.8,d=r.r*(1.3+rs()*.35),b=new THREE.Mesh(GEO.ast[(v+1+i)%6],mat);b.scale.setScalar(r.r*(.06+rs()*.06));b.position.set(Math.cos(a)*d,e*r.r*.9,Math.sin(a)*d);b.rotation.set(rs()*6,rs()*6,0);b.castShadow=true;g.add(b);}
@@ -710,7 +710,7 @@ const TiltShader={
  ' float sp=r/6.0;',
  ' float j=rnd(vUv*res+dir*17.0)-0.5;',
  ' vec4 acc=vec4(0.0);float ws=0.0;',
- ' for(int i=-6;i<=6;i++){float fi=float(i);float w=1.0-abs(fi)/7.0;acc+=texture2D(tDiffuse,vUv+dir*(fi+j)*sp/res)*w;ws+=w;}',
+ ' if(sp<0.001){acc=texture2D(tDiffuse,vUv);ws=1.0;}else for(int i=-6;i<=6;i++){float fi=float(i);float w=1.0-abs(fi)/7.0;acc+=texture2D(tDiffuse,vUv+dir*(fi+j)*sp/res)*w;ws+=w;}',
  ' vec4 c=acc/ws;',
  ' if(fin>0.5){float l=dot(c.rgb,vec3(0.2126,0.7152,0.0722));c.rgb=max(vec3(0.0),mix(vec3(l),c.rgb,1.32));c.rgb=max(vec3(0.0),(c.rgb-0.18)*1.07+0.18);vec2 q=vUv-0.5;c.rgb*=1.0-dot(q,q)*0.6;float ca=dot(q,q)*0.006;c.r=mix(c.r,texture2D(tDiffuse,vUv+q*ca).r,0.6);c.b=mix(c.b,texture2D(tDiffuse,vUv-q*ca).b,0.6);c.rgb=max(vec3(0.0),c.rgb+(rnd(vUv*res+tm)-0.5)*0.02);}',
  ' gl_FragColor=c;',
@@ -745,9 +745,9 @@ const FXAAShader={
  ' gl_FragColor=((lumaB<lumaMin)||(lumaB>lumaMax))?vec4(rgbA,1.0):vec4(rgbB,1.0);',
  '}'].join('\n')
 };
-let composer=null,tiltH=null,tiltV=null,fxaa=null,curQ='',curPR=0,curW=0,curH=0,curMission=-1;
+const _DBS=new THREE.Vector2();let composer=null,tiltH=null,tiltV=null,fxaa=null,curQ='',curPR=0,curW=0,curH=0,curMission=-1;
 function sizeUniforms(){
- const sz=renderer.getDrawingBufferSize(new THREE.Vector2());
+ const sz=renderer.getDrawingBufferSize(_DBS);
  for(const t of[tiltH,tiltV]){t.uniforms.res.value.set(sz.x,sz.y);t.uniforms.maxR.value=12*sz.y/1080;}
  if(fxaa)fxaa.uniforms.resolution.value.set(sz.x,sz.y);
  pMat.uniforms.sc.value=sz.y/(2*Math.tan(HALF_FOV));
@@ -759,7 +759,7 @@ function build(q){
  const rt=new THREE.WebGLRenderTarget(cw,ch,{type:THREE.HalfFloatType,samples:q==='high'?4:0});
  composer=new EffectComposer(renderer,rt);
  composer.addPass(new RenderPass(scene,cam));
- if(q==='high'){const sz=renderer.getDrawingBufferSize(new THREE.Vector2());composer.addPass(new UnrealBloomPass(sz,.6,.5,1.0));}
+ if(q==='high'){const sz=renderer.getDrawingBufferSize(_DBS);composer.addPass(new UnrealBloomPass(sz,.6,.5,1.0));}
  tiltH=new ShaderPass(TiltShader);tiltV=new ShaderPass(TiltShader);tiltH.uniforms.dir.value.set(1,0);tiltV.uniforms.dir.value.set(0,1);tiltV.uniforms.fin.value=1;
  composer.addPass(tiltH);composer.addPass(tiltV);fxaa=new ShaderPass(FXAAShader);composer.addPass(fxaa);composer.addPass(new OutputPass());
  composer.setSize(cw,ch);
@@ -855,7 +855,7 @@ function render(){
  nebula.rotation.y+=.00003;nebula2.rotation.y-=.000022;
  for(let si=0;si<stars.length;si++)stars[si].rotation.y+=.000008*(si+1);
  fld.visible=!!(window.cockpitOn||window.tailOn);fld.rotation.y+=.0002;floor.visible=false;
- const ck=!!((window.cockpitOn||window.tailOn)&&player&&!player.dead);const szr=renderer.getDrawingBufferSize(new THREE.Vector2());const mr=ck?0:12*szr.y/1080;tiltH.uniforms.maxR.value=mr;tiltV.uniforms.maxR.value=mr;pMat.uniforms.sc.value=szr.y/(2*Math.tan((ck?70:32)*Math.PI/360));
+ const ck=!!((window.cockpitOn||window.tailOn)&&player&&!player.dead);const szr=renderer.getDrawingBufferSize(_DBS);const mr=ck?0:12*szr.y/1080;tiltH.uniforms.maxR.value=mr;tiltV.uniforms.maxR.value=mr;tiltH.enabled=mr>0;pMat.uniforms.sc.value=szr.y/(2*Math.tan((ck?70:32)*Math.PI/360));
  sync(maps.ship,ships,shipObj,updShip);sync(maps.st,stations,stationObj,updStation);sync(maps.pl,gravityWells,planetObj,updPlanet);
  sync(maps.rk,rocks,rockObj,updRock);sync(maps.fl,flotsams,flotObj,updFlot);sync(maps.pu,powerups,powObj,updPow);sync(maps.wr,wrecks,wreckObj,updWreck);
  for(let i=0;i<minePool.length;i++){const o=minePool[i],m=typeof mines!=='undefined'?mines[i]:null;if(!m){o.g.visible=false;continue;}const armed=m.arm<=0;o.g.visible=true;o.g.position.set(m.x,7,m.y);o.g.rotation.y=frameNo*.02+i;o.g.scale.setScalar(armed?1+Math.sin(frameNo*.2+i)*.08:1);o.mat.color.setHex(armed?0xff5a5a:0x6a7078);o.mat.opacity=armed?.85:.5;}

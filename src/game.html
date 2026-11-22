@@ -159,7 +159,7 @@ html.kbnav #ui button:focus,#ui button.kb{outline:2px solid #7de3ff;outline-offs
 .sw{width:100%;aspect-ratio:2/1;border-radius:8px;border:1px solid rgba(255,255,255,.2);box-shadow:inset 0 -10px 18px rgba(0,0,0,.35),inset 0 6px 10px rgba(255,255,255,.12)}
 .set{display:flex;align-items:center;gap:.8em;padding:.45em 0;border-bottom:1px solid rgba(255,255,255,.05)}
 .set>span{flex:0 0 9.5em;color:#c6d6e4}
-.set input[type=range]{flex:1;accent-color:#7de3ff;min-width:80px;height:2em}
+.set input[type=range]{flex:1;accent-color:#7de3ff;min-width:80px;height:2em;touch-action:pan-y}@media (pointer:coarse){#ui input[type=range]{height:2.8em}}
 .set b{flex:0 0 3.2em;text-align:right;color:#fff;font-weight:600}
 .seg{display:flex;gap:.35em;flex-wrap:wrap;flex:1}
 input[type=text],textarea{font-family:inherit;font-size:1em;color:#fff;background:rgba(4,10,18,.75);border:1px solid var(--ln);border-radius:8px;padding:.6em .7em;width:100%;user-select:text;-webkit-user-select:text}
@@ -582,9 +582,25 @@ const LS={
 const isTouch=!!(window.matchMedia&&matchMedia('(pointer:coarse)').matches);
 var touchOn=isTouch,settings=null,audioSet=null,save=null,slotIdx=-1,SOFT_GL=false,SOFT_GPU='',SOFT_AUTO=false,SOFT_PREV='';
 const DEF_BINDS={fire:'Space',lock:'KeyE',brace:'KeyF',flak:'KeyG',a1:'Digit7',a2:'Digit8'};
+const BIND_NAMES={fire:'Fire',lock:'Lock target',brace:'Brace',flak:'Flak',a1:'Ability 1',a2:'Ability 2'};
+const BUILTIN_KEYS={KeyW:'Thrust / pitch up',KeyS:'Reverse / pitch down',KeyA:'Turn left',KeyD:'Turn right',ArrowUp:'Thrust / pitch up',ArrowDown:'Reverse / pitch down',ArrowLeft:'Turn left',ArrowRight:'Turn right',KeyQ:'Afterburner',KeyR:'Climb / cockpit throttle up',KeyF:'Cockpit throttle down',ShiftLeft:'Brake',ShiftRight:'Brake',KeyC:'Cycle weapon',KeyV:'Vulcan auto-fire',KeyB:'Cycle view',KeyT:'Station sub-target',KeyZ:'Barrel roll left',KeyX:'Barrel roll right',KeyM:'Map',KeyH:'Manual',KeyP:'Pause',Escape:'Pause',Digit1:'Weapon slot 1',Digit2:'Weapon slot 2',Digit3:'Weapon slot 3',Digit4:'Weapon slot 4',Digit5:'Weapon slot 5',Digit6:'Weapon slot 6',F9:'Photo mode',F10:'Screenshot'};
+function keyLabel(c){return c?String(c).replace(/^Key/,'').replace(/^Digit/,'').replace(/^Numpad/,'NP').replace(/^Arrow/,'Arrow ').replace(/(Left|Right)$/,' $1'):'—';}
+function bindConflict(act,code){const B=settings.binds||{};for(const k in B)if(k!==act&&B[k]===code)return{kind:'bind',k:k,name:BIND_NAMES[k]||k};if(BUILTIN_KEYS[code])return{kind:'builtin',name:BUILTIN_KEYS[code]};return null;}
+function rebindKey(e){
+ const act=UI.rebind,nm=BIND_NAMES[act]||act;e.preventDefault();
+ if(e.code==='Escape'){UI.rebind=null;UI.rebindPend=null;toast('Rebind cancelled');refresh();return;}
+ const B=settings.binds||(settings.binds={});
+ if(B[act]===e.code){UI.rebind=null;UI.rebindPend=null;toast(nm+' stays on '+keyLabel(e.code));refresh();return;}
+ const c=bindConflict(act,e.code);
+ if(c&&!(UI.rebindPend&&UI.rebindPend.code===e.code)){UI.rebindPend={code:e.code,c:c};sfx('deny');toast(keyLabel(e.code)+(c.kind==='bind'?' is bound to '+c.name:' is used for '+c.name)+' — press it again to confirm');refresh();return;}
+ const old=B[act];let note='';
+ if(c&&c.kind==='bind'){B[c.k]=old;note=' · '+c.name+' moved to '+keyLabel(old);}
+ else if(c)note=act==='fire'?' · '+keyLabel(e.code)+' still also does '+c.name:' · replaces '+c.name+' on '+keyLabel(e.code);
+ B[act]=e.code;UI.rebind=null;UI.rebindPend=null;saveSettings();toast('BOUND '+nm.toUpperCase()+' → '+keyLabel(e.code)+note);refresh();
+}
 function loadSettings(){
  var _rawSet=LS.get('pc_settings')||{};
- settings=Object.assign({glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistAim:true,assistClimb:true,assistCm:true,assistBrace:true,assistRoll:true,hideAssisted:false,hc:false,lang:'en',cb:'none',tailCam:'float',gfx:isTouch?'low':'high',res:'1080',binds:{fire:'Space',lock:'KeyE',brace:'KeyF',flak:'KeyG',a1:'Digit7',a2:'Digit8'}},_rawSet);
+ settings=Object.assign({glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistAim:true,assistClimb:true,assistCm:true,assistBrace:true,assistRoll:true,hideAssisted:false,haptics:true,hc:false,lang:'en',cb:'none',tailCam:'float',gfx:isTouch?'low':'high',res:'1080',binds:{fire:'Space',lock:'KeyE',brace:'KeyF',flak:'KeyG',a1:'Digit7',a2:'Digit8'}},_rawSet);
  settings.binds=Object.assign({},DEF_BINDS,(_rawSet.binds&&typeof _rawSet.binds==='object')?_rawSet.binds:{});
  if(_rawSet.assistCm===undefined&&_rawSet.assistFlak!==undefined)settings.assistCm=_rawSet.assistFlak!==false;
  if(!/^(high|low|classic)$/.test(settings.gfx))settings.gfx='high';
@@ -804,7 +820,8 @@ addEventListener('keydown',e=>{
  if(/^(Space|Arrow|Tab)/.test(e.code)&&state==='play')e.preventDefault();
  if(e.repeat)return;
  keys[e.code]=true;audioInit();
- if(UI.rebind){const act=UI.rebind;UI.rebind=null;e.preventDefault();if(e.code==='Escape'){toast('Rebind cancelled');refresh();return;}settings.binds=settings.binds||{};const old=settings.binds[act];let sw='';for(const k in settings.binds)if(k!==act&&settings.binds[k]===e.code){settings.binds[k]=old;sw=' (swapped with '+k.toUpperCase()+')';}settings.binds[act]=e.code;const busy=/^(Key[WASDQRCVBTZXMHP]|Shift(Left|Right)|Arrow(Up|Down|Left|Right)|Digit[1-6])$/.test(e.code);saveSettings();toast('BOUND '+act.toUpperCase()+' → '+e.code+sw+(busy?' — note: that key also has a built-in action':''));refresh();return;}
+ if(UI.rebind){rebindKey(e);return;}
+ {const fh=document.getElementById('fthint');if(fh&&state==='menu'){if(e.code==='Escape'){fh.hintClose();e.preventDefault();return;}if(e.code==='Enter'||e.code==='NumpadEnter'){fh.hintNext();e.preventDefault();return;}}}
  if(state==='play'&&!(viewMode!==0&&(e.code==='KeyR'||e.code==='KeyF'))){const B=settings.binds||{};if(B.lock&&e.code===B.lock){toggleLock();return;}if(B.brace&&e.code===B.brace){playerBrace();return;}if(B.flak&&e.code===B.flak){playerFlak();return;}if(B.a1&&e.code===B.a1){useAbility(1);return;}if(B.a2&&e.code===B.a2){useAbility(2);return;}}
  if(state==='cine'){skipCine();return;}
  const menu=state!=='play'&&UI.cur;
@@ -879,13 +896,13 @@ function buildTouch(){
  for(const b of TB){
   const el=document.createElement('div');el.className='tb';el.textContent=b[1];el.dataset.id=b[0];root.appendChild(el);TEL[b[0]]=el;
   const id=b[0],isW=id==='weapon';let ws=null;
-  el.addEventListener('pointerdown',e=>{e.preventDefault();audioInit();if(editLayout){startDrag(id,e);return;}
+  el.addEventListener('pointerdown',e=>{e.preventDefault();audioInit();if(editLayout){startDrag(id,e);return;}buzz(id==='fire'?6:10);
    if(isW){ws={id:e.pointerId,x:e.clientX,y:e.clientY};el.classList.add('on');try{el.setPointerCapture(e.pointerId);}catch(_){ }return;}
    try{el.setPointerCapture(e.pointerId);}catch(_){ }el.classList.add('on');tpress(id,true);});
   el.addEventListener('pointerup',e=>{
    if(!isW||!ws||ws.id!==e.pointerId)return;
    const dx=e.clientX-ws.x,dy=e.clientY-ws.y,thr=Math.max(24,(el.offsetWidth||40)*.4);ws=null;
-   if(Math.abs(dx)>thr&&Math.abs(dx)>Math.abs(dy))cycleWeapon(dx<0?1:-1);else cycleWeapon(1);
+   if(Math.abs(dx)>thr&&Math.abs(dx)>Math.abs(dy)){cycleWeapon(dx<0?1:-1);buzz(14);}else cycleWeapon(1);
   });
   el.addEventListener('pointercancel',()=>{ws=null;});
   const up=()=>{if(editLayout)return;el.classList.remove('on');if(!isW)tpress(id,false);};
@@ -908,7 +925,7 @@ function layoutTouch(){
  const root=$('touchUI');
  if(!TEL){root.style.display='none';return;}
  const t=touchCfg(),sc=t.scale||1,base=touchBase();
- const put=(el,id,x,y,sz)=>{const p=t.pos&&t.pos[id],cp=cw<700&&COMPACT[id];let fx=p?p[0]:(cp?cp[0]:x);const fy=p?p[1]:(cp?cp[1]:y);if(t.mirror)fx=1-fx;el.style.left=(fx*100)+'%';el.style.top=(fy*100)+'%';el.style.width=el.style.height=(sz*sc*base)+'px';el.style.fontSize=Math.max(9,sz*sc*base*.19)+'px';};
+ const put=(el,id,x,y,sz)=>{const p=t.pos&&t.pos[id],cp=cw<700&&COMPACT[id];let fx=p?p[0]:(cp?cp[0]:x);const fy=p?p[1]:(cp?cp[1]:y);if(t.mirror)fx=1-fx;el.style.left=(fx*100)+'%';el.style.top=(fy*100)+'%';const px=Math.max(id==='stick'?0:Math.min(44,ch*.115),sz*sc*base);el.style.width=el.style.height=px+'px';el.style.fontSize=Math.max(9,px*.19)+'px';};
  for(const b of TB)put(TEL[b[0]],b[0],b[2],b[3],b[4]);
  put(TEL.stick,'stick',STICK[0],STICK[1],STICK[2]);
  if(TEL.cockpit)TEL.cockpit.classList.toggle('on',!!(cockpitOn||tailOn));const hid=settings.assist&&settings.hideAssisted&&!editLayout;const hmap={climb:'assistClimb',shield:'assistBrace',roll:'assistRoll',flak:'assistCm',ab1:'assistCm'};for(const id in hmap)if(TEL[id])TEL[id].style.display=(hid&&settings[hmap[id]])?'none':'';if(TEL.aim)TEL.aim.style.display=(settings.assist&&settings.assistAim&&!editLayout)?'none':'';if(TEL.cockpit)TEL.cockpit.style.display=view3D()?'':'none';
@@ -1128,7 +1145,7 @@ function spawnWave(no){
 /* ---------------- DAMAGE ---------------- */
 function hasWmod(i){return !!(save&&save.wmods&&save.wmods[save.diff]&&save.wmods[save.diff][i]);}
 function wmodCost(i){return 900+i*250;}
-function dtMul(t,dt){if(!dt)return 1;if(t.kind==='ship'){if(dt==='laser'&&t.sh>0)return 1.2;if(dt==='ion'&&t.sh>0)return .82;if(dt==='plasma')return 1.08;if(dt==='vulcan')return .94;}if(t.kind==='station'){if(dt==='ion')return 1.25;if(dt==='msl')return .8;}return 1;}
+function dtMul(t,dt){if(!dt)return 1;if(t.kind==='ship'){if(dt==='laser'&&t.sh>0)return 1.12;if(dt==='ion'&&t.sh>0)return .82;if(dt==='plasma')return 1.08;if(dt==='vulcan')return t.sh>0?.92:1.06;}if(t.kind==='station'){if(dt==='ion')return 1.25;if(dt==='msl')return .9;if(dt==='plasma')return 1.15;}return 1;}
 function projectorGuard(t){if(t.team!==1)return false;for(const e of enemies){if(e.dead||e.special!=='shield')continue;if(Math.hypot(e.x-t.x,e.y-t.y)<340)return true;}return false;}
 function damage(t,amt,src,o){
  if(t.dead||!(amt>0))return;o=o||0;
@@ -1148,7 +1165,7 @@ function damage(t,amt,src,o){
    if(amt<=.01){if(o.acc){t.dAcc+=a;}else dmgText(t.x,t.y,t.z,String(Math.max(1,Math.round(a))),'#7de3ff',false);return;}
   }
   t.hp-=amt;t.flash=6;
-  if(t.isPlayer){M.noHit=false;shake=Math.min(14,shake+2+amt*.2);}
+  if(t.isPlayer){M.noHit=false;shake=Math.min(14,shake+2+amt*.2);if(amt>=6&&M.t-(M.buzzT||-99)>24){M.buzzT=M.t;buzz(amt>=20?40:18);}}
   else if(t.ai&&!t.cargo&&t.braceCd<=0&&t.hp<t.maxHp*.5&&t.hp>0){t.brace=70;t.braceCd=420;}
  }else if(t.kind==='station'){
   if(t.genDead)amt*=1.5;
@@ -1262,10 +1279,10 @@ function fireVulcan(s,tg){
  const t=tg||autoTarget(s,520);let ang=s.ang;
  if(t){lead(s,t,12);ang=Math.atan2(LY-s.y,LX-s.x);}
  ang+=rand(-.035,.035);
- let d=wd(s,.5,.08);const crit=Math.random()<s.crit;if(crit)d*=s.critM;
+ let d=s.isPlayer?wd(s,.6,.09):wd(s,.5,.08);const crit=Math.random()<s.crit;if(crit)d*=s.critM;
  const side=(s.vt&2)?1:-1,ox=s.x+Math.cos(s.ang)*s.r*.7-Math.sin(s.ang)*side*s.r*.25,oy=s.y+Math.sin(s.ang)*s.r*.7+Math.cos(s.ang)*side*s.r*.25;
  const p=shoot('vulcan',s.team,s,ox,oy,s.z,ang,12,60,d,s.team?'#ffb060':WEAPONS[3].c,3);p.crit=crit;
- s.vheat+=s.isPlayer?1:1.6;
+ s.vheat+=s.isPlayer?.85:1.6;
  if(s.vheat>=75){s.vover=s.isPlayer?Math.max(120,240-(s.capLv||0)*20):260;if(s.isPlayer){msg('VULCAN OVERHEAT',80);sfx('warn');}}
  sfxAt('vulcan',s.x,s.y);
 }
@@ -1281,7 +1298,7 @@ function singUnlocked(){return !!(save&&(save.free||(save.cnt&&save.cnt.boss>0))
 function fireMissile(s,tg){
  const t=tg||autoTarget(s,1150);let ang=s.ang;
  if(t){lead(s,t,7.6);ang=Math.atan2(LY-s.y,LX-s.x);}
- let d=wd(s,26,3.4);const crit=Math.random()<s.crit;if(crit)d*=s.critM;
+ let d=s.isPlayer?wd(s,29,3.8):wd(s,26,3.4);const crit=Math.random()<s.crit;if(crit)d*=s.critM;
  const p=shoot('msl',s.team,s,s.x+Math.cos(ang)*s.r,s.y+Math.sin(ang)*s.r,s.z,ang,7.6,240,d,WEAPONS[4].c,5);
  p.homing=1;p.tg=t;p.turn=.06;p.crit=crit;p.trailCol=s.team?'#ff9a6a':'#ffd9a8';
  burst(s.x+Math.cos(ang)*s.r,s.y+Math.sin(ang)*s.r,s.z,10,'#ffd9a8',2,24,4);
@@ -1385,7 +1402,7 @@ function playerFlak(){
 }
 function playerBrace(){const p=player;if(!p||p.dead||state!=='play'||p.braceCd>0)return;p.brace=90;p.braceCd=600;sfx('shield');}
 function toggleLock(){
- const p=player;if(!p||p.dead)return;let best=null,bd=1700,second=null;
+ const p=player;if(!p||p.dead)return;if(M&&M.fs)M.fs.lock=true;let best=null,bd=1700,second=null;
  const consider=t=>{if(t.dead)return;const d=Math.hypot(t.x-p.x,t.y-p.y);if(d<bd){second=best;bd=d;best=t;}};
  for(const e of enemies)consider(e);for(const s of stations)if(s.team===1)consider(s);
  if(best===lockT)best=second;
@@ -1403,7 +1420,7 @@ function clickWorld(sx,sy){
  s2w(sx,sy);let best=null,bd=110;
  for(const e of enemies){if(e.dead)continue;const d=Math.hypot(e.x-WX,e.y-WY)-e.r;if(d<bd){bd=d;best=e;}}
  for(const s of stations){if(s.dead||s.team!==1)continue;const d=Math.hypot(s.x-WX,s.y-WY)-s.r;if(d<bd){bd=d;best=s;}}
- lockT=best;if(best)sfx('lock');
+ lockT=best;if(best){sfx('lock');if(M&&M.fs)M.fs.lock=true;}
 }
 function pauseGame(){if(state!=='play')return;state='pause';T.fire=T.burn=T.climb=T.brake=false;T.son=false;UI.ret='pause';UI.abortConfirm=false;const o=document.getElementById('mintro');if(o)o.remove();show('pause');layoutTouch();}
 function openHelp(){if(state!=='play')return;state='pause';UI.ret='pause';UI.abortConfirm=false;const o=document.getElementById('mintro');if(o)o.remove();show('help');layoutTouch();}
@@ -1990,7 +2007,7 @@ function objText(){
   case'hunted':return m.mark&&!m.mark.dead?'MARKED SHIP '+Math.ceil(m.mark.hp/m.mark.maxHp*100)+'%':'MARKED SHIP DOWN';
   case'defend':{const ps=stationOf(0);return'WAVE '+Math.max(1,m.wave)+' / '+m.defWaves+'  ·  HOSTILES '+n+'  ·  STATION '+(ps&&!ps.dead?Math.ceil(ps.hp/ps.maxHp*100)+'%':'LOST');}
   case'recon':return'RELAYS '+((m.scanned||0))+' / '+m.scanTotal+'  ·  DETECTION '+Math.round(m.detected||0)+'%';
-  case'range':return'PRACTICE · DPS '+Math.round(m.rdps||0)+' · DRONES '+enemies.length+' · F9 CLEAN SHOT';
+  case'range':if(m.fs)return fsText();return'PRACTICE · DPS '+Math.round(m.rdps||0)+' · DRONES '+enemies.length+' · F9 CLEAN SHOT';
   default:return'KILLS '+m.kills+' / '+m.target;
  }
 }
@@ -2007,7 +2024,7 @@ function tick(){
  for(let i=0;i<enemies.length;i++){const e=enemies[i];if(e.dead)continue;aiStep(e);stepShip(e,e.ai.inp);}
  collide();stepStations();stepProjectiles();stepMines();stepSing();stepFx();stepPickups();stepWeather();
  compact(allies);compact(enemies);compact(rocks);
- stepMode();
+ stepMode();if(m.fs)stepSchool();
  /* objective lives in pause; flash it briefly on change + periodic reminder */
  if(!m.done){if(m.objFlash>0)m.objFlash--;const osig=objText().replace(/\d+/g,'#');if(osig!==m._objSig){m._objSig=osig;if(m.t>150&&m.msgT<=0){m.objFlash=120;m.objFlashText=objText();}}m._objRem=(m._objRem||0)+1;if(m._objRem>=900&&!m.tutOn&&m.msgT<=0&&!(m.objFlash>0)){m._objRem=0;m.objFlash=120;m.objFlashText=objText();}}
  const p=player;
@@ -2023,6 +2040,52 @@ function tick(){
 /* ---------------- V2 EXTRAS: roll, streaks, boss phase, tutorial, HUD extras ---------------- */
 const TUT=[[250,'THRUST WITH W OR THE STICK — A / D TO TURN',220],[540,'TAP FIRE FOR A PULSE — HOLD FOR RAPID FIRE AND A CHARGED BEAM',240],[840,'Z / X (OR ROLL) TO BARREL ROLL THROUGH FIRE',220],[1120,'PARK INSIDE YOUR STATION RING TO REPAIR',220],[1400,'C SWITCHES WEAPON — G FIRES FLAK',220]];
 const CTUT=[[40,'COCKPIT: THROTTLE IS YOURS — R / F (OR THE LEVER). IT STARTS AT ZERO',260],[340,'W / S PITCHES THE NOSE — A / D TURNS. THRUST FOLLOWS THE NOSE',260],[640,'SHIFT BRAKES · Q / BURN AFTERBURNER. THE WORLD IS 3D — FLY UP AND OVER',260],[940,'PILOT ASSIST HANDLES FLAK / BRACE / ROLL — YOU FLY AND FIRE',240]];
+/* ---------------- FLIGHT SCHOOL (practice-range tutorial) + FIRST-RUN HINTS ---------------- */
+function HINTS(){return LS.get('pc_hints')||{};}
+function setHint(k){const h=HINTS();h[k]=1;LS.set('pc_hints',h);}
+function bk(a,d){return keyLabel((settings.binds&&settings.binds[a])||d).toUpperCase();}
+const FS_STEPS=[
+ {t:()=>touchOn?'THRUST: PUSH THE STICK FORWARD':'THRUST: HOLD W',ok:p=>Math.hypot(p.vx,p.vy)>3},
+ {t:()=>touchOn?'TURN: STEER LEFT AND RIGHT WITH THE STICK':'TURN: HOLD A OR D',ok:(p,s)=>s.turn>2.4},
+ {t:()=>touchOn?'FIRE: TAP FIRE TO HIT A DRONE (3 HITS)':'FIRE: TAP '+bk('fire','Space')+' TO HIT A DRONE (3 HITS)',ok:()=>(M.hitCount||0)>=3},
+ {t:()=>touchOn?'CHARGED BEAM: HOLD FIRE UNTIL THE RING FILLS':'CHARGED BEAM: HOLD '+bk('fire','Space')+' UNTIL THE RING FILLS',ok:p=>p.wep===0&&p.chargeT>0&&p.charge>=p.chargeT},
+ {t:()=>touchOn?'LOCK: TAP A DRONE TO LOCK IT':'LOCK: PRESS '+bk('lock','KeyE')+' OR CLICK A DRONE',ok:(p,s)=>s.lock},
+ {t:()=>touchOn?'SWITCH WEAPON: TAP OR SWIPE WPN':'SWITCH WEAPON: PRESS C OR 1-6',ok:(p,s)=>p.slot!==s.slot0,skip:p=>(p.loadout||[0]).length<2},
+ {t:()=>touchOn?'AFTERBURNER: HOLD BURN':'AFTERBURNER: HOLD Q',ok:(p,s)=>s.ab>40},
+ {t:()=>touchOn?'BRAKE: HOLD SHLD TO STOP':'BRAKE: HOLD SHIFT TO STOP',ok:(p,s)=>s.brk>30},
+ {t:()=>touchOn?'BARREL ROLL: TAP ROLL':'BARREL ROLL: PRESS Z OR X',ok:p=>p.roll>0},
+ {t:()=>touchOn?'FLAK: TAP FLAK — IT SHOOTS DOWN PLASMA':'FLAK: PRESS '+bk('flak','KeyG')+' — IT SHOOTS DOWN PLASMA',ok:p=>p.flakCd>0},
+ {t:()=>touchOn?'BRACE: TAP SHLD TO HALVE DAMAGE':'BRACE: PRESS '+bk('brace','KeyF')+' TO HALVE DAMAGE',ok:p=>p.brace>0},
+ {t:()=>touchOn?'VIEWS: TAP THE EYE FOR COCKPIT VIEW':'VIEWS: PRESS B FOR COCKPIT VIEW',ok:()=>viewMode!==0,skip:()=>!view3D()}
+];
+function startSchool(){
+ startPracticeRange();
+ M.fs={i:-1,wait:120,turn:0,ab:0,brk:0,lock:false,slot0:player.slot,pa:player.ang};
+ msg('FLIGHT SCHOOL — FOLLOW THE PROMPTS. PAUSE ANY TIME',140);
+}
+function fsText(){const s=M&&M.fs;if(!s)return'';if(s.done)return'FLIGHT SCHOOL COMPLETE';const st=FS_STEPS[s.i];return st?'FLIGHT SCHOOL '+(s.i+1)+'/'+FS_STEPS.length+' · '+st.t():'FLIGHT SCHOOL';}
+function stepSchool(){
+ const s=M.fs,p=player;if(!s||s.done||!p||p.dead)return;
+ s.turn+=Math.abs(angDiff(s.pa,p.ang));s.pa=p.ang;if(p.ab)s.ab++;if(IN.brake)s.brk++;
+ if(s.wait>0){if(--s.wait===0){s.i++;while(FS_STEPS[s.i]&&FS_STEPS[s.i].skip&&FS_STEPS[s.i].skip(p))s.i++;if(s.i>=FS_STEPS.length){s.done=true;setHint('school');msg('FLIGHT SCHOOL COMPLETE — KEEP PRACTISING, OR PAUSE → END PRACTICE RANGE',420);sfx('streak',5);return;}s.turn=0;s.ab=0;s.brk=0;s.lock=false;s.slot0=p.slot;M.hitCount=0;msg(FS_STEPS[s.i].t(),100000);}return;}
+ const st=FS_STEPS[s.i];if(st&&st.ok(p,s)){sfx('lock');buzz(20);msg('✓ NICE',60);s.wait=70;}
+}
+function firstRunHints(){
+ if(HINTS().hangar||document.getElementById('fthint')||!save)return;
+ const steps=[
+  ['Welcome, pilot','<b>Deploy operation</b> launches your next campaign mission. Clear missions to unlock the next ones and earn stars.'],
+  ['New to Parsec?','<b>Flight school</b> walks you through every control on the practice range in about two minutes. Nothing can hurt you there.',1],
+  ['Upgrades and ships','Spend credits in the <b>Shop</b>. Cadet, Pilot and Ace are separate careers with their own credits and upgrades.'],
+  ['Make it yours','<b>Systems</b> has Pilot assist, Auto-aim, key bindings, graphics and the touch layout editor. <b>Manual</b> lists every control.']
+ ];
+ let i=0;const el=document.createElement('div');el.id='fthint';
+ el.style.cssText='position:absolute;left:50%;bottom:4%;transform:translateX(-50%);z-index:12;width:min(440px,92%);background:rgba(8,16,28,.96);border:1px solid #7de3ff;border-radius:12px;padding:.8em 1em;box-shadow:0 8px 30px rgba(0,0,0,.6);font-family:"Exo 2",sans-serif;color:#d6f3ff;font-size:calc(14px*var(--fs,1))';
+ const draw=()=>{const s=steps[i];el.innerHTML='<div style="font-family:Orbitron,sans-serif;font-weight:700;color:#7de3ff;letter-spacing:.06em;margin-bottom:.3em">'+s[0]+' <span style="float:right;color:#8296a8;font-size:.8em">'+(i+1)+'/'+steps.length+'</span></div><div style="line-height:1.4">'+s[1]+'</div><div style="display:flex;gap:.5em;justify-content:flex-end;margin-top:.7em;flex-wrap:wrap">'+(s[2]?'<button class="btn sm" data-h="school">Start flight school</button>':'')+'<button class="btn sm" data-h="skip">Skip tips</button><button class="btn sm primary" data-h="next">'+(i<steps.length-1?'Next':'Got it')+'</button></div>';};
+ const close=()=>{setHint('hangar');el.remove();};
+ el.addEventListener('click',e=>{const b=e.target.closest('[data-h]');if(!b)return;e.stopPropagation();sfx('click');const h=b.dataset.h;if(h==='next'){if(++i>=steps.length)close();else draw();}else if(h==='skip')close();else if(h==='school'){close();startSchool();}});
+ el.hintNext=()=>{if(++i>=steps.length)close();else draw();};el.hintClose=close;
+ draw();($('app')||document.body).appendChild(el);
+}
 function playerRoll(dir){
  const p=player;if(!p||p.dead||state!=='play'||p.rollCd>0)return;
  if(!dir)dir=IN.turn<0?-1:1;p.roll=20;p.rollCd=140;p.rollDir=dir;
@@ -2039,7 +2102,7 @@ function stepExtras(){
  if(p.hp<p.maxHp*.28&&m.t%45===0)sfx('alarm');
  if(p.ab&&m.t%2===0){const a=p.ang+rand(-.9,.9),d=rand(120,380);spark(p.x+Math.cos(a)*d,p.y+Math.sin(a)*d,p.z+rand(-.1,.3),-Math.cos(p.ang)*9,-Math.sin(p.ang)*9,0,10,2.2,'#cfe8ff',0);}
  if(m.tutOn&&viewMode===0){const t=TUT[m.tut];if(t&&m.t>=t[0]){msg(t[1],t[2]);m.tut++;}}
- if(cockpitOn&&m.lv===1&&!m.hunt){m.ctutT=(m.ctutT||0)+1;const t=CTUT[m.ctut||0];if(t&&m.ctutT>=t[0]){msg(t[1],t[2]);m.ctut=(m.ctut||0)+1;}}
+ if(cockpitOn&&!m.hunt&&!(m.fs&&!m.fs.done)&&(m.lv===1||!HINTS().cockpit)){m.ctutT=(m.ctutT||0)+1;const t=CTUT[m.ctut||0];if(t&&m.ctutT>=t[0]){msg(t[1],t[2]);m.ctut=(m.ctut||0)+1;if(m.ctut>=CTUT.length)setHint('cockpit');}}
 }
 function panOut(){const c=AU.ctx;if(!AU.pan||!c.createStereoPanner)return AU.sg;const p=c.createStereoPanner();p.pan.value=AU.pan;p.connect(AU.sg);return p;}
 function nextLv(){if(save.free)return 1;let lv=1;while(lv<500&&starsOf(lv)>0)lv++;return lv;}
@@ -2061,10 +2124,11 @@ if(viewMode!==0){const tx=touchOn?10+30*touchBase()+8:hw-14;const tb=touchOn?tx:
 
 /* ---------------- VIEW / PROJECTION ---------------- */
 var cv=null,ctx=null,PR2=1,SX=0,SY=0,WX=0,WY=0,U3=false,menuT=0;
-function pixRatio(){const r=settings.res;return r==='native'?Math.min(window.devicePixelRatio||1,2):(r==='720'?720:1080)/ch;}
+function pixRatio(){const r=settings.res,dpr=window.devicePixelRatio||1;/* never render more pixels than the screen physically has; __resK eases resolution down only when a phone is struggling */return(r==='native'?Math.min(dpr,2):Math.min((r==='720'?720:1080)/ch,isTouch?Math.max(1,dpr):4))*(window.__resK||1);}
 function want2DPR(){return U3?Math.min(window.devicePixelRatio||1,2):clamp(pixRatio(),.5,2);}
 function size2D(){PR2=want2DPR();const w=Math.max(1,Math.round(cw*PR2)),h=Math.max(1,Math.round(ch*PR2));if(cv.width!==w||cv.height!==h){cv.width=w;cv.height=h;}}
-function touchBase(){let b=clamp(Math.min(cw/844,ch/430),.55,1.3);if(cw<700)b=Math.min(b,.6);return b;}
+function touchBase(){let b=clamp(Math.min(cw/844,ch/430),ch<340?.55:.58,1.3);if(cw<700)b=Math.min(b,ch<340?.6:.68);return b;}
+function buzz(ms){if(!touchOn||(settings&&settings.haptics===false))return;try{if(navigator.vibrate)navigator.vibrate(ms);}catch(e){}}
 function updateViewportMetrics(){
  const u=clamp(ch/430,.94,1.2),r=document.documentElement.style;
  r.setProperty('--u',u.toFixed(3));r.setProperty('--app-w',cw+'px');r.setProperty('--app-h',ch+'px');
@@ -2668,13 +2732,14 @@ function fitScrolls(){
  }
 }
 function show(name,arg,keep){
- const el=$('ui'),st=keep?el.scrollTop:0;UI.cur=name;UI.arg=arg;
+ const el=$('ui'),st=keep?el.scrollTop:0;if(name!=='settings'){UI.rebind=null;UI.rebindPend=null;}UI.cur=name;UI.arg=arg;
  if(!name){el.className='';el.innerHTML='';UI.shown='';return;}
  var html=SCREENS[name](arg);
  if(state==='menu'&&HUBNAME[name])html=html.replace(/(<div class="scr[^>]*>)/,'$1'+hubNav(name));
  el.innerHTML=html;
  el.className='on'+((state==='pause'||state==='end')?' clear':'')+(name==='layout'?' float':'')+(keep?'':' in');
  el.scrollTop=st;fitScrolls();
+ {const fh=document.getElementById('fthint');if(fh&&name!=='hangar')fh.remove();}if(name==='hangar'&&state==='menu')setTimeout(firstRunHints,600);
  if(!keep&&state!=='play'&&name&&UI.shown!==name){UI.shown=name;uiFocusFirst();setTimeout(function(){const a=document.activeElement;if(!(a&&a.closest&&a.closest('#ui')))uiFocusFirst();},160);}
 }
 function refresh(){show(UI.cur,UI.arg,true);}
@@ -2753,7 +2818,7 @@ const SCREENS={
     '<h3>'+esc(NS.n)+'</h3><p class="opobj">'+esc(modeObj(nmode,nl))+'</p>'+
     '<div class="kv"><span>Threat</span><b>ENEMY ×'+DIFFS[s.diff].e+'</b></div><div class="kv"><span>Estimated pay</span><b style="color:var(--gold)">◈ '+fmtNum(missionReward(nl,nmode,s.diff))+'</b></div><div class="kv"><span>Best rating</span><b>'+starStr(starsOf(nl))+'</b></div>'+
     '<button class="btn primary wide" data-a="cont">Deploy operation<small>Mission '+(nsea+1)+'-'+nm+'</small></button>'+
-    '<div class="row"><button class="btn sm" data-a="hunt">Hunt</button><button class="btn sm" data-a="range">Practice range</button></div>'+
+    '<div class="row"><button class="btn sm" data-a="hunt">Hunt</button><button class="btn sm" data-a="range">Practice range</button><button class="btn sm'+(HINTS().school?'':' primary')+'" data-a="school" data-tip="A two-minute guided tour of every control on the practice range">Flight school</button></div>'+
    '</div></div>'+
   '<div class="baylower">'+
    '<div class="panel baycard"><h3>Pilot dossier</h3><div class="kv"><span>Callsign</span><b>'+esc(s.name)+'</b></div><div class="kv"><span>Clearance</span><b>'+DIFFS[s.diff].n+'</b></div><div class="kv"><span>Credits</span><b style="color:var(--gold)">◈ '+fmtGold(dGold(s))+'</b></div>'+
@@ -2892,13 +2957,13 @@ const SCREENS={
   const seg=(k,label,opts,alt)=>'<div class="set" data-n="'+(label+(alt?' '+alt:'')).toLowerCase()+'"><span>'+label+'</span><div class="seg">'+opts.map(o=>'<button class="btn sm'+(String(settings[k])===String(o[0])?' on':'')+'" data-a="set" data-k="'+k+'" data-v="'+o[0]+'">'+o[1]+'</button>').join('')+'</div></div>';
   const q=(UI.setQ||'').trim().toLowerCase(),tab=UI.setTab||'display';
   const keyName=c=>String(c||'').replace('Key','').replace('Digit','').replace('Numpad','NP');
-  const bindRow=(a,l)=>'<div class="set" data-n="'+l.toLowerCase()+'"><span>'+l+'</span><button class="btn sm" data-a="bind" data-v="'+a+'">'+(UI.rebind===a?'PRESS A KEY':keyName(settings.binds&&settings.binds[a]))+'</button></div>';
+  const bindRow=(a,l)=>{const k=settings.binds&&settings.binds[a],me=UI.rebind===a,pend=me&&UI.rebindPend,c=k&&!me?bindConflict(a,k):null;return'<div class="set" data-n="'+l.toLowerCase()+'"><span>'+l+(c?'<br><small style="color:#ffb96a;font-size:.78em">'+keyLabel(k)+' also: '+esc(c.name)+'</small>':'')+'</span><button class="btn sm'+(me?' on':'')+'" data-a="bind" data-v="'+a+'">'+(me?(pend?'PRESS '+esc(keyLabel(pend.code))+' AGAIN':'PRESS A KEY'):keyName(k))+'</button></div>'+(pend?'<p class="sml bindwarn" style="color:#ffb96a;margin:.15em 0 .55em">⚠ '+esc(keyLabel(pend.code))+(pend.c.kind==='bind'?' is bound to <b>'+esc(pend.c.name)+'</b>. Press it again to swap ('+esc(pend.c.name)+' moves to '+esc(keyLabel(k))+')':' is used for <b>'+esc(pend.c.name)+'</b>. Press it again to use it anyway')+', press another key, or Esc to cancel.</p>':'');};
   const G=[
    ['audio','Comms','<h3>Comms / Audio</h3>'+sl('a','music','Music volume',0,1,.05)+sl('a','sfx','SFX volume',0,1,.05)],
    ['display','Optics','<h3>Optics / Display</h3>'+'<div class="set" data-n="preset quality performance"><span>Preset</span><div class="seg"><button class="btn sm" data-a="preset" data-v="quality">Quality</button><button class="btn sm" data-a="preset" data-v="balanced">Balanced</button><button class="btn sm" data-a="preset" data-v="performance">Performance</button></div></div>'+seg('gfx','Graphics',[['high','High 3D'],['low','Low 3D'],['classic','Classic 2D']])+(SOFT_GL?'<p class="dim sml" style="color:#ffb96a">Software graphics detected'+(SOFT_AUTO?' — auto-switched to Classic 2D this session':'')+' ('+SOFT_GPU.slice(0,64)+'). Enable hardware acceleration in your browser for smooth 3D.</p>':'')+(window.R3D&&R3D.failed?'<p class="dim sml">3D unavailable on this device — running Classic 2D.</p>':'')+seg('res','Resolution',[['1080','1080p'],['native','Native'],['720','720p']])+'<div class="set" data-n="renderer"><span>Renderer</span><b style="flex:1;text-align:left;font-weight:400" class="dim">'+rendererLabel()+'</b></div>'+sl('s','hud','HUD size',.7,1.6,.05)+sl('s','shake','Screen shake',0,1.5,.05)+sl('s','text','Text size',.8,1.4,.05)+seg('glow','Player glow outline',[[true,'On'],[false,'Off']])+seg('hc','High contrast UI',[[true,'On'],[false,'Off']])+seg('cb','Colour-blind palette',[['none','Off'],['deuter','Deuteranopia'],['protan','Protanopia'],['tritan','Tritanopia']])+seg('tailCam','Tail camera',[['float','Floating'],['fixed','Fixed']])+seg('lang','Language',[['en','English'],['ur','اردو']])+'<div class="row" style="margin-top:.7em"><button class="btn sm warn" data-a="resetcfg">Reset all settings</button></div>'],
-   ['flight','Flight','<h3>Flight Control</h3>'+sl('s','turn','Turn speed',.6,1.6,.05)+sl('s','thrust','Thrust power',.6,1.6,.05)+'<h3 style="margin-top:.6em">Bindings</h3>'+bindRow('fire','Fire')+bindRow('lock','Lock target')+bindRow('brace','Brace')+bindRow('flak','Flak')+bindRow('a1','Ability 1')+bindRow('a2','Ability 2')+'<p class="dim sml">Click a binding, then press the new key.</p><p class="dim sml">Classic 2D uses the diorama scheme: W/S thrust, A/D turn, R/F climb and brace. Cockpit pitch and throttle are 3D-only.</p>'],
+   ['flight','Flight','<h3>Flight Control</h3>'+sl('s','turn','Turn speed',.6,1.6,.05)+sl('s','thrust','Thrust power',.6,1.6,.05)+'<h3 style="margin-top:.6em">Bindings</h3>'+bindRow('fire','Fire')+bindRow('lock','Lock target')+bindRow('brace','Brace')+bindRow('flak','Flak')+bindRow('a1','Ability 1')+bindRow('a2','Ability 2')+'<p class="dim sml">Click a binding, then press the new key. If the key is already in use you will be warned first; Esc cancels.</p><p class="dim sml">Classic 2D uses the diorama scheme: W/S thrust, A/D turn, R/F climb and brace. Cockpit pitch and throttle are 3D-only.</p>'],
    ['autopilot','Autopilot','<h3>Pilot Assist</h3><p class="setnote">Auto-aim locks the nearest hostile and flies the lead solution; the AIM touch button is hidden while Auto-aim is on.</p>'+seg('assist','Pilot assist',[[true,'On'],[false,'Off']])+(settings.assist||q?seg('assistAim','Auto-aim',[[true,'On'],[false,'Off']])+seg('assistCm','Auto countermeasures',[[true,'On'],[false,'Off']],'flak flares missiles plasma countermeasures')+'<p class="setnote">Flak shoots down plasma; flares spoil missiles. Both fire automatically on their own cooldowns.</p>'+seg('assistClimb','Auto-climb obstacles',[[true,'On'],[false,'Off']])+seg('assistBrace','Auto-brace (shield)',[[true,'On'],[false,'Off']])+seg('assistRoll','Auto-roll dodge',[[true,'On'],[false,'Off']])+seg('hideAssisted','Hide assisted buttons',[[true,'On'],[false,'Off']]):'<p class="dim sml">Turn Pilot assist on to configure its individual behaviours.</p>')],
-   ['controls','Bindings','<h3>Control Bindings</h3>'+seg('land','Force landscape',[[true,'On'],[false,'Off']])+'<div class="row" style="margin-top:.6em"><button class="btn sm" data-a="layout">Touch layout editor</button><button class="btn sm" data-a="fs">Fullscreen</button></div><p class="dim sml" style="margin-top:.7em">Key bindings are listed in the Manual (H).</p>']
+   ['controls','Bindings','<h3>Control Bindings</h3>'+seg('land','Force landscape',[[true,'On'],[false,'Off']])+seg('haptics','Haptic feedback (vibration)',[[true,'On'],[false,'Off']],'vibrate touch')+'<p class="dim sml">Vibration works on most Android phones; iPhone browsers do not support it.</p>'+'<div class="row" style="margin-top:.6em"><button class="btn sm" data-a="layout">Touch layout editor</button><button class="btn sm" data-a="fs">Fullscreen</button></div><p class="dim sml" style="margin-top:.7em">Key bindings are listed in the Manual (H).</p>']
   ];
   const TABS=[['audio','Comms'],['display','Optics'],['flight','Flight'],['autopilot','Auto'],['controls','Bindings']];
   let body='';
@@ -2944,7 +3009,7 @@ const SCREENS={
   '<tr><td style="color:#c87dff">ION</td><td>Fast bolt that slows the target. Bends in gravity.</td></tr>'+
   '<tr><td style="color:#ff7043">PLASMA</td><td>Slow heavy bolt that burns over time. Limited charges, restocked by docking.</td></tr>'+
   '<tr><td style="color:#ffd700">VULCAN</td><td>Bullet stream, best inside 380 m. Overheats. V lets it fire by itself.</td></tr>'+
-  '<tr><td style="color:#ffb36b">MISSILE</td><td>Guided warhead: homes on your lock or the nearest hostile, 26+ damage with a small splash. Rack holds 4 per sortie and rearms while you dock or from missile pickups. Carry it in a loadout slot.</td></tr>'+
+  '<tr><td style="color:#ffb36b">MISSILE</td><td>Guided warhead: homes on your lock or the nearest hostile, 29+ damage with a small splash. Rack holds 4 per sortie and rearms while you dock or from missile pickups. Carry it in a loadout slot.</td></tr>'+
   '<tr><td style="color:#b06bff">SING</td><td>Singularity bomb: a 215 m well that drags ships in and grinds them — allies take 25%. One charge a mission once you have broken a captain; rare purple pickups add charges. Captains, elites and bosses can throw one back at you.</td></tr></table>'+
   '<p><b>Ammo fallback:</b> when plasma, missile or singularity charges run out, the weapon selector automatically returns to your main lasers. Main lasers are permanent and sit outside the loadout; ammo pickups are filtered to the secondary weapons actually fitted.</p>'+
   '<p><b>Flak</b> is a point-defence countermeasure, not a slot weapon: it bursts automatically at incoming plasma when the assist is on, or on G. Nine pellets, 8 s cooldown.</p>'+
@@ -2961,7 +3026,7 @@ const SCREENS={
  pause(){
   const qsl=(o,k,label,min,max,step)=>{const obj=o==='a'?audioSet:settings;return'<label class="set"><span>'+label+'</span><input type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+obj[k]+'" data-s="'+k+'" data-o="'+o+'"><b>'+Math.round(obj[k]*100)+'%</b></label>';};
   const ms=M?(()=>{const secs=M.clock/60;if(M.mode==='range')return '<div class="mstat"><div class="kv"><span>Mode</span><b>Practice range</b></div><div class="kv"><span>DPS</span><b>'+Math.round(M.rdps||0)+'</b></div><div class="kv"><span>Elapsed</span><b>'+fmtTime(secs)+'</b></div></div>';const st=starTimes(M.mode,M.sea,M.lv),tier=secs<st[0]?3:secs<st[1]?2:1;return '<div class="mstat"><div class="kv"><span>Objective</span><b style="text-align:right">'+esc(objText())+'</b></div><div class="kv"><span>Elapsed</span><b>'+fmtTime(secs)+'</b></div><div class="kv"><span>Stars</span><b style="color:var(--gold)">'+'★'.repeat(tier)+'<span style="color:#3c4654">'+'★'.repeat(3-tier)+'</span></b></div><div class="kv"><span>Kills</span><b>'+M.kills+'</b></div></div>';})():'';
-  return'<div class="scr mid dlg"><div class="panel narrow col" style="max-width:380px;text-align:center"><h2>Paused</h2><span class="dim sml">'+(M?(M.mode==='range'?'Practice range · no damage':(M.hunt?'Free Hunt':'Mission '+(M.sea+1)+'-'+M.m))+' · '+MODES[M.mode].n:'')+'</span>'+ms+
+  return'<div class="scr mid dlg"><div class="panel narrow col" style="max-width:380px;text-align:center"><h2>Paused</h2><span class="dim sml">'+(M?(M.mode==='range'?(M.fs?'Flight school':'Practice range')+' · no damage':(M.hunt?'Free Hunt':'Mission '+(M.sea+1)+'-'+M.m))+' · '+MODES[M.mode].n:'')+'</span>'+ms+
   '<button class="btn primary wide" data-a="resume">Resume</button>'+
   '<div class="qset"><div class="set"><span>Pilot assist</span><div class="seg"><button class="btn sm'+(settings.assist?' on':'')+'" data-a="set" data-k="assist" data-v="true">On</button><button class="btn sm'+(!settings.assist?' on':'')+'" data-a="set" data-k="assist" data-v="false">Off</button></div></div>'+
   qsl('s','hud','HUD size',.7,1.6,.05)+qsl('a','music','Music',0,1,.05)+qsl('a','sfx','SFX',0,1,.05)+'</div>'+
@@ -3088,7 +3153,7 @@ const ACT={
  cont(){show('brief',{lv:nextLv()});},
  launch(){const a=UI.arg;launchMission(a.lv,a.hunt);},
  resume(){if(state!=='pause')return;UI.abortConfirm=false;state='play';show('');acc=0;layoutTouch();},
- restart(){if(M&&M.mode==='range'){startPracticeRange();return;}launchMission(M.lv,M.hunt);},
+ restart(){if(M&&M.mode==='range'){if(M.fs)startSchool();else startPracticeRange();return;}launchMission(M.lv,M.hunt);},
  retry(){launchMission(M.lv,M.hunt);},
  abort(){UI.abortConfirm=true;show('confirmAbort');},
  abortNo(){UI.abortConfirm=false;show('pause');},
@@ -3096,10 +3161,11 @@ const ACT={
  next(){const lv=M.lv+1;leaveMission();show('brief',{lv});},
  home(){leaveMission();show('hangar');},
  tab(v){UI.tab=v;show('shop');},
- bind(v){UI.rebind=v;toast('Press a key for '+v);refresh();},
+ bind(v){UI.rebind=v;UI.rebindPend=null;toast('Press a key for '+(BIND_NAMES[v]||v)+' — Esc cancels');refresh();},
  range(){
   startPracticeRange();
  },
+ school(){startSchool();},
  rangeReset(){if(!M||M.mode!=='range')return;player.x=M.rangeCenter.x;player.y=M.rangeCenter.y;player.vx=player.vy=0;M.rdps=0;rangeSpawn(4,false);msg('RANGE RESET',60);},
  wmod(v){const i=+v;if(hasWmod(i))return;const cost=wmodCost(i);if(!save.free&&dGold(save)<cost){sfx('deny');toast('Not enough credits');return;}if(!save.wmods)save.wmods={};if(!save.wmods[save.diff])save.wmods[save.diff]={};if(!save.free)dGoldAdd(save,-cost);save.wmods[save.diff][i]=1;persist();sfx('buy');toast(WEAPONS[i].n+' mod installed');refresh();},
  settab(v){UI.setTab=v;UI.setQ='';refresh();},
@@ -3122,7 +3188,7 @@ const ACT={
  dksel(v){UI.dk=+v;refresh();},
  set(v,el){const k=el.dataset.k;settings[k]=v==='true'?true:v==='false'?false:v;if(k==='gfx'){SOFT_AUTO=false;if(v==='classic')LS.del('pc_force3d');else LS.set('pc_force3d',1);if(SOFT_GL&&v!=='classic')toast('Software graphics — 3D will stutter. Enable hardware acceleration.');}saveSettings();applyGfx();resize();refresh();},
  preset(v){SOFT_AUTO=false;const P={quality:{gfx:'high',res:isTouch?'1080':'native',shake:1,glow:true},balanced:{gfx:'high',res:'1080',shake:1,glow:true},performance:{gfx:'low',res:'720',shake:.3,glow:false}}[v];if(!P)return;Object.assign(settings,P);saveSettings();applyGfx();resize();refresh();toast('Preset: '+v.charAt(0).toUpperCase()+v.slice(1));},
- resetcfg(){SOFT_AUTO=false;Object.assign(settings,{glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistAim:true,assistClimb:true,assistCm:true,assistBrace:true,assistRoll:true,hideAssisted:false,gfx:isTouch?'low':'high',res:'1080',hc:false,lang:'en',cb:'none',tailCam:'float',binds:Object.assign({},DEF_BINDS)});Object.assign(audioSet,{music:.55,sfx:.8});saveSettings();applyGfx();setVol();resize();refresh();toast('Settings reset to defaults');},
+ resetcfg(){SOFT_AUTO=false;Object.assign(settings,{glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistAim:true,assistClimb:true,assistCm:true,assistBrace:true,assistRoll:true,hideAssisted:false,haptics:true,gfx:isTouch?'low':'high',res:'1080',hc:false,lang:'en',cb:'none',tailCam:'float',binds:Object.assign({},DEF_BINDS)});Object.assign(audioSet,{music:.55,sfx:.8});saveSettings();applyGfx();setVol();resize();refresh();toast('Settings reset to defaults');},
  jump(v){const el=document.getElementById('sec-'+v);if(el&&el.scrollIntoView)el.scrollIntoView({block:'start',behavior:'smooth'});},
  layout(){if(!save){toast('Select a pilot first — layouts are saved per pilot');return;}editLayout=true;if(!TEL)buildTouch();show('layout');layoutTouch();},
  lmirror(){save.touch.mirror=!save.touch.mirror;layoutTouch();refresh();},
@@ -3157,6 +3223,7 @@ function frame(t){
  const dt=Math.min(250,t-lastT);lastT=t;
  window.__perf=(window.__perf||16)*.95+dt*.05;
  if(state==='play'&&M.t>6&&window.__perf>32&&settings.gfx==='high'&&!SOFT_AUTO&&!window.__autoQ){window.__autoQ=1;settings.gfx='low';applyGfx();toast('Auto quality: low (frame time)');}
+ if(state==='play'&&M.t>240&&window.__perf>36&&settings.gfx==='low'&&!SOFT_AUTO&&!window.__resK){window.__resK=.85;}
  pollPad();
  if(state==='play'&&M){
   acc+=dt;let n=0;
