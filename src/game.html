@@ -161,6 +161,13 @@ html.kbnav #ui button:focus,#ui button.kb{outline:2px solid #7de3ff;outline-offs
 .mis.sp{border-color:rgba(255,209,102,.4)}
 .pv{width:100%;aspect-ratio:13/8;display:block;border-radius:8px;background:radial-gradient(circle at 50% 60%,rgba(60,110,150,.28),rgba(6,10,16,.6))}
 .statbar{height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+/* build 91: win/defeat buttons always sit in one row; they share the width and long labels wrap inside the button */
+.endbtns{flex-wrap:nowrap;width:100%;gap:.45em;align-items:stretch}.endbtns .btn{flex:1 1 0;min-width:0;padding-left:.45em;padding-right:.45em;white-space:normal;line-height:1.15}
+@media (max-width:420px),(max-height:420px){.endbtns .btn{font-size:.82em;letter-spacing:.04em}}
+/* build 91: upgrade cards share one layout: title, level tag, text, optional magnet line, then bar + button pinned to the bottom so every card in a row lines up */
+.ucard{gap:.4em}.ucard h3{margin:0;line-height:1.15;overflow-wrap:anywhere}.ucard>.tag{align-self:flex-start}.ucard .ud{flex:0 0 auto}
+.ucard .umg{color:#b06bff}.ucard .umg b{font-weight:700;white-space:nowrap}
+.ucard .statbar{margin-top:auto}.ucard>.btn{width:100%}
 .statbar i{display:block;height:100%;background:linear-gradient(90deg,#2aa7cf,#7de3ff)}
 .sw{width:100%;aspect-ratio:2/1;border-radius:8px;border:1px solid rgba(255,255,255,.2);box-shadow:inset 0 -10px 18px rgba(0,0,0,.35),inset 0 6px 10px rgba(255,255,255,.12)}
 .set{display:flex;align-items:center;gap:.8em;padding:.45em 0;border-bottom:1px solid rgba(255,255,255,.05)}
@@ -321,7 +328,7 @@ textarea{min-height:11em;font-family:ui-monospace,Consolas,monospace;font-size:.
 .wchip.lock{opacity:.4}
 .wchip.main{border-color:var(--gold);color:var(--gold);background:rgba(72,54,14,.45);cursor:default;box-shadow:0 0 12px rgba(255,209,102,.14)}
 .wchip.main em{font-style:normal;font-size:.75em;letter-spacing:.08em;margin-left:.35em;color:#ffe7ab;opacity:.9}
-.ugrid{display:grid;gap:.55em;grid-template-columns:repeat(auto-fit,minmax(min(212px,100%),1fr));grid-auto-rows:max-content;align-content:start;align-items:start;width:100%;max-width:980px;max-height:calc(100dvh - 160px);overflow-y:auto;padding-right:4px}
+.ugrid{display:grid;gap:.55em;grid-template-columns:repeat(auto-fit,minmax(min(212px,100%),1fr));grid-auto-rows:max-content;align-content:start;align-items:stretch;width:100%;max-width:980px;max-height:calc(100dvh - 160px);overflow-y:auto;padding-right:4px}
 #ui{scrollbar-width:thin;scrollbar-color:rgba(125,227,255,.3) transparent}
 #ui::-webkit-scrollbar{width:9px}
 #ui::-webkit-scrollbar-thumb{background:rgba(125,227,255,.22);border-radius:6px}
@@ -584,7 +591,7 @@ const MODES={
 };
  /* playable area and objective budgets derived from the same curve as the map */
  function areaKFor(lv){const wh=Math.min(1600+(lv|0)*5,3600);return Math.pow(wh/1605,2);}
- function huntTarget(lv){return 20+((lv|0)/10|0)*5+Math.round((areaKFor(lv)-1)*10);}
+ function huntTarget(lv){return Math.min(120,20+((lv|0)/10|0)*5+Math.round((areaKFor(lv)-1)*10));} /* build 91: capped at 120 kills */
  function defWavesFor(lv){return 3+Math.min(2,Math.round((areaKFor(lv)-1)*.6));}
  function scanTotalFor(lv){return 3+Math.min(3,Math.round((areaKFor(lv)-1)*.8));}
  function modeObj(mode,lv){
@@ -690,7 +697,7 @@ function loadSettings(){
 }
 function applyTouchAlpha(){try{const a=clamp(+settings.tbAlpha||1,.2,1);document.documentElement.style.setProperty('--tbo',a);}catch(e){}}
 function saveSettings(){applyTouchAlpha();let o=settings;if(SOFT_AUTO&&settings.gfx==='classic'&&!LS.get('pc_force3d')){o=Object.assign({},settings);o.gfx=SOFT_PREV||'high';}LS.set('pc_settings',o);LS.set('pc_audio',audioSet);try{document.body.classList.toggle('hc',!!settings.hc);document.documentElement.lang=settings.lang||'en';window.tailFixed=settings.tailCam==='fixed';}catch(e){}}
-function newSave(name){const s={v:2,name:name||'Pilot',gold:{cadet:0,pilot:0,ace:0},up:{},prog:{campaign:{cadet:{},pilot:{},ace:{}}},diff:'cadet',ach:{},hulls:{},trails:{},trims:{},hull:{},trail:{},trim:{},sq:{},sqCap:{},ship:{},ships:{},best:{},mods:{},wmods:{},gear:{},lore:{},loadout:[],vulcanAuto:false,contracts:{},climb:0,memorial:0,squadXP:0,squadLvl:0,cnt:{kills:0,gold:0,wins:0,voy:0,ram:0,boss:0,sectors:0,hunt:0,elite:0,flaw:0,wEsc:0,wHun:0,wDef:0,wTot:0,wPil:0,wAce:0,bAce:0},touch:{mirror:false,scale:1,stick:true,pos:{}}};initGear(s);for(const d of DRANKS){s.ships[d]=[0];s.hulls[d]=[0];s.trails[d]=[0];s.trims[d]=[0];s.ship[d]=0;s.hull[d]=0;s.trail[d]=0;s.trim[d]=0;s.sq[d]=0;s.sqCap[d]=0;s.best[d]=0;s.wmods[d]={};}return s;}
+function newSave(name){const s={v:2,name:name||'Pilot',gold:{cadet:0,pilot:0,ace:0},up:{},prog:{campaign:{cadet:{},pilot:{},ace:{}}},diff:'cadet',ach:{},hulls:{},trails:{},trims:{},hull:{},trail:{},trim:{},sq:{},sqCap:{},ship:{},ships:{},best:{},mods:{},wmods:{},gear:{},lore:{},loadout:[3],vulcanAuto:false,contracts:{},climb:0,memorial:0,squadXP:0,squadLvl:0,cnt:{kills:0,gold:0,wins:0,voy:0,ram:0,boss:0,sectors:0,hunt:0,elite:0,flaw:0,wEsc:0,wHun:0,wDef:0,wTot:0,wPil:0,wAce:0,bAce:0},touch:{mirror:false,scale:1,stick:true,pos:{}}};initGear(s);for(const d of DRANKS){s.ships[d]=[0];s.hulls[d]=[0];s.trails[d]=[0];s.trims[d]=[0];s.ship[d]=0;s.hull[d]=0;s.trail[d]=0;s.trim[d]=0;s.sq[d]=0;s.sqCap[d]=0;s.best[d]=0;s.wmods[d]={};}return s;}
 function initGear(s){if(!s.gear)s.gear={};for(const d of DRANKS){const g=s.gear[d]||(s.gear[d]=UPK.reduce((o,k)=>(o[k]=0,o),{weapons:0,hull:0,engines:0,cap:0,target:0,arc:0,squad:0,wing:0}));const cap=DMAX[d];for(const k of UPK)g[k]=clamp((+g[k])|0,0,cap);}}
 function fixLoadout(s,d){
  const src=Array.isArray(d&&d.loadout)?d.loadout:null,out=[];
@@ -1245,6 +1252,7 @@ function damage(t,amt,src,o){
  if(o.dt&&src&&src.isPlayer){const wi={laser:0,ion:1,plasma:2,vulcan:3,msl:4}[o.dt];if(wi!=null&&hasWmod(wi))amt*=1.12;}
  if(t.kind==='ship'&&projectorGuard(t))amt*=.55;
  if(t.isPlayer&&M&&M.dmgTaken)amt*=M.dmgTaken;
+ if(t.cargo&&M&&M.sea>=5)amt*=.75; /* build 91: late-sector freighters (Sector 6+) take 25% less damage */
  if(t.isPlayer&&M.done&&M.win)return;
  if(src&&src.isPlayer){M.dealt+=amt;if(M.mode==='range')M.rdps=(M.rdps||0)*.92+amt*.08;}if(t.isPlayer){M.taken+=amt;if(src&&src.x!==undefined&&M.hits.length<6)M.hits.push({a:Math.atan2(src.y-t.y,src.x-t.x),t:40});}
  if(t.kind==='ship'){
@@ -1386,7 +1394,19 @@ function nearPlasma(s,range){let best=null,bd=range;for(const p of projectiles){
 function nearMissile(s,range){let best=null,bd=range;for(const p of projectiles){if(p.dead||p.type!=='msl'||p.team===s.team)continue;const d=Math.hypot(p.x-s.x,p.y-s.y);if(d<bd){bd=d;best=p;}}return best;}
 
 /* ---------------- GUIDED MISSILES + SINGULARITY ---------------- */
-function singUnlocked(){return !!(save&&(save.free||(save.cnt&&save.cnt.boss>0)));}
+/* build 91: weapons unlock by sector reached. Lasers + vulcan from the start, ion in Sector 2, plasma 3, missiles 4, singularity 5.
+   Index order follows WEAPONS: laser, ion, plasma, vulcan, missile, sing. Sector = furthest sector reached on any difficulty. */
+const WUNLOCK=[1,2,3,1,4,5];
+function reachedSector(){if(!save)return 1;if(save.free)return 10;return Math.min(10,((reachedOf(save)-1)/50|0)+1);}
+function wUnlocked(i){return reachedSector()>=(WUNLOCK[i]||1);}
+function wUnlockCheck(){
+ if(!save||save.free)return;const now=[];for(let i=0;i<WEAPONS.length;i++)if(wUnlocked(i))now.push(i);
+ if(!Array.isArray(save.wSeen)){save.wSeen=now;const lo=(Array.isArray(save.loadout)?save.loadout:[]).filter(x=>+x>0&&wUnlocked(+x));if(lo.length<slotCount()&&!lo.includes(3))lo.push(3);save.loadout=lo;persist();return;}
+ const nw=now.filter(i=>!save.wSeen.includes(i));if(!nw.length)return;save.wSeen=now;
+ const lo=Array.isArray(save.loadout)?save.loadout.filter(x=>+x>0):[];for(const i of nw)if(lo.length<slotCount()&&!lo.includes(i))lo.push(i);save.loadout=lo;persist();
+ toast('WEAPON UNLOCKED: '+nw.map(i=>WEAPONS[i].n).join(' + ')+(lo.some(x=>nw.includes(x))?' · fitted':' · fit it in your loadout'));sfx('power');
+}
+function singUnlocked(){return !!(save&&wUnlocked(5));}
 function fireMissile(s,tg){
  const t=tg||autoTarget(s,1150);let ang=s.ang;
  if(t){lead(s,t,7.6);ang=Math.atan2(LY-s.y,LX-s.x);}
@@ -1405,7 +1425,7 @@ function spawnSing(owner,x,y,z,hostile){
 }
 function fireSing(){
  const p=player;if(!p||p.dead||p.singCd>0)return;
- if(!singUnlocked()){sfx('deny');msg('SINGULARITY LOCKED — BREAK A CAPTAIN',110);return;}
+ if(!singUnlocked()){sfx('deny');msg('SINGULARITY LOCKED — REACH SECTOR 5',110);return;}
  if(p.sing<=0){sfx('deny');msg('NO SINGULARITY CHARGES',90);return;}
  let tx,ty,tz;
  if(lockT&&!lockT.dead){tx=lockT.x;ty=lockT.y;tz=lockT.z||0;}
@@ -1617,7 +1637,9 @@ function stepShip(s,inp){
  const ck3=(viewMode!==0)&&s.isPlayer;if(ck3){s.pitch=(inp.pitch?clamp((s.pitch||0)+inp.pitch*.035,-1.25,1.25):(s.pitch||0)*.93);}const th=s.ab?1:inp.thrust,ca=Math.cos(s.ang),sa=Math.sin(s.ang),ckcp=ck3?Math.cos(s.pitch):1;
  if(th>0){s.vx+=ca*acc*th*ckcp;s.vy+=sa*acc*th*ckcp;}else if(th<0){s.vx+=ca*acc*th*.5;s.vy+=sa*acc*th*.5;}
  s.thr+=((s.ab?1.6:Math.max(0,th))-s.thr)*.15;
- if(s.cargo){for(const g of gravityWells){const dx=g.x-s.x,dy=g.y-s.y,d=Math.hypot(dx,dy),R=g.r*(g.bh?4:2.2);if(d<R&&d>1){const f=(1-d/R)*(g.bh?.3:.16);s.vx-=dx/d*f;s.vy-=dy/d*f;}}}else{for(const g of gravityWells){const dx=g.x-s.x,dy=g.y-s.y,d=Math.hypot(dx,dy),R=g.r*(g.bh?5:2.6);if(d<R&&d>1){const f=(1-d/R)*(g.bh?.085:.07);s.vx+=dx/d*f;s.vy+=dy/d*f;}}}
+ if(s.cargo){/* build 91: the freighter's planet push never points back against its route, so it can't get pinned in front of a planet gap */
+  const bh0=M&&M.beacon?Math.atan2(M.beacon.y-s.y,M.beacon.x-s.x):s.ang,ux=Math.cos(bh0),uy=Math.sin(bh0);
+  for(const g of gravityWells){const dx=g.x-s.x,dy=g.y-s.y,d=Math.hypot(dx,dy),R=g.r*(g.bh?4:2.2);if(d<R&&d>1){const f=(1-d/R)*(g.bh?.3:.16);let px=-dx/d*f,py=-dy/d*f;const back=px*ux+py*uy;if(back<0){px-=back*ux;py-=back*uy;}s.vx+=px;s.vy+=py;}}}else{for(const g of gravityWells){const dx=g.x-s.x,dy=g.y-s.y,d=Math.hypot(dx,dy),R=g.r*(g.bh?5:2.6);if(d<R&&d>1){const f=(1-d/R)*(g.bh?.085:.07);s.vx+=dx/d*f;s.vy+=dy/d*f;}}}
  const fr=inp.brake?.93:.988;s.vx*=fr;s.vy*=fr;
  const sp=Math.hypot(s.vx,s.vy);if(sp>top){const k=lerp(1,top/sp,.18);s.vx*=k;s.vy*=k;}
  s.x+=s.vx;s.y+=s.vy;
@@ -1883,7 +1905,7 @@ function stepProjectiles(){
     if(dx*dx+dy*dy>rr*rr||Math.abs(s.z-p.z)>((viewMode!==0)?2.4:.45))continue;
     dead=true;hitTally(p.owner);let d=p.dmg;
     if(p.type==='vulcan'&&Math.hypot(p.x-p.x0,p.y-p.y0)>380)d*=.35;
-    if(p.type==='ion')s.slow=160+((p.owner&&p.owner.wl)||0)*3;
+    if(p.type==='ion')s.slow=s.cargo?Math.max(s.slow,60):160+((p.owner&&p.owner.wl)||0)*3;
     if(p.type==='plasma'){s.burn=5;s.burnT=20;s.burnDmg=p.burn;s.burnBy=p.owner;}
     damage(s,d,p.owner,{crit:p.crit,acc:p.type==='vulcan',dt:p.type});
     if(p.type==='msl'){burst(s.x,s.y,s.z,16,'#ffb36b',2.5,30,4);for(const o of foes){if(o===s||o.dead)continue;if(Math.hypot(o.x-s.x,o.y-s.y)<74)damage(o,p.dmg*.45,p.owner,{acc:true});}}
@@ -2977,6 +2999,7 @@ function fitScrolls(){
  }
 }
 function show(name,arg,keep){
+ if(name&&save&&state!=='play'){try{wUnlockCheck();}catch(e){}}
  const el=$('ui'),st=keep?el.scrollTop:0;if(name!=='settings'){UI.rebind=null;UI.rebindPend=null;}UI.cur=name;UI.arg=arg;
  if(!name){el.className='';el.innerHTML='';UI.shown='';return;}
  var html=SCREENS[name](arg);
@@ -3004,7 +3027,7 @@ function reachedOf(s){if(s.free)return 500;let m=0;for(const d in s.prog.campaig
 function slotCount(){if(!save)return 1;if(save.free)return 5;const r=reachedOf(save);return 1+(r>100?1:0)+(r>200?1:0)+(r>300?1:0)+(r>400?1:0);}
 function loadoutFor(){
  const max=slotCount(),out=[0],src=Array.isArray(save&&save.loadout)?save.loadout:[];
- for(const w of src){const i=+w;if(i<=0||i>=WEAPONS.length)continue;if(i===5&&!singUnlocked())continue;if(!out.includes(i)&&out.length<max+1)out.push(i);}
+ for(const w of src){const i=+w;if(i<=0||i>=WEAPONS.length)continue;if(!wUnlocked(i))continue;if(!out.includes(i)&&out.length<max+1)out.push(i);}
  return out;
 }
 function spend(c){if(save.free)return true;if(dGold(save)<c){sfx('deny');toast('Not enough credits on '+DIFFS[save.diff].n);return false;}dGoldSet(save,dGold(save)-c);return true;}
@@ -3137,8 +3160,8 @@ const SCREENS={
   '<div class="kv"><span>Reward</span><b style="color:var(--gold)">◈ '+rew+(MD.bonus>1?' (mode bonus ×'+MD.bonus+')':'')+'</b></div>'+
   (hunt?'':'<div class="kv"><span>Best</span><b>'+starStr(starsOf(lv))+'</b></div>')+
   '<div class="kv"><span>Loadout</span><b>MAIN LASER + '+Math.max(0,LO.length-1)+' / '+MAXS+' secondary slots'+(MAXS<5?' · slots unlock with progress':'')+'</b></div>'+
-  '<div class="loadchips">'+WEAPONS.map((w,i)=>{if(i===0)return '<span class="wchip on main">'+w.n+' <em>MAIN</em></span>';const on=LO.indexOf(i)>=0,lock=i===5&&!singUnlocked();return '<button class="wchip'+(on?' on':'')+(lock?' lock':'')+'" data-a="load" data-v="'+i+'"'+(lock?' data-tip="Unlock: destroy your first sector captain"':'')+'>'+w.n+'</button>';}).join('')+'</div>'+
-  '<p class="dim sml">Main lasers are permanent and do not use a loadout slot. Tap a secondary weapon to add or remove it; the order is your firing order on keys 1–'+Math.min(6,MAXS+1)+' with main lasers on 1. One secondary slot at 1-1, five by the late sectors. MISSILE racks carry 4 per sortie and rearm while docked; SING needs your first captain kill.</p>'+
+  '<div class="loadchips">'+WEAPONS.map((w,i)=>{if(i===0)return '<span class="wchip on main">'+w.n+' <em>MAIN</em></span>';const on=LO.indexOf(i)>=0,lock=!wUnlocked(i);return '<button class="wchip'+(on&&!lock?' on':'')+(lock?' lock':'')+'" data-a="load" data-v="'+i+'"'+(lock?' data-tip="Unlocks in Sector '+WUNLOCK[i]+'" aria-label="'+w.n+' locked until Sector '+WUNLOCK[i]+'"':'')+'>'+(lock?'🔒 ':'')+w.n+(lock?' <em>S'+WUNLOCK[i]+'</em>':'')+'</button>';}).join('')+'</div>'+
+  '<p class="dim sml">Main lasers are permanent and do not use a loadout slot. Tap a secondary weapon to add or remove it; the order is your firing order on keys 1–'+Math.min(6,MAXS+1)+' with main lasers on 1. One secondary slot at 1-1, five by the late sectors. MISSILE racks carry 4 per sortie and rearm while docked. New weapons unlock as you advance: VULCAN from the start, ION in Sector 2, PLASMA in Sector 3, MISSILE in Sector 4, SING in Sector 5.</p>'+
   '<div class="row" style="margin-top:.4em"><button class="btn primary" data-a="launch" style="flex:1">Launch</button><button class="btn" data-a="nav" data-v="shop">Shop</button></div></div></div>';
  },
  shop(){
@@ -3155,7 +3178,8 @@ const SCREENS={
    h+='<div class="ugrid">';
    const cap=DMAX[s.diff];
    for(const k of UPK){const u=UPG[k],l=du[k],mx=l>=cap,c=upCost(k),lk=mx?'':upLock(k);
-    h+='<div class="card"><div class="row"><h3 style="flex:1">'+u.n+'</h3><span class="tag">Lv '+l+' / '+cap+'</span></div><span class="dim sml">'+u.d+'</span>'+(k==='cap'?'<span class="sml" style="color:#b06bff">Pickup magnet '+magR(l)+' m'+(mx?'':' → '+magR(l+1)+' m')+'</span>':k==='squad'?'<span class="sml" style="color:#b06bff">Wingmate magnet '+(110+2.5*l)+' m'+(mx?'':' → '+(110+2.5*(l+1))+' m')+'</span>':'')+'<div class="statbar"><i style="width:'+Math.min(100,l/cap*100)+'%"></i></div>'+
+    const mg=k==='cap'?['Pickup magnet',magR(l),magR(l+1)]:k==='squad'?['Wingmate magnet',110+2.5*l,110+2.5*(l+1)]:null;
+    h+='<div class="card ucard"><h3>'+u.n+'</h3><span class="tag">Lv '+l+' / '+cap+'</span><span class="dim sml ud">'+u.d+'</span>'+(mg?'<span class="sml umg">'+mg[0]+' <b>'+mg[1]+'&nbsp;m</b>'+(mx?'':' <b>→&nbsp;'+mg[2]+'&nbsp;m</b>')+'</span>':'')+'<div class="statbar"><i style="width:'+Math.min(100,l/cap*100)+'%"></i></div>'+
      '<button class="btn sm'+(mx||lk?' dis':(!s.free&&dGold(s)<c?' warn':''))+'" data-a="buyup" data-v="'+k+'"'+(lk?' data-tip="'+esc(u.n+': '+lk)+'"':'')+'>'+(mx?'Maxed':lk?'🔒 '+lk:'Upgrade · ◈ '+fmtNum(c))+'</button></div>';}
    h+='</div>';
   }else if(t==='dock'){
@@ -3275,12 +3299,13 @@ const SCREENS={
   '<h3>Touch</h3><p>Left stick steers and thrusts. Buttons: FIRE, WPN (tap to cycle; swipe left/right to move through weapons), FLAK, SHLD (brake + brace), ROLL, AIM (shown when Auto-aim is off), BURN, VULC, CLIMB'+(view3D()?', the eye (view cycle)':'')+' and pause. Tap an enemy to lock it, tap the minimap to enlarge it. With Pilot assist on, Auto-aim can be toggled in Settings → Auto; when it is on the AIM button is hidden. Rearrange everything in Settings → Touch layout editor (drag, mirror, resize, fixed or floating stick); the layout is saved per pilot.</p>'+
   '<h3 id="sec-flight">Flight</h3><p>Ships drift: thrust adds speed along your heading and friction is mild, so brake or counter-thrust to stop. <b>Altitude</b> matters: above 35% you clear asteroids, above 65% you clear moons and planets. Planets are <b>gravity wells</b> that pull ships and bend ion and plasma shots. <b>Ramming</b> hurts both ships by closing speed; the Hull upgrade adds ram damage and the Reactive mod softens impacts. Your <b>shield</b> absorbs damage first and starts recharging 5 seconds after the last hit. Pilot Assist auto-climbs over obstacles, damps sideways drift, and (with Auto countermeasures on) fires flak at incoming plasma and pops flares at inbound missiles.</p>'+(view3D()?'<p><b>Views (B / eye button):</b> cycles <b>diorama → cockpit → tail</b>. Cockpit is full 3D — W/S or the stick pitches the nose, A/D yaws, R/F sets throttle. Tail flies exactly the same 3D model from a chase camera outside the hull; floating yaw by default (set Fixed in Systems → Optics for a rigid mount).</p>':'<p><b>View cycling is a 3D/diorama control.</b> Classic 2D always uses the diorama.</p>')+'<p><b>Pilot Assist</b> can auto-lock the nearest hostile and turn onto its lead, auto-climbs obstacles, fires flak at incoming plasma, pops flares at inbound missiles, braces against hits and barrel-rolls to dodge. Auto-aim has its own toggle in Settings → Auto; the AIM touch button is hidden only while it is on. <i>Hide assisted buttons</i> hides the matching touch buttons for the assists you leave on.</p>'+
   '<h3 id="sec-weapons">Weapons</h3><table>'+
+  '<tr><td colspan="2" class="dim sml">Unlocks: LASER and VULCAN from the start · ION Sector 2 · PLASMA Sector 3 · MISSILE Sector 4 · SING Sector 5.</td></tr>'+
   '<tr><td style="color:#7de3ff">LASER</td><td>Instant hit, range 1150, with a wider auto-aim cone than other weapons; cyan brackets mark the ship your next shot will hit. Tap for a pulse; hold for 3 pulses a second plus a charged beam whenever the ring fills. The Weapons upgrade raises its fire rate (up to 5 a second) and charge speed.</td></tr>'+
   '<tr><td style="color:#c87dff">ION</td><td>Fast bolt that slows the target. Bends in gravity.</td></tr>'+
   '<tr><td style="color:#ff7043">PLASMA</td><td>Slow heavy bolt that burns over time. Limited charges, restocked by docking.</td></tr>'+
   '<tr><td style="color:#ffd700">VULCAN</td><td>Bullet stream, best inside 380 m. Overheats. V lets it fire by itself.</td></tr>'+
   '<tr><td style="color:#ffb36b">MISSILE</td><td>Guided warhead: homes on your lock or the nearest hostile, 29+ damage with a small splash. Rack holds 4 per sortie and rearms while you dock or from missile pickups. Carry it in a loadout slot.</td></tr>'+
-  '<tr><td style="color:#b06bff">SING</td><td>Singularity bomb: a 215 m well that drags ships in, slows their engines and holds them at the core, where it grinds hardest (up to 2.5× damage at the centre) — bosses resist part of the pull, allies take a light pull and 25% damage. One charge a mission once you have broken a captain; rare purple pickups add charges. Captains, elites and bosses can throw one back at you.</td></tr></table>'+
+  '<tr><td style="color:#b06bff">SING</td><td>Singularity bomb: a 215 m well that drags ships in, slows their engines and holds them at the core, where it grinds hardest (up to 2.5× damage at the centre) — bosses resist part of the pull, allies take a light pull and 25% damage. One charge a mission once you reach Sector 5; rare purple pickups add charges. Captains, elites and bosses can throw one back at you.</td></tr></table>'+
   '<p><b>Ammo fallback:</b> when plasma, missile or singularity charges run out, the weapon selector automatically returns to your main lasers. Main lasers are permanent and sit outside the loadout; ammo pickups are filtered to the secondary weapons actually fitted.</p>'+
   '<p><b>Flak</b> is a point-defence countermeasure, not a slot weapon: it bursts automatically at incoming plasma when the assist is on, or on G. Nine pellets, 8 s cooldown.</p>'+
   '<p>Shots auto-aim at targets inside your <b>fire arc</b> (widen it with the Fire Arc upgrade). A ghost diamond shows where ion and plasma will land. Targeting upgrades add critical hits, shown in gold.</p>'+
@@ -3317,7 +3342,7 @@ const SCREENS={
   '<div class="sgrid"><div><b>'+fmtNum(m.dealt)+'</b>damage dealt</div><div><b>'+fmtNum(m.taken)+'</b>damage taken</div><div><b>×'+Math.max(1,m.best)+'</b>best streak</div><div><b>'+(m.shots?Math.min(100,Math.round((m.hitCount||0)/m.shots*100)):0)+'%</b>accuracy</div></div>'+'<div class="kv"><span>Mission pay</span><b>◈ '+fmtNum(a.reward)+'</b></div><div class="kv"><span>Salvage &amp; bounties</span><b>◈ '+fmtNum(a.bonus)+'</b></div>'+d+
   '<div class="kv" style="font-size:1.1em"><span>Total</span><b style="color:var(--gold)">◈ '+fmtNum(a.total+dg)+'</b></div>'+
   (save.free?'<span class="tag g">Free Roam — nothing saved</span>':'')+
-  '<div class="row c" style="margin-top:.4em">'+(a.win&&!m.hunt&&m.lv<500?'<button class="btn primary" data-a="next">Next mission</button><button class="btn" data-a="retry">Replay</button>':'<button class="btn primary" data-a="retry">'+(a.win?'Hunt again':'Retry')+'</button>')+'<button class="btn" data-a="home">Hangar</button></div></div></div>';
+  '<div class="row c endbtns" style="margin-top:.4em">'+(a.win&&!m.hunt&&m.lv<500?'<button class="btn primary" data-a="next">Next mission</button><button class="btn" data-a="retry">Replay</button>':'<button class="btn primary" data-a="retry">'+(a.win?'Hunt again':'Retry')+'</button>')+'<button class="btn" data-a="home">Hangar</button></div></div></div>';
  }
 };
 function fmtNum(n){return Math.round(n).toLocaleString('en-US');}
@@ -3334,13 +3359,15 @@ function contractList(){
  }
  return out;
 }
+/* build 91: recon relays must sit in open space a ship can actually park on (not inside a planet, moon, black hole or station). */
+function reconClear(x,y){for(const g of gravityWells)if(Math.hypot(g.x-x,g.y-y)<g.r*(g.bh?1.6:1)+170)return false;for(const r of rocks)if(r.moon&&Math.hypot(r.x-x,r.y-y)<r.r+130)return false;for(const s of stations)if(Math.hypot(s.x-x,s.y-y)<(s.r||60)+190)return false;for(const n of (M.scanNodes||[]))if(Math.hypot(n.x-x,n.y-y)<300)return false;return true;}
 function applyContract(c){
  M.contract=c;
  if(c.mods.some(m=>m[0]==='NOSHIELD')){player.maxSh=player.sh=0;}
  if(c.mods.some(m=>m[0]==='GLASS'))M.dmgTaken=1.3;
  if(c.mods.some(m=>m[0]==='ION'))M.ionStorm=true;
  if(c.mods.some(m=>m[0]==='RAMMERS')){for(let i=0;i<2;i++){const e=spawnEnemy(0,player.x+rand(-260,260),player.y+rand(-260,260),rand(TAU),{ram:true});if(e){e.maxHp=e.hp=Math.round(e.maxHp*1.3);}}}
- if(c.mode==='recon'){M.scanNodes=[];M.detected=0;const rn=Math.max(1,M.scanTotal||3);for(let i=0;i<rn;i++){const a=rand(TAU),d=420+i*230;M.scanNodes.push({x:clamp(player.x+Math.cos(a)*d,-WORLD_HALF+150,WORLD_HALF-150),y:clamp(player.y+Math.sin(a)*d,-WORLD_HALF+150,WORLD_HALF-150),prog:0,done:false});}}
+ if(c.mode==='recon'){M.scanNodes=[];M.detected=0;const rn=Math.max(1,M.scanTotal||3);for(let i=0;i<rn;i++){let x=0,y=0;for(let k=0;k<40;k++){const a=rand(TAU),d=420+i*230+(k>20?rand(-150,250):0);x=clamp(player.x+Math.cos(a)*d,-WORLD_HALF+150,WORLD_HALF-150);y=clamp(player.y+Math.sin(a)*d,-WORLD_HALF+150,WORLD_HALF-150);if(reconClear(x,y))break;}M.scanNodes.push({x,y,prog:0,done:false});}}
  msg('CONTRACT: '+c.mods.map(m=>m[1]).join(' · '),110);
 }
 function launchMission(lv,hunt){cockpitThrottle=0;if(TEL&&TEL.thr)TEL.thr.value=0;startMission(lv,hunt);window.__perf=16;if(PENDING_CONTRACT){applyContract(PENDING_CONTRACT);PENDING_CONTRACT=null;QA_MODE=null;}if(viewMode!==0&&player){applyCockpitWorld(true);player.z=Math.max(player.z,.4);}state='play';show('');acc=0;if(touchOn&&!TEL)buildTouch();layoutTouch();audioInit();missionBoot();}
@@ -3383,8 +3410,8 @@ const ACT={
  load(v){
   if(!save)return;const i=+v;
   if(i===0){sfx('deny');toast('Main lasers are always fitted');return;}
-  if(i===5&&!singUnlocked()){sfx('deny');toast('Break a captain to unlock the singularity');return;}
-  const max=slotCount();let lo=Array.isArray(save.loadout)?save.loadout.filter(x=>+x>0):[],at=lo.indexOf(i);
+  if(!wUnlocked(i)){sfx('deny');toast(WEAPONS[i].n+' unlocks in Sector '+WUNLOCK[i]);return;}
+  const max=slotCount();let lo=Array.isArray(save.loadout)?save.loadout.filter(x=>+x>0&&wUnlocked(+x)):[],at=lo.indexOf(i);
   if(at>=0){lo.splice(at,1);}
   else{if(lo.length>=max){lo[lo.length-1]=i;toast('Loaded '+WEAPONS[i].n+' into secondary slot '+lo.length);}else lo.push(i);}
   save.loadout=lo;persist();refresh();

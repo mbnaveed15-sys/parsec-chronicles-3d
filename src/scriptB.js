@@ -652,6 +652,9 @@ const stars=[starLayer(1400,12500,1.7,.5,7),starLayer(2600,9000,2.4,.95,99),star
 /* seamless nebula shells: wrapped blobs + fibrous detail + dither, so no UV seam or banding */
 function nebTex(seed,w,h,cols,alpha,band){
  const c=mkCanvas(w,h),x=c.getContext('2d'),r=mulberry32(seed);
+ /* build 91: paint on opaque black and add the shell (additive). Faint see-through pixels were stored at very low
+    precision, so every texel had its own colour step: a fine dotted grid on the sky sphere. */
+ x.fillStyle='#000';x.fillRect(0,0,w,h);
  const blob=function(cx,cy,rad,cl,a){
   for(let ox=-1;ox<=1;ox++)for(let oy=-1;oy<=1;oy++){
    if((ox<0&&cx+rad<w)||(ox>0&&cx-rad>0)||(oy<0&&cy+rad<h)||(oy>0&&cy-rad>0))continue; /* build 89: only wrap blobs that cross an edge (same image, ~6x faster) */
@@ -666,13 +669,18 @@ function nebTex(seed,w,h,cols,alpha,band){
  for(let i=0;i<14;i++)blob(r()*w,r()*h,w*(.06+r()*.2),cols[r()*cols.length|0],alpha*(.4+r()*.5));
  for(let i=0;i<1100;i++)blob(r()*w,r()*h,w*(.008+r()*.026),cols[r()*cols.length|0],alpha*(.15+r()*.28));
  const id=x.getImageData(0,0,w,h),d=id.data;
- for(let i=0;i<d.length;i+=4){if(!d[i+3])continue;const n=(r()*2-1)*8;d[i]=clamp(d[i]+n,0,255);d[i+1]=clamp(d[i+1]+n,0,255);d[i+2]=clamp(d[i+2]+n,0,255);}
+ /* build 91: no per-pixel dither (it aliased into fine rings/scanlines on the sky sphere, worst at the pole the top-down
+    camera looks at), and the rows near both poles fade to their row average so the pole has no radial streaks. */
+ const P=Math.round(h*.16);
+ for(let y=0;y<h;y++){const e=y<P?1-y/P:y>=h-P?1-(h-1-y)/P:0;if(e<=0)continue;const k=e*e*(3-2*e);
+  let a0=0,a1=0,a2=0,a3=0;for(let xx=0;xx<w;xx++){const j=(y*w+xx)*4;a0+=d[j];a1+=d[j+1];a2+=d[j+2];a3+=d[j+3];}a0/=w;a1/=w;a2/=w;a3/=w;
+  for(let xx=0;xx<w;xx++){const j=(y*w+xx)*4;d[j]+=(a0-d[j])*k;d[j+1]+=(a1-d[j+1])*k;d[j+2]+=(a2-d[j+2])*k;d[j+3]+=(a3-d[j+3])*k;}}
  x.putImageData(id,0,0);
  const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;tex.wrapS=THREE.RepeatWrapping;tex.anisotropy=4;
  return tex;
 }
  function nebShell(seed,radius,opacity,order){
- const m=new THREE.MeshBasicMaterial({map:null,side:THREE.BackSide,transparent:true,opacity:opacity,depthWrite:false,depthTest:false,fog:false});m.userData.op=opacity;
+ const m=new THREE.MeshBasicMaterial({map:null,side:THREE.BackSide,transparent:true,opacity:opacity,depthWrite:false,depthTest:false,fog:false,blending:THREE.AdditiveBlending});m.userData.op=opacity;
  const mesh=new THREE.Mesh(new THREE.SphereGeometry(radius,64,32),m);mesh.renderOrder=order;mesh.frustumCulled=false;scene.add(mesh);return mesh;
 }
 const nebula=nebShell(4242,8200,.3,-2);
