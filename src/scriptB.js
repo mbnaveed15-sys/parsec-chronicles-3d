@@ -898,7 +898,26 @@ function preview(el,idx,cols){
  }catch(e){pvFail=true;return false;}
 }
 
-window.R3D={design:designShip,on:settings.gfx!=='classic',failed:false,ready:true,render,resize(){curW=-1;},w2s:w2sB,s2w:s2wB,preview,stats(){return{mines:minePool.filter(o=>o.g.visible).length,nodes:scanPool.filter(o=>o.g.visible).length,bubbles:typeof ships!=='undefined'?ships.filter(s=>s.special==='shield'||(s.team===1&&typeof projectorGuard==='function'&&projectorGuard(s))).length:0,cam:{x:cam.position.x,y:cam.position.y,z:cam.position.z},yaw:tailYaw,pull:tailPull};}};
+/* ---------- sector map portraits: one planet rendered into a small transparent image (Sector Map nodes) ---------- */
+let ps=null;
+function planetShot(g,px){
+ try{
+  px=px||128;
+  if(!ps){const c=mkCanvas(px,px),r=new THREE.WebGLRenderer({canvas:c,antialias:true,alpha:true,powerPreference:'low-power',preserveDrawingBuffer:true});r.setPixelRatio(1);r.setSize(px,px,false);r.toneMapping=THREE.ACESFilmicToneMapping;r.toneMappingExposure=1.1;r.setClearColor(0x000000,0);
+   const sc=new THREE.Scene();sc.add(new THREE.AmbientLight(0x7080b0,.45));const dl=new THREE.DirectionalLight(0xfff0dc,3.4);dl.position.set(-3,2.4,2.6);sc.add(dl);
+   ps={r,sc,cam:new THREE.PerspectiveCamera(30,1,.1,100),c,dl,px};}
+  const G=Object.assign({kind:'planet',gas:false,ring:false,tilt:0,seed:1,rot:0,c1:'#5a8fc8',c2:'#274a7a'},g,{x:0,y:0,z:0,r:1});
+  const o=planetObj(G),sun=ps.dl.position.clone().normalize();
+  if(o.atm)o.atm.uniforms.sunDir.value.copy(sun);
+  if(o.ringUni){o.ringUni.sunDir.value.copy(sun);o.ringUni.center.value.set(0,0,0);o.ringUni.radius.value=1;}
+  ps.sc.add(o.o);const fit=G.ring?1.95:G.bh?1.75:1.2,d=fit/Math.tan(15*Math.PI/180);ps.cam.position.set(0,d*(G.bh?.62:.32),d*(G.bh?.78:.95));ps.cam.lookAt(0,0,0);
+  ps.r.render(ps.sc,ps.cam);let url=ps.c.toDataURL('image/webp',.85);if(url.indexOf('data:image/webp')!==0)url=ps.c.toDataURL('image/png');
+  ps.sc.remove(o.o);for(const x of o.own||[])if(x&&x.dispose)x.dispose();
+  return url;
+ }catch(e){return null;}
+}
+function planetShotDone(){if(ps){try{ps.r.dispose();ps.r.forceContextLoss();}catch(e){}ps=null;}}
+window.R3D={design:designShip,on:settings.gfx!=='classic',failed:false,ready:true,render,resize(){curW=-1;},w2s:w2sB,s2w:s2wB,preview,planetShot,planetShotDone,stats(){return{mines:minePool.filter(o=>o.g.visible).length,nodes:scanPool.filter(o=>o.g.visible).length,bubbles:typeof ships!=='undefined'?ships.filter(s=>s.special==='shield'||(s.team===1&&typeof projectorGuard==='function'&&projectorGuard(s))).length:0,cam:{x:cam.position.x,y:cam.position.y,z:cam.position.z},yaw:tailYaw,pull:tailPull};}};
 try{r3dReady();}catch(e){}
 }catch(e){if(window.console)console.warn('Parsec: 3D renderer unavailable, using classic 2D.',e);fail();}
 })();
