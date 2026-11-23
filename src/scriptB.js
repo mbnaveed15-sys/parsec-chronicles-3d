@@ -919,7 +919,7 @@ function placeCam(){
  const ck=!!window.cockpitOn&&player&&!player.dead;
  if(ck){
   const p=player,pit=p.pitch||0,cp=Math.cos(pit),sp=Math.sin(pit),ca=Math.cos(p.ang),sa=Math.sin(p.ang);
-  const roll=p.bank*.95+(p.roll>0?(1-p.roll/20)*PI*2*p.rollDir:0),cr=Math.cos(roll),sr=Math.sin(roll);
+  const roll=p.bank*.95+(p.invA||0)+(p.roll>0?(1-p.roll/20)*PI*2*p.rollDir:0),cr=Math.cos(roll),sr=Math.sin(roll);
   const shx=(Math.random()-.5)*shake*settings.shake,shz=(Math.random()-.5)*shake*settings.shake;
   const px=p.x+cp*ca*p.r*.3-sp*ca*p.r*.4+shx,py=p.z*ALT+sp*p.r*.3+cp*p.r*.4,pz=p.y+cp*sa*p.r*.3-sp*sa*p.r*.4+shz;
   cam.fov=70;cam.near=2;cam.far=30000;cam.aspect=W/H;
@@ -991,7 +991,8 @@ function preview(el,idx,cols){
   if(!o){
    if(pvObjs.size>40){for(const x of pvObjs.values())for(const d of x.own)d.dispose();pvObjs.clear();}
    o=shipObj({idx,hull:cols.hull,trail:cols.trail,trim:cols.trim,isPlayer:true,prism:!!cols.prism,team:0,cargo:false,marked:false,noRibbon:true});pvObjs.set(key,o);
-   for(const f of o.fl)f[0].scale.set(.7,f[1],f[1]);
+   /* build 95: the in-game player flame is pushed to 1.9x and reads as white on this small dark preview (no ribbon here), so the preview uses the trail's true colour, a little longer */
+   {const k='P'+cols.trail;let pm=matCache[k];if(!pm){pm=matCache[k]=new THREE.MeshBasicMaterial({color:new THREE.Color(cols.trail||'#7de3ff'),transparent:true,opacity:.92,toneMapped:false,depthWrite:false,side:THREE.DoubleSide});}for(const f of o.fl){f[0].material=pm;f[0].scale.set(1.25,f[1]*1.15,f[1]*1.15);}}
   }
   pv.holder.clear();pv.holder.add(o.o);if(o.pr)prismPaint(o,cols.trail);
   const t=performance.now()*.0006+idx;o.o.rotation.y=t;o.b.rotation.x=Math.sin(t*1.3)*.18;o.o.scale.setScalar(.72+.24*SHIPS[idx].sc);

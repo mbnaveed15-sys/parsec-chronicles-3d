@@ -305,6 +305,10 @@ textarea{min-height:11em;font-family:ui-monospace,Consolas,monospace;font-size:.
 .csw .cst{flex:none;min-width:6.2em}
 .cgrp{flex:none;position:sticky;top:0;z-index:1;font-family:Orbitron,sans-serif;font-size:.56em;letter-spacing:.12em;text-transform:uppercase;color:var(--c);padding:.45em .3em .3em;background:rgba(8,14,24,.96);border-bottom:1px solid var(--ln)}
 .cgrp.lk{color:var(--dim)}
+/* build 95: when the Cosmetics / Dockyard columns wrap on narrow screens they keep a usable height instead of collapsing */
+.cosgrid>.cosm-col{min-height:240px}
+.csw .sw.stier{display:flex;align-items:center;justify-content:center;font-family:Orbitron,sans-serif;font-size:.6em;font-weight:700;color:var(--c);background:rgba(125,227,255,.1);box-shadow:0 0 0 1px rgba(125,227,255,.35)}
+.dockgrid .cosm-pv .statbar{margin:-.15em 0 .1em}
 .csw.sel{border-color:var(--c);box-shadow:0 0 14px rgba(125,227,255,.22)}
 .csw.prov{border-color:var(--gold);box-shadow:0 0 14px rgba(255,209,102,.3)}
 .csw.lock{opacity:.6}
@@ -434,6 +438,8 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
  .endpanel{font-size:.95em;max-height:calc(100dvh - 8px);overflow-y:auto}
  .endpanel .row.c{position:sticky;bottom:-.1em;z-index:2;background:rgba(7,13,22,.97);padding:.45em 0 .2em;box-shadow:0 -10px 14px rgba(0,0,0,.35)}
  #ui .cosm-pv canvas.pv{display:block!important;width:100%!important;max-width:236px!important;max-height:none!important;height:auto!important;margin:0 auto}
+ /* build 95: keep the title-screen ship on short (phone landscape) screens */
+ #ui canvas.pv.tpv{display:block!important;height:clamp(64px,27dvh,124px)!important;width:auto!important;max-width:none!important;max-height:none!important;margin:-.2em auto 0!important;flex:none}
  .scr{padding:.4em .4em .8em;gap:.25em}
  .panel{padding:.4em .5em}
  .hdr{padding:0}
@@ -1170,7 +1176,7 @@ function spawnEnemy(idx,x,y,ang,o){
 const STATION_SEC=[[],['laser'],['ion'],['plasma'],['msl'],['flak','laser'],['ion','plasma'],['msl','laser'],['plasma','msl','ion'],['laser','plasma','msl','ion']];
 /* weapon: [range m, cooldown frames] */
 const STATION_GUN={laser:[1000,180],ion:[900,130],plasma:[850,150],msl:[1150,240],flak:[300,90]};
-function stationGuns(st){const sea=M.sea|0,dm=(st.team?M.eDmg:1+sea*.11)*.9,wl=Math.min(20,(M.lv|0)/15);
+function stationGuns(st){const sea=M.sea|0,dm=(st.team?M.eDmg*(st.dk||1):1+sea*.11)*.9,wl=Math.min(20,(M.lv|0)/15);
  return{list:(STATION_SEC[sea]||[]).map((w,i)=>({w,cd:90+i*45})),g:{kind:'stgun',st:st,isPlayer:false,team:st.team,x:st.x,y:st.y,z:0,vx:0,vy:0,ang:0,r:30,dm,wl,crit:0,critM:1.5,cdm:1,arc:Math.PI,dbuff:0,oc:0,flakCd:0}};}
 function stepStationGuns(st,tg,dd){
  const S=st.sec;if(!S||!S.list.length||!tg||M.done)return;const g=S.g;g.x=st.x;g.y=st.y;
@@ -1178,16 +1184,22 @@ function stepStationGuns(st,tg,dd){
   g.ang=Math.atan2(tg.y-st.y,tg.x-st.x);
   if(k.w==='laser')fireLaser(g,false,tg);else if(k.w==='ion')fireBolt(g,1,tg);else if(k.w==='plasma')fireBolt(g,2,tg);
   else if(k.w==='msl'){fireMissile(g,tg);}else if(k.w==='flak')fireFlak(g,g.ang);
-  k.cd=R[1]+(Math.random()*30|0);}
+  k.cd=Math.round(R[1]*(st.gf||1))+(Math.random()*30|0);}
 }
 function mkStation(team,x,y,mul){
  const lv=M.lv,sc=team?M.eHull:(1+M.sea*.28),hp=Math.round((420+lv*5)*sc*(mul||1));
- return{kind:'station',team,x,y,z:0,vx:0,vy:0,r:46,hp,maxHp:hp,aura:Math.min(300,175+lv*.25),atk:Math.min(720,390+lv*.7),
+ const S={kind:'station',team,x,y,z:0,vx:0,vy:0,r:46,hp,maxHp:hp,aura:Math.min(300,175+lv*.25),atk:Math.min(720,390+lv*.7),
   burst:4+(lv>=150?1:0)+(lv>=300?1:0),tcd:Math.round(Math.max(66,105-lv*.07)),
   turrets:[0,1,2].map(i=>({ang:turA(i),cd:60+i*30,burst:0,bt:0,hp:Math.round(hp*.11),maxHp:Math.round(hp*.11),dead:false})),
   gen:{hp:Math.round(hp*.18),maxHp:Math.round(hp*.18),dead:false},genDead:false,sub:'auto',rot:0,dead:false,flash:0,dAcc:0,dCrit:false,
   burn:(1.2+lv*.015)*(team?M.eDmg:1+M.sea*.11),tdmg:(3+lv*.03)*(team?M.eDmg:1+M.sea*.11)};
+ /* build 95: enemy stations scale with difficulty on top of M.eHull/M.eDmg, so they keep pace with the 2/4/6-per-sector upgrade ceilings:
+    health and damage x0.7 / x1.2 / x1.8 overall (Cadet unchanged), +0/+1/+2 shots per burst, fire 0/10/20% faster, zones 0/10/20% wider */
+ const X=team?stDiff():null;
+ if(X){const k=X.k;S.hp=S.maxHp=Math.round(S.hp*k);for(const t of S.turrets)t.hp=t.maxHp=Math.round(S.hp*.11);S.gen.hp=S.gen.maxHp=Math.round(S.hp*.18);S.burn*=k;S.tdmg*=k;S.burst+=X.b;S.tcd=Math.round(S.tcd*X.f);S.aura=Math.round(S.aura*X.z);S.atk=Math.round(S.atk*X.z);S.dk=k;S.gf=X.f;}
+ return S;
 }
+function stDiff(){const d=save&&save.diff;return d==='ace'?{k:1.8/1.4,b:2,f:.8,z:1.2}:d==='pilot'?{k:1.2,b:1,f:.9,z:1.1}:{k:1,b:0,f:1,z:1};}
 
 /* ---------------- MISSION SETUP ---------------- */
 function startMission(lv,hunt){
@@ -1506,11 +1518,29 @@ function applyCockpitWorld(on){
  for(const s of enemies)setZ(s);
  for(const s of allies)setZ(s);
 }
+/* build 95: cockpit pitch is free, so W/S (or the stick) can fly a full vertical loop.
+   Past straight up/down the heading flips 180 and the ship is marked inverted (s.inv); pitch stays within +-90 so
+   everything that uses the heading (guns, radar, AI) stays right, and the camera adds a 180 roll (invA) so the view is
+   exactly continuous. Inverted, pitch and yaw follow the pilot's frame (reversed in world terms). Roll (Z/X) rights you;
+   with Pilot Assist on you also roll upright after about 1.5 s of level inverted flight with no pitch input.
+   Tail view keeps the old +-72 degree limit. */
+function ckPitchStep(s,inp){
+ const loop=viewMode===1,H=Math.PI/2;let p=s.pitch||0;
+ if(!loop){s.inv=0;s.pitch=inp.pitch?clamp(p+inp.pitch*.035,-1.25,1.25):p*.93;}
+ else{
+  if(inp.pitch){p+=inp.pitch*.035*(s.ab?1.4:1)*(s.inv?-1:1);/* tighter, faster loops on afterburner */
+   if(p>H||p<-H){p=(p>0?Math.PI:-Math.PI)-p;s.ang+=Math.PI;if(s.ang>Math.PI)s.ang-=TAU;s.inv=s.inv?0:1;s.invA=(s.invA||0)+(s.inv?Math.PI:-Math.PI);}
+   s.invT=0;
+  }else{p*=.93;if(s.inv&&settings.assist!==false&&Math.abs(p)<.2){if((s.invT=(s.invT||0)+1)>=90){s.inv=0;s.invT=0;}}}
+  s.pitch=p;
+ }
+ s.invA=(s.invA||0)+((s.inv?Math.PI:0)-(s.invA||0))*.16;
+}
 function setView(v){
  v=clamp(v|0,0,2);
  if(v!==0&&!view3D()){toast('3D views need 3D graphics');sfx('deny');v=0;}
  viewMode=v;cockpitOn=v===1;tailOn=v===2;window.tailOn=tailOn;window.cockpitOn=cockpitOn;window.tailFixed=settings.tailCam==='fixed';
- if(player){player.pitch=0;player.rollA=0;if(viewMode!==0){player.z=Math.max(player.z,.4);cockpitThrottle=clamp(cockpitThrottle||0,0,1);}else player.z=0;}
+ if(player){player.pitch=0;player.rollA=0;player.inv=0;player.invA=0;player.invT=0;if(viewMode!==0){player.z=Math.max(player.z,.4);cockpitThrottle=clamp(cockpitThrottle||0,0,1);}else player.z=0;}
  applyCockpitWorld(v!==0);layoutTouch();
  toast(v===0?'DIORAMA VIEW':v===1?'COCKPIT — R/F THROTTLE · W/S PITCH':'TAIL VIEW — CHASE CAMERA');sfx('click');
  if(v===1)window.__viewSnap=true;if(v===2)window.__tailSnap=true;
@@ -1641,7 +1671,7 @@ function stepShip(s,inp){
  flushDmg(s);
  s.shT++;if(s.shT>300&&s.sh<s.maxSh)s.sh=Math.min(s.maxSh,s.sh+s.maxSh*.004);
  const slow=s.slow>0?.6:1;
- s.ang+=inp.turn*s.turn*slow;if(s.ang>Math.PI)s.ang-=TAU;else if(s.ang<-Math.PI)s.ang+=TAU;
+ s.ang+=inp.turn*(s.inv&&s.isPlayer?-1:1)*s.turn*slow;if(s.ang>Math.PI)s.ang-=TAU;else if(s.ang<-Math.PI)s.ang+=TAU;
  s.bank+=(inp.turn*.75-s.bank)*.1;
  let acc=s.acc*slow,top=s.spd*slow*(s.boost>0?1.3:1);
  s.ab=false;
@@ -1649,7 +1679,7 @@ function stepShip(s,inp){
   s.ab=true;acc*=2.4;top*=1.65;s.heat+=1.1;
   if(s.heat>=s.heatMax){s.over=true;if(s.isPlayer){msg('AFTERBURNER OVERHEAT',90);sfx('warn');}}
  }else{s.heat=Math.max(0,s.heat-.45);if(s.over&&s.heat<s.heatMax*.3)s.over=false;}
- const ck3=(viewMode!==0)&&s.isPlayer;if(ck3){s.pitch=(inp.pitch?clamp((s.pitch||0)+inp.pitch*.035,-1.25,1.25):(s.pitch||0)*.93);}const th=s.ab?1:inp.thrust,ca=Math.cos(s.ang),sa=Math.sin(s.ang),ckcp=ck3?Math.cos(s.pitch):1;
+ const ck3=(viewMode!==0)&&s.isPlayer;if(ck3)ckPitchStep(s,inp);const th=s.ab?1:inp.thrust,ca=Math.cos(s.ang),sa=Math.sin(s.ang),ckcp=ck3?Math.cos(s.pitch):1;
  if(th>0){s.vx+=ca*acc*th*ckcp;s.vy+=sa*acc*th*ckcp;}else if(th<0){s.vx+=ca*acc*th*.5;s.vy+=sa*acc*th*.5;}
  s.thr+=((s.ab?1.6:Math.max(0,th))-s.thr)*.15;
  if(s.cargo){/* build 91: the freighter's planet push never points back against its route, so it can't get pinned in front of a planet gap */
@@ -1658,7 +1688,7 @@ function stepShip(s,inp){
  const fr=inp.brake?.93:.988;s.vx*=fr;s.vy*=fr;
  const sp=Math.hypot(s.vx,s.vy);if(sp>top){const k=lerp(1,top/sp,.18);s.vx*=k;s.vy*=k;}
  s.x+=s.vx;s.y+=s.vy;
- if(ck3){s.z=clamp(s.z+Math.sin(s.pitch)*th*.06,0,2.2);}else if(viewMode!==0){s.z=clamp(s.z,0,2.2);}else{s.z=clamp(s.z+(inp.climb?.03:-.022),0,1);}
+ if(ck3){/* build 95: momentum carries the climb/dive too, so a loop on afterburner keeps going after the burner overheats, and coasting works */const mo=Math.min(1,Math.hypot(s.vx,s.vy)/Math.max(1,s.spd));s.z=clamp(s.z+Math.sin(s.pitch)*Math.max(th,mo)*.06,0,2.2);}else if(viewMode!==0){s.z=clamp(s.z,0,2.2);}else{s.z=clamp(s.z+(inp.climb?.03:-.022),0,1);}
  const B=WORLD_HALF;
  if(s.x>B)s.vx-=(s.x-B)*.004;else if(s.x<-B)s.vx-=(s.x+B)*.004;
  if(s.y>B)s.vy-=(s.y-B)*.004;else if(s.y<-B)s.vy-=(s.y+B)*.004;
@@ -2294,7 +2324,9 @@ function firstRunHints(){
  draw();($('app')||document.body).appendChild(el);
 }
 function playerRoll(dir){
- const p=player;if(!p||p.dead||state!=='play'||p.rollCd>0)return;
+ const p=player;if(!p||p.dead||state!=='play')return;
+ if(p.inv&&viewMode===1&&p.rollCd<=40){p.inv=0;p.invT=0;p.rollCd=40;sfx('roll');return;}/* build 95: upside down in the cockpit, the roll key is a half roll back upright */
+ if(p.rollCd>0)return;
  if(!dir)dir=IN.turn<0?-1:1;p.roll=20;p.rollCd=140;p.rollDir=dir;
  const a=p.ang+dir*Math.PI/2;p.vx+=Math.cos(a)*5.5;p.vy+=Math.sin(a)*5.5;sfx('roll');
 }
@@ -2953,7 +2985,7 @@ function drawPreviews(){
 }
 
 /* ---------------- MENUS (DOM overlays) ---------------- */
-const UI={cur:'',arg:null,ret:'title',tab:'up',sea:0,confirm:-1,pdel:-1,ren:-1,pvH:-1,pvT:-1,pvR:-1,dk:-1,rebind:null};
+const UI={cur:'',arg:null,ret:'title',tab:'up',sea:0,confirm:-1,pdel:-1,ren:-1,pvS:-1,pvH:-1,pvT:-1,pvR:-1,dk:-1,rebind:null};
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('on'),1900);}
 const HUBNAME={hangar:1,shop:1,cosm:1,deeds:1,sectors:1,contracts:1,settings:1,help:1};
 const LANG={en:{hangar:'Hangar',shop:'Shop',cosm:'Cosmetics',deeds:'Deeds',campaign:'Campaign',contracts:'Contracts',settings:'Systems',help:'Manual',launch:'Launch',practice:'Practice',hunt:'Hunt',continue:'Continue'},ur:{hangar:'ہینگر',shop:'دکان',cosm:'ظاہری شکل',deeds:'کارنامے',campaign:'مہم',contracts:'معاہدے',settings:'نظام',help:'ہدایت نامہ',launch:'شروع کریں',practice:'مشق',hunt:'شکار',continue:'جاری رکھیں'}};
@@ -3076,7 +3108,7 @@ function r3dReady(){applyGfx();if(UI.cur==='title'||UI.cur==='settings')refresh(
 const SCREENS={
  title(){
   return'<div class="scr mid"><div class="termhead">Commission Terminal · 10 Sectors · Clearance Granted</div><div class="logo">PARSEC<br>CHRONICLES <em>3D</em><small>THE HUNT FOR HALVARD KRAY</small></div>'+
-  '<canvas class="pv" data-idx="13" data-hull="#2a4d8a" data-trail="#7de3ff" width="416" height="256" style="max-width:280px;background:none"></canvas>'+'<p class="tagline">Ten sectors. Five hundred sorties. One renegade waiting at the edge of the map.</p>'+
+  '<canvas class="pv tpv" data-idx="13" data-hull="#2a4d8a" data-trail="#7de3ff" width="416" height="256" style="max-width:280px;background:none"></canvas>'+'<p class="tagline">Ten sectors. Five hundred sorties. One renegade waiting at the edge of the map.</p>'+
   '<button class="btn primary" data-a="nav" data-v="pilots" style="font-size:1.05em;padding:1em 2.8em">Launch</button>'+
   '<div class="row c"><button class="btn sm" data-a="nav" data-v="settings">Settings</button><button class="btn sm" data-a="nav" data-v="help">Manual</button></div>'+
   '<span class="tag">Renderer: '+rendererLabel()+'</span>'+fsBtn('corner')+'</div>';
@@ -3224,16 +3256,23 @@ const SCREENS={
      '<button class="btn sm'+(mx||lk?' dis':(!s.free&&dGold(s)<c?' warn':''))+'" data-a="buyup" data-v="'+k+'"'+(lk?' data-tip="'+esc(u.n+': '+lk)+'"':'')+'>'+(mx?'Maxed':lk?'🔒 '+lk:'Upgrade · ◈ '+fmtNum(c))+'</button></div>';}
    h+='</div>';
   }else if(t==='dock'){
-   const shipList=dList(s,'ships'),curShip=dGet(s,'ship',0);
-   h+='<div class="dockcols">';
+   /* build 95: one preview on the left, Scout / Fighter / Defender lists on the right (same layout as Cosmetics; one 3D preview instead of fifteen, which broke on phones) */
+   const shipList=dList(s,'ships'),curShip=dGet(s,'ship',0),pvi=UI.pvS>=0&&SHIPS[UI.pvS]?UI.pvS:curShip,P=SHIPS[pvi],RN=['I','II','III','IV','V'];
+   const stat=c=>{const own=shipList.includes(c.i),cur=curShip===c.i,dl=diffLock(c),lock=!own&&(r<c.at||!!dl);return{own,cur,dl,lock,why:dl?DIFFS[DRANKS[c.rank||0]].n.toUpperCase():('M'+c.at),whyLong:dl?'Requires the '+DIFFS[DRANKS[c.rank||0]].n+' career':'Reach mission '+c.at+' (currently '+r+')'};};
+   const pst=stat(P),mx={hp:1850,dmg:86,spd:5.3},bar=(l,v,m,t)=>'<div class="kv"><span>'+l+'</span><b>'+t+'</b></div><div class="statbar"><i style="width:'+Math.round(v/m*100)+'%"></i></div>';
+   h+='<div class="cosgrid dockgrid">';
+   h+='<div class="panel cosm-pv"><canvas class="pv" data-idx="'+P.i+'" width="416" height="256"></canvas>'+
+    '<div class="row" style="gap:.3em"><h3 style="flex:1;margin:0">'+P.n+'</h3><span class="tag">'+ROLES[P.role]+' · Mk '+RN[P.tier]+'</span></div>'+
+    bar('Hull',P.hp,mx.hp,P.hp)+bar('Damage',P.dmg,mx.dmg,P.dmg)+bar('Speed',P.spd,mx.spd,P.spd)+
+    (pst.cur?'<button class="btn sm on dis">In service</button>':pst.own?'<button class="btn sm primary" data-a="useship" data-v="'+P.i+'">Fly '+P.n+'</button>':pst.lock?'<button class="btn sm dis" data-tip="'+esc(P.n+': '+pst.whyLong)+'">🔒 '+esc(pst.whyLong)+'</button>':'<button class="btn sm'+(!s.free&&dGold(s)<P.cost?' warn':' gold')+'" data-a="buyship" data-v="'+P.i+'">Buy '+P.n+' · ◈ '+fmtNum(P.cost)+'</button>')+
+    (pvi!==curShip?'<button class="btn sm" data-a="pvship" data-v="'+curShip+'">Back to '+SHIPS[curShip].n+'</button>':'')+'</div>';
    for(let rl=0;rl<3;rl++){
-    h+='<div class="dockcol"><h3>'+ROLES[rl]+'</h3><div class="dscroll">';
-    for(const c of SHIPS)if(c.role===rl){
-     const own=shipList.includes(c.i),cur=curShip===c.i,dl=diffLock(c),lock=!own&&(r<c.at||!!dl),why=!own&&dl?DIFFS[DRANKS[c.rank||0]].n.toUpperCase():('M'+c.at);
-     const whyLong=dl?'Requires the '+DIFFS[DRANKS[c.rank||0]].n+' career':'Reach mission '+c.at+' (currently '+r+')';
-     h+='<div class="card sc'+(cur?' sel':'')+(lock?' lock':'')+'"><canvas class="pv" data-idx="'+c.i+'" width="312" height="192"></canvas><div class="row" style="gap:.3em"><h3 style="flex:1;font-size:.86em">'+c.n+'</h3><span class="tag">Mk '+['I','II','III','IV','V'][c.tier]+'</span></div>'+
-      '<div class="chips"><span>H '+c.hp+'</span><span>D '+c.dmg+'</span><span>S '+c.spd+'</span></div>'+
-      (cur?'<button class="btn sm on dis">In service</button>':own?'<button class="btn sm" data-a="useship" data-v="'+c.i+'">Fly this ship</button>':lock?'<button class="btn sm dis" data-tip="'+esc(c.n+': '+whyLong)+'">🔒 '+why+'</button>':'<button class="btn sm'+(!s.free&&dGold(s)<c.cost?' warn':' gold')+'" data-a="buyship" data-v="'+c.i+'">Buy · ◈ '+fmtNum(c.cost)+'</button>')+'</div>';
+    h+='<div class="panel cosm-col"><h3>'+ROLES[rl]+'</h3><div class="cscroll">';
+    for(let rk=0;rk<3;rk++){const L=SHIPS.filter(c=>c.role===rl&&(c.rank||0)===rk);if(!L.length)continue;
+     h+='<div class="cgrp'+(DIFFS[s.diff].rank<rk?' lk':'')+'">'+DIFFS[DRANKS[rk]].n+(DIFFS[s.diff].rank<rk?' · 🔒 '+DIFFS[DRANKS[rk]].n+' difficulty':'')+'</div>';
+     for(const c of L){const t=stat(c);
+      const actv=t.cur?'<span class="cst on">In service</span>':t.own?'<button class="cst act" data-a="useship" data-v="'+c.i+'">Fly</button>':t.lock?'<span class="cst lk" data-tip="'+esc(c.n+': '+t.whyLong)+'">🔒 '+t.why+'</span>':'<button class="cst buy'+((!s.free&&dGold(s)<c.cost)?' warn':'')+'" data-a="buyship" data-v="'+c.i+'">◈ '+fmtNum(c.cost)+'</button>';
+      h+='<div class="csw'+(t.cur?' sel':'')+(t.lock?' lock':'')+(c.i===pvi&&!t.cur?' prov':'')+'"><button class="cnm" data-a="pvship" data-v="'+c.i+'" title="Preview '+c.n+'"><span class="sw stier">'+RN[c.tier]+'</span><b>'+c.n+'</b></button>'+actv+'</div>';}
     }
     h+='</div></div>';
    }
@@ -3253,7 +3292,7 @@ const SCREENS={
   const ph=UI.pvH>=0&&HULLS[UI.pvH]?UI.pvH:-1,pt=UI.pvT>=0&&TRAILS[UI.pvT]?UI.pvT:-1,pr=UI.pvR>=0&&TRIMS[UI.pvR]?UI.pvR:-1,hi=ph>=0?ph:curH,ti=pt>=0?pt:curT,ri=pr>=0?pr:curR;
   const sw=(o,kind)=>{
    if(kind==='hull')return o.fin==='chrome'?'linear-gradient(135deg,#ffffff,#9aa4b0 35%,#f4f8fc 55%,#5a6470 80%,#d8dee6)':'linear-gradient(135deg,'+shade(o.c,.25)+','+o.c+' 55%,'+shade(o.c,-.5)+')';
-   if(kind==='trail')return o.rb?'linear-gradient(90deg,#ff4040,#ffd700,#40ff70,#40c8ff,#a040ff,#ff40c0)':'radial-gradient(circle at 30% 50%,#fff,'+o.c+' 40%,rgba(0,0,0,.2) 100%)';
+   if(kind==='trail')return o.rb?'linear-gradient(90deg,#ff4040,#ffd700,#40ff70,#40c8ff,#a040ff,#ff40c0)':'linear-gradient(90deg,'+shade(o.c,-.55)+' 0%,'+o.c+' 42%,'+o.c+' 78%,'+shade(o.c,.4)+' 100%)';
    return o.c?'linear-gradient(135deg,'+shade(o.c,.35)+','+o.c+' 60%,'+shade(o.c,-.45)+')':'repeating-linear-gradient(45deg,#3a4048,#3a4048 5px,#2b313a 5px,#2b313a 10px)';
   };
   const item=(o,i,kind,list,cur,pvi)=>{const own=list.includes(i),on=cur===i,dl=diffLock(o),lock=!own&&(r<o.at||!!dl),pvon=pvi===i;
@@ -3338,7 +3377,7 @@ const SCREENS={
   '<tr><td>E / click</td><td>Aim assist: lock the nearest enemy, or click one to lock it</td></tr><tr><td>F</td><td>Brace: halve incoming damage for a moment</td></tr><tr><td>Z / X</td><td>Barrel roll left / right: a sideways dash that shots pass through</td></tr>'+
   (view3D()?'<tr><td>B</td><td>Cycle view: diorama → cockpit → tail (3D only)</td></tr>':'')+'<tr><td>M</td><td>Large map</td></tr><tr><td>H</td><td>This manual</td></tr><tr><td>Esc / P</td><td>Pause</td></tr></table>'+
   '<h3>Xbox gamepad</h3><table><tr><td>Left stick</td><td>Steer toward the stick, thrust with deflection</td></tr><tr><td>A / B / X / Y</td><td>Fire / flak / vulcan auto / lock target</td></tr><tr><td>LB · RB</td><td>Cycle weapons</td></tr><tr><td>LT · RT</td><td>Brake · afterburner</td></tr><tr><td>L3 · R3</td><td>Climb · brace</td></tr><tr><td>D-pad ◀ ▶</td><td>Barrel roll</td></tr><tr><td>D-pad ▲ · ▼</td><td>Ability 1 (flares) · Ability 2 (overcharge)</td></tr><tr><td>Start</td><td>Pause</td></tr></table>'+
-  (view3D()?'<h3>Cockpit controls (3D)</h3><table><tr><td>W / S</td><td>Pitch nose up / down</td></tr><tr><td>A / D</td><td>Yaw left / right</td></tr><tr><td>R / F</td><td>Throttle up / down — starts at zero</td></tr><tr><td>Q / Shift</td><td>Afterburner / brake</td></tr><tr><td>Space</td><td>Fire</td></tr><tr><td>Z / X</td><td>Barrel roll</td></tr><tr><td>B</td><td>Cycle view: cockpit → tail → diorama</td></tr></table>':'<p class="dim sml">Classic 2D is the diorama scheme: W/S thrust, A/D turn, R climb and F brace. Cockpit pitch and throttle are 3D-only.</p>')+
+  (view3D()?'<h3>Cockpit controls (3D)</h3><table><tr><td>W / S</td><td>Pitch nose up / down — hold for a full loop (Z / X rolls you upright if inverted)</td></tr><tr><td>A / D</td><td>Yaw left / right</td></tr><tr><td>R / F</td><td>Throttle up / down — starts at zero</td></tr><tr><td>Q / Shift</td><td>Afterburner / brake</td></tr><tr><td>Space</td><td>Fire</td></tr><tr><td>Z / X</td><td>Barrel roll</td></tr><tr><td>B</td><td>Cycle view: cockpit → tail → diorama</td></tr></table>':'<p class="dim sml">Classic 2D is the diorama scheme: W/S thrust, A/D turn, R climb and F brace. Cockpit pitch and throttle are 3D-only.</p>')+
   '<h3>Touch</h3><p>Left stick steers and thrusts. Buttons: FIRE, WPN (tap to cycle; swipe left/right to move through weapons), FLAK, SHLD (brake + brace), ROLL, AIM (shown when Auto-aim is off), BURN, VULC, CLIMB'+(view3D()?', the eye (view cycle)':'')+' and pause. Tap an enemy to lock it, tap the minimap to enlarge it. With Pilot assist on, Auto-aim can be toggled in Settings → Auto; when it is on the AIM button is hidden. Rearrange everything in Settings → Touch layout editor (drag, mirror, resize, fixed or floating stick); the layout is saved per pilot.</p>'+
   '<h3 id="sec-flight">Flight</h3><p>Ships drift: thrust adds speed along your heading and friction is mild, so brake or counter-thrust to stop. <b>Altitude</b> matters: above 35% you clear asteroids, above 65% you clear moons and planets. Planets are <b>gravity wells</b> that pull ships and bend ion and plasma shots. <b>Ramming</b> hurts both ships by closing speed; the Hull upgrade adds ram damage and the Reactive mod softens impacts. Your <b>shield</b> absorbs damage first and starts recharging 5 seconds after the last hit. Pilot Assist auto-climbs over obstacles, damps sideways drift, and (with Auto countermeasures on) fires flak at incoming plasma and pops flares at inbound missiles.</p>'+(view3D()?'<p><b>Views (B / eye button):</b> cycles <b>diorama → cockpit → tail</b>. Cockpit is full 3D — W/S or the stick pitches the nose, A/D yaws, R/F sets throttle. Tail flies exactly the same 3D model from a chase camera outside the hull; floating yaw by default (set Fixed in Systems → Optics for a rigid mount).</p>':'<p><b>View cycling is a 3D/diorama control.</b> Classic 2D always uses the diorama.</p>')+'<p><b>Pilot Assist</b> can auto-lock the nearest hostile and turn onto its lead, auto-climbs obstacles, fires flak at incoming plasma, pops flares at inbound missiles, braces against hits and barrel-rolls to dodge. Auto-aim has its own toggle in Settings → Auto; the AIM touch button is hidden only while it is on. <i>Hide assisted buttons</i> hides the matching touch buttons for the assists you leave on.</p>'+
   '<h3 id="sec-weapons">Weapons</h3><table>'+
@@ -3447,7 +3486,7 @@ function showEnd(){
 }
 
 const ACT={
- nav(v){if((v==='settings'||v==='help')&&UI.cur!=='settings'&&UI.cur!=='help')UI.ret=UI.cur;UI.confirm=-1;UI.pvH=UI.pvT=UI.pvR=-1;show(v);},
+ nav(v){if((v==='settings'||v==='help')&&UI.cur!=='settings'&&UI.cur!=='help')UI.ret=UI.cur;UI.confirm=-1;UI.pvS=-1;UI.pvH=UI.pvT=UI.pvR=-1;show(v);},
  contract(v){const c=contractList()[+v];if(!c)return;PENDING_CONTRACT=c;QA_MODE=c.mode;launchMission(c.lv,false);},
  ngplus(){if(UI.confirm!==7){UI.confirm=7;refresh();toast('Press again to reset this difficulty');return;}const d=save.diff;save.prog.campaign[d]={};for(const k of UPK)save.gear[d][k]=0;save.climb=(save.climb||0)+1;UI.confirm=-1;persist();toast('NEW GAME+ '+(save.climb+1)+' — modifiers rise');show('hangar');},
  load(v){
@@ -3527,6 +3566,7 @@ const ACT={
  pvtrail(v){const i=+v;UI.pvT=(UI.pvT===i||i===dGet(save,'trail',0))?-1:i;refresh();},
  pvtrim(v){const i=+v;UI.pvR=(UI.pvR===i||i===dGet(save,'trim',0))?-1:i;refresh();},
  pvreset(){UI.pvH=UI.pvT=UI.pvR=-1;refresh();},
+ pvship(v){const i=+v;UI.pvS=SHIPS[i]?i:-1;refresh();},
  usetrail(v){const i=+v;if(dList(save,'trails').includes(i)){dSet(save,'trail',i);UI.pvT=-1;persist();refresh();}},
  usetrim(v){const i=+v;if(dList(save,'trims').includes(i)){dSet(save,'trim',i);UI.pvR=-1;persist();refresh();}},
  dksel(v){UI.dk=+v;refresh();},
