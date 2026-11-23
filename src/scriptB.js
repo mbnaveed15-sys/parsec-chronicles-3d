@@ -32,18 +32,18 @@ const glc=document.getElementById('glCanvas');
 const renderer=new THREE.WebGLRenderer({canvas:glc,antialias:false,alpha:false,powerPreference:'high-performance'});
 renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.05;
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
-const ALT=140,FLOOR=-170,PITCH=55*Math.PI/180,HALF_FOV=16*Math.PI/180,PI=Math.PI;
+const ALT=140,FLOOR=-2600,PITCH=55*Math.PI/180,HALF_FOV=16*Math.PI/180,PI=Math.PI;
 const SUNV=new THREE.Vector3(0,1,0);
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x03050a);
 const cam=new THREE.PerspectiveCamera(32,16/9,40,30000);
 const pmrem=new THREE.PMREMGenerator(renderer);
 /* Procedural space environment for PBR reflections: nebula bands, star field and a warm key sun.
    Baked to an equirect canvas and filtered into a PMREM cubemap — no external assets. */
-function buildSpaceEnv(){
+function buildSpaceEnv(pal){
  const W=1024,H=512,c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d');
- const sky=x.createLinearGradient(0,0,0,H);sky.addColorStop(0,'#060a14');sky.addColorStop(.45,'#0a1020');sky.addColorStop(.72,'#05070f');sky.addColorStop(1,'#020309');x.fillStyle=sky;x.fillRect(0,0,W,H);
+ const sky=x.createLinearGradient(0,0,0,H);sky.addColorStop(0,pal?pal.sky[0]:'#060a14');sky.addColorStop(.45,pal?pal.sky[1]:'#0a1020');sky.addColorStop(.72,'#05070f');sky.addColorStop(1,'#020309');x.fillStyle=sky;x.fillRect(0,0,W,H);
  x.globalCompositeOperation='lighter';
- const blobs=[[.22,.42,.34,'#1b3f6e'],[.58,.36,.30,'#4a245f'],[.78,.55,.26,'#0f4e55'],[.40,.62,.22,'#2a2f70'],[.88,.30,.18,'#5a2a30']];
+ const blobs=pal?pal.blobs:[[.22,.42,.34,'#1b3f6e'],[.58,.36,.30,'#4a245f'],[.78,.55,.26,'#0f4e55'],[.40,.62,.22,'#2a2f70'],[.88,.30,.18,'#5a2a30']];
  for(const[bx,by,br,col]of blobs){const g=x.createRadialGradient(bx*W,by*H,0,bx*W,by*H,br*W);g.addColorStop(0,col);g.addColorStop(.45,col+'88');g.addColorStop(1,'rgba(0,0,0,0)');x.fillStyle=g;x.fillRect(0,0,W,H);}
  /* galactic band */
  const band=x.createLinearGradient(0,H*.18,W,H*.68);band.addColorStop(0,'rgba(60,90,150,0)');band.addColorStop(.42,'rgba(120,140,200,.16)');band.addColorStop(.55,'rgba(80,120,180,.22)');band.addColorStop(1,'rgba(40,50,90,0)');x.fillStyle=band;x.fillRect(0,0,W,H);
@@ -56,7 +56,7 @@ function buildSpaceEnv(){
  const tex=new THREE.CanvasTexture(c);tex.mapping=THREE.EquirectangularReflectionMapping;tex.colorSpace=THREE.SRGBColorSpace;
  const env=pmrem.fromEquirectangular(tex).texture;tex.dispose();return env;
 }
-scene.environment=buildSpaceEnv();
+let envTex=buildSpaceEnv();scene.environment=envTex;
 const HEMI=1.7,hemi=new THREE.HemisphereLight(0xa8c6ff,0x241a2c,HEMI);scene.add(hemi);
 const sun=new THREE.DirectionalLight(0xffe0bc,4.2);sun.shadow.mapSize.set(2048,2048);sun.shadow.bias=-.0005;sun.shadow.normalBias=1.2;sun.shadow.radius=3;
 sun.shadow.camera.near=100;sun.shadow.camera.far=4200;scene.add(sun);scene.add(sun.target);
@@ -353,12 +353,13 @@ const WELL_F='uniform float t;varying vec2 vUv;void main(){float d=length(vUv-0.
 const wellMat=new THREE.ShaderMaterial({uniforms:{t:{value:0}},vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',fragmentShader:WELL_F,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false});
 
 /* ---------- floor ("tabletop") ---------- */
-const floorMat=new THREE.MeshStandardMaterial({color:0xa8a8a8,roughness:1,metalness:0,envMapIntensity:0});
-const floor=new THREE.Mesh(new THREE.PlaneGeometry(26000,26000),floorMat);floor.rotation.x=-PI/2;floor.position.y=FLOOR;floor.receiveShadow=true;scene.add(floor);floor.visible=false;
+/* build 89: the sector's 2D nebula tile, laid deep under the battlefield as a faint additive galaxy plane (top-down views only) */
+const floorMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.3,blending:THREE.AdditiveBlending,depthWrite:false,fog:false});
+const floor=new THREE.Mesh(new THREE.PlaneGeometry(52000,52000),floorMat);floor.rotation.x=-PI/2;floor.position.y=FLOOR;floor.renderOrder=-1;scene.add(floor);floor.visible=false;
 let floorSea=-1;
 function setSector(sea){
  if(sea===floorSea)return;floorSea=sea;const old=floorMat.map,t=canvasTex(makeBgTile(sea,settings.gfx==='low'?1024:2048),true);t.repeat.set(8,8);
- floorMat.map=t;floorMat.emissiveMap=t;floorMat.emissive.set(0xffffff);floorMat.emissiveIntensity=.46;floorMat.needsUpdate=true;if(old)old.dispose();
+ floorMat.map=t;floorMat.needsUpdate=true;if(old)old.dispose();
 }
 
 /* ---------- object builders ---------- */
@@ -511,6 +512,9 @@ function updStation(o,st){
  o.au.material.opacity=window.__cineHideHud?0:(.1+Math.sin(frameNo*.05)*.03);o.au.visible=!window.__cineHideHud&&!st.genDead;o.bl.emissiveIntensity=frameNo%70<12?4.5:.35;
 }
 /* black hole: dark core, glowing rim, rotating accretion disk */
+const BHRING=(()=>{const c=mkCanvas(256,256),x=c.getContext('2d'),g=x.createRadialGradient(128,128,0,128,128,128);
+ g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(.6,'rgba(0,0,0,0)');g.addColorStop(.655,'rgba(255,236,200,.95)');g.addColorStop(.69,'rgba(255,170,90,.55)');g.addColorStop(.8,'rgba(255,120,50,.14)');g.addColorStop(1,'rgba(200,80,30,0)');
+ x.fillStyle=g;x.fillRect(0,0,256,256);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;})();
 function blackHoleObj(g){
  const root=new THREE.Group();
  const core=new THREE.Mesh(GEO.sphHi,new THREE.MeshBasicMaterial({color:0x000000}));
@@ -520,11 +524,18 @@ function blackHoleObj(g){
  const gr=dx.createRadialGradient(128,128,18,128,128,127);
  gr.addColorStop(0,'rgba(255,235,190,.95)');gr.addColorStop(.32,'rgba(255,160,70,.8)');gr.addColorStop(.66,'rgba(200,60,20,.32)');gr.addColorStop(1,'rgba(120,20,10,0)');
  dx.fillStyle=gr;dx.fillRect(0,0,256,256);
+ /* build 89: hot streaks swirling through the disc */
+ {const r=mulberry32((g.seed||7)+3);dx.globalCompositeOperation='lighter';dx.lineCap='round';
+  for(let i=0;i<140;i++){const rad=40+Math.pow(r(),.8)*86,a0=r()*6.2832,len=.4+r()*1.6,hot=1-(rad-40)/86;
+   dx.strokeStyle='rgba(255,'+(150+hot*90|0)+','+(70+hot*120|0)+','+(.03+r()*.1*hot).toFixed(2)+')';dx.lineWidth=.5+r()*1.2;dx.beginPath();dx.arc(128,128,rad,a0,a0+len);dx.stroke();}
+  dx.globalCompositeOperation='source-over';}
  const dt=new THREE.CanvasTexture(dc);dt.colorSpace=THREE.SRGBColorSpace;
  const dmat=new THREE.MeshBasicMaterial({map:dt,transparent:true,opacity:.95,side:THREE.DoubleSide,depthWrite:false,blending:THREE.AdditiveBlending});
  const disk=new THREE.Mesh(GEO.pring,dmat);disk.scale.setScalar(g.r*2.6);disk.rotation.x=Math.PI*.08;root.add(disk);
+ /* build 89: photon ring, always facing the camera, so the black hole reads as a lens rather than a ball */
+ const lm=new THREE.SpriteMaterial({map:BHRING,color:0xffc896,transparent:true,opacity:.9,blending:THREE.AdditiveBlending,depthWrite:false,fog:false}),lens=new THREE.Sprite(lm);lens.scale.setScalar(g.r*3.1);lens.renderOrder=1;root.add(lens);
  root.position.set(g.x,0,g.y);
- return{o:root,sp:core,cl:null,own:[rm,dt,dmat],bh:disk};
+ return{o:root,sp:core,cl:null,own:[rm,dt,dmat,lm],bh:disk};
 }
 /* atmosphere: sun-lit rim with a sunset terminator instead of a flat fresnel shell */
 const ATMOS_V='varying vec3 vNW;varying vec3 vWP;void main(){vNW=normalize(mat3(modelMatrix)*normal);vec4 wp=modelMatrix*vec4(position,1.0);vWP=wp.xyz;gl_Position=projectionMatrix*viewMatrix*wp;}';
@@ -602,6 +613,10 @@ const scanPool=[];
 function inst(geo,mat,n){const m=new THREE.InstancedMesh(geo,mat,n);m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);m.frustumCulled=false;m.setColorAt(0,C.setRGB(1,1,1));m.count=0;scene.add(m);return m;}
 const addMat=()=>new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide});
 const MAXS=700,MAXB=90,MAXR=60,MAXD=160,MAXP=2200;
+/* build 89: fireballs. Each big explosion gets a churning core that cools from white to orange to deep red as it grows. */
+const FIRE_V='varying vec3 vN;varying vec3 vV;varying vec3 vP;void main(){vec4 wp=modelMatrix*vec4(position,1.0);vN=normalize(mat3(modelMatrix)*normal);vV=normalize(cameraPosition-wp.xyz);vP=position;gl_Position=projectionMatrix*viewMatrix*wp;}';
+const FIRE_F='uniform float age;uniform float sd;uniform vec3 col;varying vec3 vN;varying vec3 vV;varying vec3 vP;void main(){float c=max(dot(normalize(vN),normalize(vV)),0.0);float n=sin(vP.x*7.0+sd+age*9.0)*sin(vP.y*6.0-sd*1.7+age*7.0)*sin(vP.z*8.0+sd*.6);float h=clamp(c*1.25+n*.22-age*.9,0.0,1.0);vec3 hot=mix(vec3(1.0,.32,.08),vec3(1.0,.78,.4),smoothstep(.2,.65,h));hot=mix(hot,vec3(1.0,.97,.88),smoothstep(.7,1.0,h));hot=mix(hot,col,.25);float a=pow(c,2.4)*(1.0-age)*(1.0-age)*(.6+n*.5);gl_FragColor=vec4(hot*a*.85,1.0);}';
+const firePool=[];for(let i=0;i<8;i++){const mat=new THREE.ShaderMaterial({uniforms:{age:{value:0},sd:{value:i*1.7},col:{value:new THREE.Color(1,.6,.3)}},vertexShader:FIRE_V,fragmentShader:FIRE_F,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false});const m=new THREE.Mesh(GEO.sphMid,mat);m.visible=false;m.frustumCulled=false;scene.add(m);firePool.push(m);}
 const shockPool=[];for(let i=0;i<8;i++){const mat=fresMat(0xffd9a0,.3,1.6);const m=new THREE.Mesh(GEO.sphMid,mat);m.visible=false;m.frustumCulled=false;scene.add(m);shockPool.push(m);}
 const shotM=inst(GEO.shot,addMat(),MAXS),beamM=inst(GEO.beam,addMat(),MAXB),ringM=inst(GEO.shock,addMat(),MAXR),debM=inst(GEO.tetra,MT.debris,MAXD);debM.castShadow=true;
 const pPos=new Float32Array(MAXP*3),pCol=new Float32Array(MAXP*3),pSize=new Float32Array(MAXP),pGeo=new THREE.BufferGeometry();
@@ -613,27 +628,33 @@ const pMat=new THREE.ShaderMaterial({uniforms:{sc:{value:1000}},
 const points=new THREE.Points(pGeo,pMat);points.frustumCulled=false;scene.add(points);
 const flashes=[];for(let i=0;i<3;i++){const l=new THREE.PointLight(0xffc890,0,1400,2);scene.add(l);flashes.push(l);}
 const engL=new THREE.PointLight(0xffffff,0,700,2);scene.add(engL);
-const DN=700,dBase=new Float32Array(DN*3),dPos=new Float32Array(DN*3),dCol=new Float32Array(DN*3),dSz=new Float32Array(DN),dGeo=new THREE.BufferGeometry();
-{const r=mulberry32(5);for(let i=0;i<DN;i++){dBase[i*3]=r()*3600;dBase[i*3+1]=-150+r()*300;dBase[i*3+2]=r()*3600;const b=.1+r()*.28;dCol[i*3]=b*.8;dCol[i*3+1]=b*.95;dCol[i*3+2]=b*1.2;dSz[i]=2+r()*5;}}
+const DN=700,dBase=new Float32Array(DN*3),dPos=new Float32Array(DN*3),dCol=new Float32Array(DN*3),dSz=new Float32Array(DN),dB=new Float32Array(DN),dQ=new Float32Array(DN),dGeo=new THREE.BufferGeometry();
+{const r=mulberry32(5);for(let i=0;i<DN;i++){dBase[i*3]=r()*3600;dBase[i*3+1]=-150+r()*300;dBase[i*3+2]=r()*3600;const b=.1+r()*.28;dB[i]=b;dQ[i]=.35+r()*.6;dCol[i*3]=b*.8;dCol[i*3+1]=b*.95;dCol[i*3+2]=b*1.2;dSz[i]=2+r()*5;}}
 dGeo.setAttribute('position',new THREE.BufferAttribute(dPos,3).setUsage(THREE.DynamicDrawUsage));dGeo.setAttribute('pcol',new THREE.BufferAttribute(dCol,3));dGeo.setAttribute('psize',new THREE.BufferAttribute(dSz,1));
 const dust=new THREE.Points(dGeo,pMat);dust.frustumCulled=false;scene.add(dust);
 function updDust(tx,tz){for(let i=0;i<DN;i++){const j=i*3;dPos[j]=tx+((((dBase[j]-tx)%3600)+3600)%3600)-1800;dPos[j+1]=dBase[j+1];dPos[j+2]=tz+((((dBase[j+2]-tz)%3600)+3600)%3600)-1800;}dGeo.attributes.position.needsUpdate=true;}
 /* surrounding space: layered starfield + seamless nebula shells so the world wraps the player in cockpit */
+/* build 89: stars get a temperature colour (blue, white, yellow, orange, red) and about 40% twinkle slowly */
+const STARC=[[.66,.78,1],[.82,.88,1],[1,1,1],[1,.94,.8],[1,.82,.62],[1,.66,.55]];
+const STAR_V='attribute vec3 color;attribute float ph;attribute float tw;uniform float sz;uniform float t;varying vec3 vC;void main(){float k=tw>0.0?.62+.38*sin(t*tw+ph):1.0;vC=color*k;gl_PointSize=sz*(tw>0.0?.85+.3*k:1.0);gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}';
+const STAR_F='uniform float op;varying vec3 vC;void main(){vec2 d=gl_PointCoord-.5;float a=clamp(1.15-length(d)*2.0,0.0,1.0);gl_FragColor=vec4(vC*a*op,1.0);}';
 function starLayer(n,R,size,opacity,seed){
- const g=new THREE.BufferGeometry(),sp=new Float32Array(n*3),sc=new Float32Array(n*3),r=mulberry32(seed);
+ const g=new THREE.BufferGeometry(),sp=new Float32Array(n*3),sc=new Float32Array(n*3),sPh=new Float32Array(n),sTw=new Float32Array(n),r=mulberry32(seed);
  for(let i=0;i<n;i++){const th=r()*PI*2,ph=Math.acos(2*r()-1),rad=R*(.92+r()*.16);
   sp[i*3]=rad*Math.sin(ph)*Math.cos(th);sp[i*3+1]=rad*Math.cos(ph);sp[i*3+2]=rad*Math.sin(ph)*Math.sin(th);
-  const b=.22+r()*.78,t=r();sc[i*3]=b*(t<.22?.72:1);sc[i*3+1]=b*(t<.22?.8:.97);sc[i*3+2]=b*(t>.82?.78:1);}
- g.setAttribute('position',new THREE.BufferAttribute(sp,3));g.setAttribute('color',new THREE.BufferAttribute(sc,3));
- const p=new THREE.Points(g,new THREE.PointsMaterial({size:size,sizeAttenuation:false,vertexColors:true,transparent:true,opacity:opacity,depthWrite:false}));
- p.frustumCulled=false;scene.add(p);return p;
+  const b=.22+r()*.78,t=r(),k=t<.2?STARC[0]:t<.32?STARC[1]:t<.72?STARC[2]:t<.86?STARC[3]:t<.96?STARC[4]:STARC[5];sc[i*3]=b*k[0];sc[i*3+1]=b*k[1];sc[i*3+2]=b*k[2];
+  sPh[i]=r()*6.2832;sTw[i]=r()<.4?.5+r()*2.2:0;}
+ g.setAttribute('position',new THREE.BufferAttribute(sp,3));g.setAttribute('color',new THREE.BufferAttribute(sc,3));g.setAttribute('ph',new THREE.BufferAttribute(sPh,1));g.setAttribute('tw',new THREE.BufferAttribute(sTw,1));
+ const p=new THREE.Points(g,new THREE.ShaderMaterial({uniforms:{sz:{value:size},op:{value:opacity},t:{value:0}},vertexShader:STAR_V,fragmentShader:STAR_F,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));p.userData.size=size;
+ p.userData.op=opacity;p.frustumCulled=false;scene.add(p);return p;
 }
-const stars=[starLayer(1400,12500,1.4,.5,7),starLayer(2600,9000,2.1,.95,99),starLayer(700,5200,2.9,.8,13)];
+const stars=[starLayer(1400,12500,1.7,.5,7),starLayer(2600,9000,2.4,.95,99),starLayer(700,5200,3.2,.85,13)];
 /* seamless nebula shells: wrapped blobs + fibrous detail + dither, so no UV seam or banding */
 function nebTex(seed,w,h,cols,alpha,band){
  const c=mkCanvas(w,h),x=c.getContext('2d'),r=mulberry32(seed);
  const blob=function(cx,cy,rad,cl,a){
   for(let ox=-1;ox<=1;ox++)for(let oy=-1;oy<=1;oy++){
+   if((ox<0&&cx+rad<w)||(ox>0&&cx-rad>0)||(oy<0&&cy+rad<h)||(oy>0&&cy-rad>0))continue; /* build 89: only wrap blobs that cross an edge (same image, ~6x faster) */
    const X=cx+ox*w,Y=cy+oy*h,g=x.createRadialGradient(X,Y,0,X,Y,rad);
    g.addColorStop(0,'rgba('+cl[0]+','+cl[1]+','+cl[2]+','+a.toFixed(3)+')');
    g.addColorStop(.5,'rgba('+cl[0]+','+cl[1]+','+cl[2]+','+(a*.5).toFixed(3)+')');
@@ -651,12 +672,78 @@ function nebTex(seed,w,h,cols,alpha,band){
  return tex;
 }
  function nebShell(seed,radius,opacity,order){
- const tex=nebTex(seed,2048,1024,[[120,50,190],[30,120,170],[180,50,120],[40,90,210],[90,60,200]],.1,true);
- const m=new THREE.MeshBasicMaterial({map:tex,side:THREE.BackSide,transparent:true,opacity:opacity,depthWrite:false,depthTest:false});
+ const m=new THREE.MeshBasicMaterial({map:null,side:THREE.BackSide,transparent:true,opacity:opacity,depthWrite:false,depthTest:false,fog:false});m.userData.op=opacity;
  const mesh=new THREE.Mesh(new THREE.SphereGeometry(radius,64,32),m);mesh.renderOrder=order;mesh.frustumCulled=false;scene.add(mesh);return mesh;
 }
 const nebula=nebShell(4242,8200,.42,-2);
 const nebula2=nebShell(1717,11000,.26,-3);
+/* build 89: per-sector sky. Each sector's tint drives the nebula shells, the reflection map, the background colour,
+   the sun colour and the dust. Built once when a mission starts (cached for the last two sectors), never per frame. */
+const SKY={cache:new Map(),sea:-1,sun:new THREE.Color(0xffe0bc),bg:new THREE.Color(0x03050a)};
+const c255=v=>Math.round(clamp(v,0,1)*255),hex6=a=>'#'+a.map(v=>c255(v).toString(16).padStart(2,'0')).join('');
+function skyPal(sea){
+ const S=(typeof SEAS!=='undefined'&&SEAS[sea])||{tint:'#3a4a8a',neb:'#101830'},t0=crgb(S.tint),n=crgb(S.neb),mx=Math.max(.05,t0[0],t0[1],t0[2]),sat=(mx-Math.min(t0[0],t0[1],t0[2]))/mx,g=(.5+.24*sat)/mx,t=[t0[0]*g,t0[1]*g,t0[2]*g];
+ const t2=[(t[2]*.8+.12)*.55+t[0]*.45,(t[0]*.6+.08)*.55+t[1]*.45,(t[1]*.9+.14)*.55+t[2]*.45];
+ const lt=t.map(v=>v*.6+.16),dk=t.map(v=>v*.45),ac=[t[1]*.6+.1,t[2]*.5+.08,t[0]*.7+.12];
+ const cols=[t,t2,lt,dk,t,t2,ac].map(a=>a.map(c255));
+ return{cols,sky:[hex6(n.map(v=>v*.5)),hex6(n.map(v=>v*.8))],
+  blobs:[[.22,.42,.34,hex6(t.map(v=>v*.42))],[.58,.36,.30,hex6(t2.map(v=>v*.46))],[.78,.55,.26,hex6(dk)],[.40,.62,.22,hex6(ac.map(v=>v*.4))],[.88,.30,.18,hex6(lt.map(v=>v*.3))]],
+  bg:n.map(v=>v*.26+.006),sun:[1,.88,.74].map((v,i)=>v*.8+lt[i]*.2),dust:t.map(v=>v*.6+.4)};
+}
+/* build 89: a visible sun (disc, halo and a soft lens streak) sitting low in the sky where the key light comes from */
+function glowTex(w,h,stops){const c=mkCanvas(w,h),x=c.getContext('2d'),g=x.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2);for(const s of stops)g.addColorStop(s[0],s[1]);x.fillStyle=g;x.fillRect(0,0,w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
+const SUNTEX=glowTex(128,128,[[0,'rgba(255,255,255,1)'],[.12,'rgba(255,250,235,.95)'],[.3,'rgba(255,220,170,.35)'],[.6,'rgba(255,180,120,.08)'],[1,'rgba(255,160,100,0)']]);
+const sunSpr=[];
+{const mk=(sx,sy,op)=>{const m=new THREE.SpriteMaterial({map:SUNTEX,color:0xffffff,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false,fog:false});const s=new THREE.Sprite(m);s.scale.set(sx,sy,1);s.frustumCulled=false;s.renderOrder=-1;scene.add(s);sunSpr.push(s);return s;};
+ mk(520,520,1);mk(2300,2300,.42);mk(4200,150,.38);for(const s of sunSpr)s.userData.op=s.material.opacity;}
+const SUNDIR=new THREE.Vector3(-760,300,640).normalize();
+function updSun(){const ck=!!(window.cockpitOn||window.tailOn||window.CINE_CAM);for(const s of sunSpr){s.visible=ck;s.position.copy(cam.position).addScaledVector(SUNDIR,7600);s.material.color.copy(SKY.sun);}}
+/* build 89: the sector's own planet (the one on its Sector Map portrait) hangs on the far horizon in chase, cockpit and cinematic views */
+let farP=null;const FPDIR=new THREE.Vector3(1,.1,0);
+function setFarPlanet(sea,e){
+ if(farP){scene.remove(farP.o);farP=null;}
+ const g=typeof secPlanetG==='function'?secPlanetG(sea):null;if(!g)return;
+ if(!e.fp&&g.bh){const b=blackHoleObj({r:1,x:0,y:0,seed:4242}),o=new THREE.Group();b.o.position.set(0,0,0);b.o.rotation.x=.35;o.add(b.o);o.scale.setScalar(620);e.fp={o,sp:b.bh,am:null,own:b.own};}
+ if(!e.fp){const pt=planetTex(g),m=new THREE.MeshStandardMaterial({map:pt.map,roughness:1,metalness:0,envMapIntensity:.15,transparent:true,depthWrite:false,fog:false}),am=atmosMat(new THREE.Color(g.c1).lerp(new THREE.Color(0xbfe0ff),.45).getHex());am.fog=false;
+  const o=new THREE.Group(),sp=new THREE.Mesh(GEO.sphHi,m),at=new THREE.Mesh(GEO.sphShell,am);at.scale.setScalar(1.06);o.add(sp,at);o.rotation.z=.3;o.scale.setScalar(800);m.color.setScalar(.6);am.uniforms.op.value=.55;sp.renderOrder=0;at.renderOrder=0;
+  e.fp={o,sp,am,own:[pt.map,m,am].concat(pt.aux?[pt.aux]:[])};}
+ farP=e.fp;const sd=(sea*7919)%100/100,a=sd*6.2832;FPDIR.set(Math.cos(a),.1+sd*.12,Math.sin(a)).normalize();scene.add(farP.o);
+}
+/* build 89: 3D weather. Fog thickens the air (light in top-down views, heavier in chase and cockpit) and hides most of the sky;
+   ion storms tint the nebula violet and light it with distant sheet lightning, plus a bright flash on every EMP strike. */
+const FOG=new THREE.FogExp2(0x10141a,.0002),WX={mode:'clear',t:60,f:0};
+function setWeather(w){WX.mode=w||'clear';WX.f=0;WX.t=60;
+ if(WX.mode==='fog'){const b=SKY.bg;FOG.color.setRGB(.045+b.r*1.4,.05+b.g*1.4,.06+b.b*1.4);scene.fog=FOG;scene.background=FOG.color;}
+ else{scene.fog=null;scene.background=SKY.bg;}}
+function updWeather(ck){
+ const fog=WX.mode==='fog',storm=WX.mode==='storm';
+ if(fog)FOG.density=ck?.00042:.00016;
+ if(storm){if(--WX.t<=0){WX.t=80+Math.random()*220;WX.f=.55+Math.random()*.45;}WX.f*=.88;}else WX.f=0;
+ const f=Math.max((M.flash||0)*.9,WX.f),nb=fog?.5:1;
+ for(const n of[nebula,nebula2]){n.material.opacity=n.material.userData.op*nb*(1+f*.6);if(storm)n.material.color.setRGB(.8+f*1.7,.72+f*1.6,1+f*1.9);else n.material.color.setRGB(1,1,1);}
+ for(const s of stars)s.material.uniforms.op.value=s.userData.op*(fog?.3:1);
+ for(const s of sunSpr)s.material.opacity=s.userData.op*(fog?.25:1);
+ return f;
+}
+/* build 89: a decorative asteroid belt far below the battlefield in the top-down views (never collides, never in chase/cockpit) */
+const BELTN=120,belt=new THREE.InstancedMesh(GEO.ast[0],MT.rock.clone(),BELTN);belt.material.color.multiplyScalar(.5);belt.frustumCulled=false;belt.count=0;belt.visible=false;scene.add(belt);
+function setBelt(sea){
+ const r=mulberry32(sea*613+29),n=Math.round((settings.gfx==='low'?60:BELTN)*(sea===0?1:.75)),a=r()*PI,ca=Math.cos(a),sa=Math.sin(a),L=(typeof WORLD_HALF!=='undefined'?WORLD_HALF:1600)+2600;
+ for(let i=0;i<n;i++){const t=(r()*2-1)*L,o=(r()+r()+r()-1.5)*700;dummy.position.set(ca*t-sa*o,-700-r()*700,sa*t+ca*o);dummy.rotation.set(r()*PI*2,r()*PI*2,r()*PI*2);const s=18+Math.pow(r(),2)*60;dummy.scale.set(s,s*(.6+r()*.5),s);dummy.updateMatrix();belt.setMatrixAt(i,dummy.matrix);}
+ belt.count=n;belt.instanceMatrix.needsUpdate=true;dummy.rotation.set(0,0,0);dummy.scale.set(1,1,1);
+}
+window.__sky={scene,floor,nebula,nebula2,SKY,WX,belt};
+function setSky(sea){
+ if(sea===SKY.sea)return;SKY.sea=sea;
+ const lo=settings.gfx==='low',key=sea+(lo?'l':'h'),pal=skyPal(sea);let e=SKY.cache.get(key);
+ if(!e){const w=lo?1024:2048;e={a:nebTex(4242+sea*101,w,w/2,pal.cols,.1,true),b:nebTex(1717+sea*53,w,w/2,pal.cols,.1,true),env:buildSpaceEnv(pal)};SKY.cache.set(key,e);
+  if(SKY.cache.size>2){const k=SKY.cache.keys().next().value,o=SKY.cache.get(k);SKY.cache.delete(k);o.a.dispose();o.b.dispose();o.env.dispose();if(o.fp){if(farP===o.fp){scene.remove(o.fp.o);farP=null;}for(const d of o.fp.own)d.dispose();}}}
+ setFarPlanet(sea,e);
+ nebula.material.map=e.a;nebula2.material.map=e.b;nebula.material.needsUpdate=nebula2.material.needsUpdate=true;
+ scene.environment=e.env;SKY.bg.setRGB(pal.bg[0],pal.bg[1],pal.bg[2]);scene.background=SKY.bg;
+ SKY.sun.setRGB(pal.sun[0],pal.sun[1],pal.sun[2]);sun.color.copy(SKY.sun);
+ for(let i=0;i<DN;i++){const b=dB[i],q=dQ[i];dCol[i*3]=b*(pal.dust[0]*q+.8*(1-q));dCol[i*3+1]=b*(pal.dust[1]*q+.95*(1-q));dCol[i*3+2]=b*(pal.dust[2]*q+1.2*(1-q));}dGeo.attributes.pcol.needsUpdate=true;
+}
 const FD=64,fld=new THREE.InstancedMesh(GEO.ast[0],MT.rock,FD);fld.frustumCulled=false;
 {const r=mulberry32(777);for(let i=0;i<FD;i++){dummy.position.set((r()*2-1)*3200,r()*340-40,(r()*2-1)*3200);dummy.rotation.set(r()*PI*2,r()*PI*2,r()*PI*2);const s=6+r()*22;dummy.scale.set(s,s*(.6+r()*.6),s);dummy.updateMatrix();fld.setMatrixAt(i,dummy.matrix);}fld.instanceMatrix.needsUpdate=true;}
 fld.visible=false;scene.add(fld);
@@ -670,15 +757,17 @@ function effects(){
   dummy.position.copy(V).add(V2).multiplyScalar(.5);V2.sub(V).normalize();dummy.quaternion.setFromUnitVectors(XA,V2);const w=b.w*(.5+f*.9);dummy.scale.set(len,w,w);dummy.updateMatrix();beamM.setMatrixAt(n,dummy.matrix);const k=f*3;beamM.setColorAt(n,C.setRGB(b.r*k+f*.6,b.g*k+f*.6,b.b*k+f*.6));n++;}
  dummy.quaternion.identity();dummy.rotation.set(0,0,0);
  beamM.count=n;beamM.instanceMatrix.needsUpdate=true;if(beamM.instanceColor)beamM.instanceColor.needsUpdate=true;
- let nr=0,nd=0,np=0,nf=0,ns=0;
+ let nr=0,nd=0,np=0,nf=0,ns=0,nb=0;
  for(const l of flashes)l.intensity=0;
  for(const sh of shockPool)sh.visible=false;
+ for(const fb of firePool)fb.visible=false;
  for(const p of particles){
   const f=p.life/p.max,y=p.z*ALT;
   if(p.type===1){if(nr<MAXR){const R=p.size*(1-f)+1;dummy.position.set(p.x,y+2,p.y);dummy.rotation.set(0,0,0);dummy.scale.set(R,1,R);dummy.updateMatrix();ringM.setMatrixAt(nr,dummy.matrix);ringM.setColorAt(nr,C.setRGB(p.r*f*1.8,p.g*f*1.8,p.b*f*1.8));nr++;}}
   else if(p.type===3){if(nd<MAXD){dummy.position.set(p.x,y,p.y);dummy.rotation.set(p.rot,p.rot*.7,p.rot*1.3);const s=p.size*Math.min(1,f*3);dummy.scale.set(s,s,s);dummy.updateMatrix();debM.setMatrixAt(nd,dummy.matrix);nd++;}}
   else{
    if(p.type===4&&nf<flashes.length){const l=flashes[nf++];l.position.set(p.x,y+40,p.y);l.color.setRGB(p.r,p.g,p.b);l.intensity=f*p.size*900;}
+   if(p.type===4&&nb<firePool.length&&p.size>6&&p.size<280&&p.r>=p.b){const fb=firePool[nb++],age=1-f;fb.visible=true;fb.position.set(p.x,y+4,p.y);fb.scale.setScalar(p.size*(.32+Math.sqrt(age)*1.05));fb.rotation.y=age*1.4+nb;fb.material.uniforms.age.value=age;fb.material.uniforms.col.value.setRGB(Math.min(1,p.r),Math.min(1,p.g),Math.min(1,p.b));}
    if(p.type===4&&ns<shockPool.length){const sh=shockPool[ns++];const age=1-f;sh.visible=true;sh.position.set(p.x,y,p.y);sh.scale.setScalar(p.size*(.25+age*2.2));sh.material.uniforms.op.value=f*.22;sh.material.uniforms.col.value.setRGB(Math.min(2,p.r*1.2),Math.min(2,p.g*1.2),Math.min(2,p.b*1.2));}
    if(np<MAXP){const i=np*3,k=p.type===2?f*.22:p.type===4?f*.5:f*1.7;pPos[i]=p.x;pPos[i+1]=y;pPos[i+2]=p.y;pCol[i]=p.r*k;pCol[i+1]=p.g*k;pCol[i+2]=p.b*k;pSize[np]=p.type===2?p.size*(2.6-f):p.type===4?p.size*1.3:p.size*(1+f)*1.25;np++;}
   }
@@ -686,6 +775,11 @@ function effects(){
  dummy.rotation.set(0,0,0);
  ringM.count=nr;ringM.instanceMatrix.needsUpdate=true;if(ringM.instanceColor)ringM.instanceColor.needsUpdate=true;
  debM.count=nd;debM.instanceMatrix.needsUpdate=true;
+ /* build 89: Low quality has no bloom pass, so shots and engines get soft additive glow points instead */
+ if(curQ==='low'){
+  for(const p of projectiles){if(np>=MAXP)break;const k=SHOT[p.type]||SHOT.turret,c=crgb(p.col),i=np*3;pPos[i]=p.x;pPos[i+1]=p.z*ALT;pPos[i+2]=p.y;pCol[i]=c[0]*.42;pCol[i+1]=c[1]*.42;pCol[i+2]=c[2]*.42;pSize[np]=k[1]*3.2+10;np++;}
+  for(const s of ships){if(np>=MAXP)break;if(s.dead||!s.trail||typeof s.trail!=='string')continue;const c=crgb(s.trail),i=np*3,a=s.ang||0,th=Math.min(1.2,.35+(s.thr||0)*.8);pPos[i]=s.x-Math.cos(a)*s.r*1.15;pPos[i+1]=(s.z||0)*ALT+4;pPos[i+2]=s.y-Math.sin(a)*s.r*1.15;pCol[i]=c[0]*.5*th;pCol[i+1]=c[1]*.5*th;pCol[i+2]=c[2]*.5*th;pSize[np]=s.r*1.5+8;np++;}
+ }
  pGeo.setDrawRange(0,np);pGeo.attributes.position.needsUpdate=true;pGeo.attributes.pcol.needsUpdate=true;pGeo.attributes.psize.needsUpdate=true;
 }
 
@@ -750,6 +844,7 @@ function sizeUniforms(){
  const sz=renderer.getDrawingBufferSize(_DBS);
  for(const t of[tiltH,tiltV]){t.uniforms.res.value.set(sz.x,sz.y);t.uniforms.maxR.value=12*sz.y/1080;}
  if(fxaa)fxaa.uniforms.resolution.value.set(sz.x,sz.y);
+ for(const s of stars)s.material.uniforms.sz.value=s.userData.size*renderer.getPixelRatio();
  pMat.uniforms.sc.value=sz.y/(2*Math.tan(HALF_FOV));
  const e=Math.max(W,H)*.8+320,sc=sun.shadow.camera;sc.left=-e;sc.right=e;sc.top=e;sc.bottom=-e;sc.updateProjectionMatrix();
 }
@@ -832,7 +927,7 @@ function placeCam(){
  const d=H/(2*Math.tan(HALF_FOV)),tx=camX+W/2,tz=camY+H/2;
  cam.aspect=W/H;cam.position.set(tx,d*Math.sin(PITCH),tz+d*Math.cos(PITCH));cam.lookAt(tx,0,tz);cam.updateProjectionMatrix();cam.updateMatrixWorld(true);
  sun.position.set(tx-760,720,tz+640);sun.target.position.set(tx,0,tz);sun.target.updateMatrixWorld();
- updDust(tx,tz);floor.position.x=Math.round(tx/3250)*3250;floor.position.z=Math.round(tz/3250)*3250;
+ updDust(tx,tz);floor.position.x=Math.round(tx/6500)*6500;floor.position.z=Math.round(tz/6500)*6500;
 }
 const out={x:0,y:0},out2={x:0,y:0};
 function w2sB(x,y,z){
@@ -847,14 +942,14 @@ function s2wB(sx,sy){
 function render(){
  if(!M)return false;
  frameNo++;checkQuality();
- if(M.id!==curMission){curMission=M.id;setSector(M.sea);}
+ if(M.id!==curMission){curMission=M.id;setSector(M.sea);setSky(M.sea);setWeather(M.weather);setBelt(M.sea);}
  placeCam();
  SUNV.set(sun.position.x-sun.target.position.x,sun.position.y-sun.target.position.y,sun.position.z-sun.target.position.z).normalize();
  nebula.position.copy(cam.position);nebula2.position.copy(cam.position);
  for(let si=0;si<stars.length;si++)stars[si].position.copy(cam.position);
- nebula.rotation.y+=.00003;nebula2.rotation.y-=.000022;
- for(let si=0;si<stars.length;si++)stars[si].rotation.y+=.000008*(si+1);
- fld.visible=!!(window.cockpitOn||window.tailOn);fld.rotation.y+=.0002;floor.visible=false;
+ nebula.rotation.y+=.00003;nebula2.rotation.y-=.000022;updSun();if(farP){farP.o.visible=!!(window.cockpitOn||window.tailOn||window.CINE_CAM);farP.o.position.copy(cam.position).addScaledVector(FPDIR,9800);if(farP.am){farP.sp.rotation.y+=.0003;farP.am.uniforms.sunDir.value.copy(SUNV);}else farP.sp.rotation.z+=.004;}
+ for(let si=0;si<stars.length;si++){stars[si].rotation.y+=.000008*(si+1);stars[si].material.uniforms.t.value=frameNo*.016;}
+ fld.visible=!!(window.cockpitOn||window.tailOn);fld.rotation.y+=.0002;floor.visible=!(window.cockpitOn||window.tailOn)&&!window.CINE_CAM;belt.visible=floor.visible;belt.rotation.y+=.00004;const wxf=updWeather(!floor.visible);
  const ck=!!((window.cockpitOn||window.tailOn)&&player&&!player.dead);const szr=renderer.getDrawingBufferSize(_DBS);const mr=ck?0:12*szr.y/1080;tiltH.uniforms.maxR.value=mr;tiltV.uniforms.maxR.value=mr;tiltH.enabled=mr>0;pMat.uniforms.sc.value=szr.y/(2*Math.tan((ck?70:32)*Math.PI/360));
  sync(maps.ship,ships,shipObj,updShip);sync(maps.st,stations,stationObj,updStation);sync(maps.pl,gravityWells,planetObj,updPlanet);
  sync(maps.rk,rocks,rockObj,updRock);sync(maps.fl,flotsams,flotObj,updFlot);sync(maps.pu,powerups,powObj,updPow);sync(maps.wr,wrecks,wreckObj,updWreck);
@@ -862,7 +957,7 @@ function render(){
  const sn=(M.scanNodes||[]);for(let i=0;i<scanPool.length;i++){const o=scanPool[i],n=sn[i];if(!n){o.g.visible=false;continue;}o.g.visible=true;o.g.position.set(n.x,0,n.y);o.mat.color.setHex(n.done?0x6fe08a:0x7de3ff);o.g.rotation.y=frameNo*.01+i;o.core.rotation.y=frameNo*.03;o.ring.scale.setScalar(1+Math.sin(frameNo*.06+i)*.06);}
  effects();
  wellMat.uniforms.t.value=frameNo*.016;
- hemi.intensity=HEMI+(M.flash||0)*5;
+ hemi.intensity=HEMI+(M.flash||0)*5+wxf*1.4;
  if(M.beacon){beacon.visible=true;beacon.position.set(M.beacon.x,-4,M.beacon.y);const k=1+Math.sin(frameNo*.07)*.08;beacon.children[0].scale.set(k,1,k);}else beacon.visible=false;
  tiltV.uniforms.tm.value=frameNo%97;
  if(player&&!player.dead){const pc=crgb(player.trail);engL.color.setRGB(pc[0],pc[1],pc[2]);engL.position.set(player.x-Math.cos(player.ang)*player.r*1.5,player.z*ALT+12,player.y-Math.sin(player.ang)*player.r*1.5);engL.intensity=Math.min(1.6,player.thr)*14000;}else engL.intensity=0;
