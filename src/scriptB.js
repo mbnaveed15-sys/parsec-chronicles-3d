@@ -354,7 +354,7 @@ const wellMat=new THREE.ShaderMaterial({uniforms:{t:{value:0}},vertexShader:'var
 
 /* ---------- floor ("tabletop") ---------- */
 /* build 89: the sector's 2D nebula tile, laid deep under the battlefield as a faint additive galaxy plane (top-down views only) */
-const floorMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.3,blending:THREE.AdditiveBlending,depthWrite:false,fog:false});
+const floorMat=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:.13,blending:THREE.AdditiveBlending,depthWrite:false,fog:false});
 const floor=new THREE.Mesh(new THREE.PlaneGeometry(52000,52000),floorMat);floor.rotation.x=-PI/2;floor.position.y=FLOOR;floor.renderOrder=-1;scene.add(floor);floor.visible=false;
 let floorSea=-1;
 function setSector(sea){
@@ -675,8 +675,8 @@ function nebTex(seed,w,h,cols,alpha,band){
  const m=new THREE.MeshBasicMaterial({map:null,side:THREE.BackSide,transparent:true,opacity:opacity,depthWrite:false,depthTest:false,fog:false});m.userData.op=opacity;
  const mesh=new THREE.Mesh(new THREE.SphereGeometry(radius,64,32),m);mesh.renderOrder=order;mesh.frustumCulled=false;scene.add(mesh);return mesh;
 }
-const nebula=nebShell(4242,8200,.42,-2);
-const nebula2=nebShell(1717,11000,.26,-3);
+const nebula=nebShell(4242,8200,.3,-2);
+const nebula2=nebShell(1717,11000,.21,-3);
 /* build 89: per-sector sky. Each sector's tint drives the nebula shells, the reflection map, the background colour,
    the sun colour and the dust. Built once when a mission starts (cached for the last two sectors), never per frame. */
 const SKY={cache:new Map(),sea:-1,sun:new THREE.Color(0xffe0bc),bg:new THREE.Color(0x03050a)};
@@ -688,7 +688,7 @@ function skyPal(sea){
  const cols=[t,t2,lt,dk,t,t2,ac].map(a=>a.map(c255));
  return{cols,sky:[hex6(n.map(v=>v*.5)),hex6(n.map(v=>v*.8))],
   blobs:[[.22,.42,.34,hex6(t.map(v=>v*.42))],[.58,.36,.30,hex6(t2.map(v=>v*.46))],[.78,.55,.26,hex6(dk)],[.40,.62,.22,hex6(ac.map(v=>v*.4))],[.88,.30,.18,hex6(lt.map(v=>v*.3))]],
-  bg:n.map(v=>v*.26+.006),sun:[1,.88,.74].map((v,i)=>v*.8+lt[i]*.2),dust:t.map(v=>v*.6+.4)};
+  bg:n.map(v=>v*.1+.002),sun:[1,.88,.74].map((v,i)=>v*.8+lt[i]*.2),dust:t.map(v=>v*.6+.4)};
 }
 /* build 89: a visible sun (disc, halo and a soft lens streak) sitting low in the sky where the key light comes from */
 function glowTex(w,h,stops){const c=mkCanvas(w,h),x=c.getContext('2d'),g=x.createRadialGradient(w/2,h/2,0,w/2,h/2,w/2);for(const s of stops)g.addColorStop(s[0],s[1]);x.fillStyle=g;x.fillRect(0,0,w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;}
@@ -797,7 +797,7 @@ const TiltShader={
  vertexShader:'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}',
  fragmentShader:[
  'uniform sampler2D tDiffuse;uniform vec2 dir;uniform vec2 res;uniform float maxR;uniform float fin;uniform float tm;varying vec2 vUv;',
- 'float rnd(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}',
+ 'float rnd(vec2 p){return fract(52.9829189*fract(dot(p,vec2(0.06711056,0.00583715))));}',
  'void main(){',
  ' float d=abs(vUv.y-0.5);',
  ' float r=maxR*smoothstep(0.13,0.5,d);',
@@ -806,7 +806,7 @@ const TiltShader={
  ' vec4 acc=vec4(0.0);float ws=0.0;',
  ' if(sp<0.001){acc=texture2D(tDiffuse,vUv);ws=1.0;}else for(int i=-6;i<=6;i++){float fi=float(i);float w=1.0-abs(fi)/7.0;acc+=texture2D(tDiffuse,vUv+dir*(fi+j)*sp/res)*w;ws+=w;}',
  ' vec4 c=acc/ws;',
- ' if(fin>0.5){float l=dot(c.rgb,vec3(0.2126,0.7152,0.0722));c.rgb=max(vec3(0.0),mix(vec3(l),c.rgb,1.32));c.rgb=max(vec3(0.0),(c.rgb-0.18)*1.07+0.18);vec2 q=vUv-0.5;c.rgb*=1.0-dot(q,q)*0.6;float ca=dot(q,q)*0.006;c.r=mix(c.r,texture2D(tDiffuse,vUv+q*ca).r,0.6);c.b=mix(c.b,texture2D(tDiffuse,vUv-q*ca).b,0.6);c.rgb=max(vec3(0.0),c.rgb+(rnd(vUv*res+tm)-0.5)*0.02);}',
+ ' if(fin>0.5){float l=dot(c.rgb,vec3(0.2126,0.7152,0.0722));c.rgb=max(vec3(0.0),mix(vec3(l),c.rgb,1.32));c.rgb=max(vec3(0.0),(c.rgb-0.18)*1.07+0.18);vec2 q=vUv-0.5;c.rgb*=1.0-dot(q,q)*0.6;float ca=dot(q,q)*0.006;c.r=mix(c.r,texture2D(tDiffuse,vUv+q*ca).r,0.6);c.b=mix(c.b,texture2D(tDiffuse,vUv-q*ca).b,0.6);}',
  ' gl_FragColor=c;',
  '}'].join('\n')
 };

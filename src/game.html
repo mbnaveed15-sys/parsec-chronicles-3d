@@ -51,6 +51,10 @@ p{margin:.35em 0}
 .panel{background:var(--pn);border:1px solid var(--ln);border-radius:14px;padding:1em 1.1em;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-shadow:0 10px 40px rgba(0,0,0,.45),0 0 0 1px rgba(255,255,255,.03) inset;width:100%;max-width:980px}
 .panel.narrow{max-width:520px}
 .hdr{display:flex;align-items:center;gap:.8em;width:100%;max-width:980px}
+.fsb{display:inline-flex;align-items:center;justify-content:center;gap:.45em;flex:0 0 auto}.hdr .fsb{margin-left:auto}.hdr .cr+.fsb{margin-left:.2em}
+.fsb.corner{position:absolute;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));z-index:3;font-size:1em;padding:.6em 1em;border-color:var(--acc,#7de3ff)}
+.fsb.wide{width:100%}
+@media (max-width:700px){.hdr .fsb .fsl{display:none}.hdr .fsb{padding:.45em .6em}}
 .hdr h2{flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .cr{font-family:Orbitron,sans-serif;font-weight:700;color:var(--gold);white-space:nowrap}
 .cr:before{content:'◈ ';opacity:.8}
@@ -539,10 +543,10 @@ const UPG={
  weapons:{n:'Weapons',base:150,max:60,d:'Raises weapon damage, and the laser fire rate and charge speed.'},
  hull:{n:'Hull',base:120,max:60,d:'+20 hull, +12 shield, +3 ram damage.'},
  engines:{n:'Engines',base:150,max:20,d:'+4% thrust, +0.3 top speed, +25 heat capacity.'},
- cap:{n:'Capacitor',base:180,max:20,d:'−3% cooldowns, +1 plasma charge, faster vulcan cooling.'},
+ cap:{n:'Capacitor',base:180,max:20,d:'−3% cooldowns, +1 plasma charge, faster vulcan cooling, +10 m pickup magnet.'},
  target:{n:'Targeting',base:200,max:57,d:'+0.8% crit chance (cap 45%), +2.2% crit damage.'},
  arc:{n:'Fire Arc',base:220,max:10,d:'Widens the auto-aim cone by 9° per level.'},
- squad:{n:'Squadron',base:200,max:60,d:'Wingmates gain +25 hull, +0.2 speed, +2 damage.'},
+ squad:{n:'Squadron',base:200,max:60,d:'Wingmates gain +25 hull, +0.2 speed, +2 damage, +2.5 m pickup magnet.'},
  wing:{n:'Wing Size',base:1600,max:6,d:'Adds one wingmate to your flight. New slots unlock after boss victories.'}
 };
 const WING_AT=[10,50,100,200,300,400],WING_COST=[1000,2500,5000,9000,14000,20000];
@@ -1140,6 +1144,20 @@ function spawnEnemy(idx,x,y,ang,o){
  }
  enemies.push(s);return s;
 }
+/* build 90: station secondary weapons by sector (index 0 = sector 1). Same ladder for friendly and enemy stations. */
+const STATION_SEC=[[],['laser'],['ion'],['plasma'],['msl'],['flak','laser'],['ion','plasma'],['msl','laser'],['plasma','msl','ion'],['laser','plasma','msl','ion']];
+/* weapon: [range m, cooldown frames] */
+const STATION_GUN={laser:[1000,180],ion:[900,130],plasma:[850,150],msl:[1150,240],flak:[300,90]};
+function stationGuns(st){const sea=M.sea|0,dm=(st.team?M.eDmg:1+sea*.11)*.9,wl=Math.min(20,(M.lv|0)/15);
+ return{list:(STATION_SEC[sea]||[]).map((w,i)=>({w,cd:90+i*45})),g:{kind:'stgun',st:st,isPlayer:false,team:st.team,x:st.x,y:st.y,z:0,vx:0,vy:0,ang:0,r:30,dm,wl,crit:0,critM:1.5,cdm:1,arc:Math.PI,dbuff:0,oc:0,flakCd:0}};}
+function stepStationGuns(st,tg,dd){
+ const S=st.sec;if(!S||!S.list.length||!tg||M.done)return;const g=S.g;g.x=st.x;g.y=st.y;
+ for(const k of S.list){if(k.cd>0){k.cd--;continue;}const R=STATION_GUN[k.w];if(dd>R[0])continue;
+  g.ang=Math.atan2(tg.y-st.y,tg.x-st.x);
+  if(k.w==='laser')fireLaser(g,false,tg);else if(k.w==='ion')fireBolt(g,1,tg);else if(k.w==='plasma')fireBolt(g,2,tg);
+  else if(k.w==='msl'){fireMissile(g,tg);}else if(k.w==='flak')fireFlak(g,g.ang);
+  k.cd=R[1]+(Math.random()*30|0);}
+}
 function mkStation(team,x,y,mul){
  const lv=M.lv,sc=team?M.eHull:(1+M.sea*.28),hp=Math.round((420+lv*5)*sc*(mul||1));
  return{kind:'station',team,x,y,z:0,vx:0,vy:0,r:46,hp,maxHp:hp,aura:Math.min(300,175+lv*.25),atk:Math.min(720,390+lv*.7),
@@ -1404,11 +1422,18 @@ function stepSing(){
    if(s.isPlayer&&!g.hostile)continue;
    const dx=g.x-s.x,dy=g.y-s.y,d=Math.hypot(dx,dy);
    if(d>R||d<1)continue;
-   const f=(1-d/R)*(g.hostile?.12:.2);
-   s.vx+=dx/d*f;s.vy+=dy/d*f;
+   const same=s.team===g.team,q=1-d/R;
+   if(g.hostile||same){const f=q*(g.hostile?.12:.2);s.vx+=dx/d*f;s.vy+=dy/d*f;}
+   else{
+    /* build 90: your singularity grabs hard. Pull rises toward the centre, engines are dragged (slowed) while
+       inside, and inside 45% of the radius ships are held: their speed bleeds off and they are drawn to the core.
+       Pull strength: bosses 35%, elites 65%, big hulls 80%; the core hold uses the square of that (bosses 12%), so bosses can still burn out. */
+    const res=s.boss?.35:s.elite?.65:(s.r>34?.8:1),f=(.12+.55*q)*res;
+    s.vx+=dx/d*f;s.vy+=dy/d*f;s.slow=Math.max(s.slow,Math.round(8+20*q*res));
+    const H=R*.45;if(d<H){const h=(1-d/H)*res*res;s.vx*=1-.22*h;s.vy*=1-.22*h;s.x+=dx*.035*h;s.y+=dy*.035*h;}
+   }
    if(g.t%10===0){
-    const same=s.team===g.team;
-    let dmg=g.hostile?(s.isPlayer?2.7:1.0):(same?.7:3.0);
+    let dmg=g.hostile?(s.isPlayer?2.7:1.0):(same?.7:3.0*(1+1.5*q));
     dmg*=1+(M.lv||0)*.02+(g.pw||0)*.025;
     damage(s,dmg,g.owner,{acc:true});
    }
@@ -1668,10 +1693,18 @@ function avoid(s,h,inp,ign){
   const lat=ox*shh-oy*chh;
   if(Math.abs(lat)<R+s.r+50){const k=clamp(1-d/look,0,1);steer+=(lat>0?1:-1)*k*1.5;if(thr&&d<150)inp.climb=true;}
  };
- for(const g of gravityWells)test(g,g.r,.65);
+ /* build 90: planets are always steered around (no flying over them), from further out, and a ship that is already
+    close turns to skim past instead of ploughing in. Black holes keep the old check with a wider margin. */
+ for(const g of gravityWells){
+  if(g.bh){test(g,g.r*1.25,.65);continue;}
+  const ox=g.x-s.x,oy=g.y-s.y,R=g.r+s.r,gap=Math.hypot(ox,oy)-R,fwd=ox*chh+oy*shh,lat=ox*shh-oy*chh,sd=lat>0?1:-1;
+  if(gap<70){if(fwd>-40)steer+=sd*(1.2+clamp((70-gap)/70,0,1)*1.4);continue;}
+  const L=look+150;if(gap>L||fwd<0)continue;
+  if(Math.abs(lat)<R+90)steer+=sd*clamp(1-gap/L,0,1)*2.2;
+ }
  for(const r of rocks)test(r,r.r,r.moon?.65:.35);
  for(const st of stations)test(st,st.r+16,0);
- return h+clamp(steer,-1.6,1.6);
+ return h+clamp(steer,-2.2,2.2);
 }
 function aiPick(s,foes){
  const a=s.ai,es=stationOf(1-s.team);
@@ -1781,11 +1814,14 @@ function aiStep(s){
 }
 
 /* ---------------- STATIONS ---------------- */
+const STATION_DET=1150;
 function stepStations(){
  M.docked=false;
  for(const st of stations){
   if(st.dead)continue;st.rot+=.004;if(st.flash>0)st.flash--;flushDmg(st);
-  const foes=st.team?team0:enemies,friends=st.team?enemies:team0;let tg=null,bd=st.atk;
+  /* build 90: stations see as far as a pilot's weapons reach (1150 m) instead of 390-720 m; beyond their old
+     close range (st.atk) their shots spread more, so they still shoot back but miss more far out. */
+  const foes=st.team?team0:enemies,friends=st.team?enemies:team0;let tg=null,bd=Math.max(st.atk,STATION_DET);
   for(const f of foes){
    if(f.dead)continue;const d=Math.hypot(f.x-st.x,f.y-st.y);if(d<bd){bd=d;tg=f;}
    if(d<st.aura&&M.t%10===0){damage(f,st.burn,null,{acc:true});if(M.t%20===0)spark(f.x+rand(-10,10),f.y+rand(-10,10),f.z,0,0,.01,18,4,st.team?'#ff6a5a':'#7dffd8',0);}
@@ -1800,10 +1836,11 @@ function stepStations(){
    const tu=st.turrets[i];if(tu.dead)continue;if(tu.cd>0)tu.cd--;
    if(!tg){tu.ang+=.008;tu.burst=0;continue;}
    const a=turA(i),tx=st.x+Math.cos(a)*30,ty=st.y+Math.sin(a)*30,dd=Math.hypot(tg.x-tx,tg.y-ty),tt=dd/10;
-   const des=Math.atan2(tg.y+tg.vy*tt-ty,tg.x+tg.vx*tt-tx),df=angDiff(tu.ang,des);tu.ang+=clamp(df,-.07,.07);
-   if(tu.burst>0){if(--tu.bt<=0){tu.bt=6;tu.burst--;shoot('turret',st.team,st,tx+Math.cos(tu.ang)*14,ty+Math.sin(tu.ang)*14,Math.min(.5,tg.z),tu.ang+rand(-.03,.03),10,72,st.tdmg,st.team?'#ff6a5a':'#7dffd8',4);sfxAt('laser',tx,ty);if(tu.burst===0)tu.cd=(st.tcd||105)+i*17;}}
+   const des=Math.atan2(tg.y+tg.vy*tt-ty,tg.x+tg.vx*tt-tx),df=angDiff(tu.ang,des),far=clamp((dd-st.atk)/Math.max(1,STATION_DET-st.atk),0,1),spr=.03+.11*far;tu.ang+=clamp(df,-.07,.07);
+   if(tu.burst>0){if(--tu.bt<=0){tu.bt=6;tu.burst--;shoot('turret',st.team,st,tx+Math.cos(tu.ang)*14,ty+Math.sin(tu.ang)*14,Math.min(.5,tg.z),tu.ang+rand(-spr,spr),10,Math.max(72,Math.ceil(dd/10)+12),st.tdmg,st.team?'#ff6a5a':'#7dffd8',4);sfxAt('laser',tx,ty);if(tu.burst===0)tu.cd=(st.tcd||105)+i*17;}}
    else if(tu.cd<=0&&Math.abs(df)<.25&&!M.done){tu.burst=st.burst||4;tu.bt=0;}
   }
+  if(tg){if(!st.sec)st.sec=stationGuns(st);stepStationGuns(st,tg,bd);}
  }
 }
 
@@ -1876,11 +1913,38 @@ function stepFx(){
  for(let i=wrecks.length-1;i>=0;i--){const w=wrecks[i];w.x+=w.vx;w.y+=w.vy;w.vx*=.985;w.vy*=.985;w.ang+=w.sp;w.tx+=w.sp*1.7;w.tz+=w.sp*1.1;if(w.life%7===0)spark(w.x+rand(-8,8),w.y+rand(-8,8),w.z,rand(-.3,.3),rand(-.3,.3),.006,30,6,w.life%14?'#ff7a30':'#4a3a30',w.life%14?0:2);if(--w.life<=0){w.dead=true;wrecks.splice(i,1);}}
  for(const r of rocks){r.rot+=r.spin;if(r.flash>0)r.flash--;}
 }
+/* build 90: pickup magnet. Your radius grows with the Capacitor upgrade, wingmates' with the Squadron upgrade. */
+function magR(lv){return 160+10*(lv|0);}
+function magPull(lv){return .55+.02*(lv|0);}
+function wingMagR(){return 110+2.5*((save&&dUp(save).squad)|0);}
+function wingWants(a,type){
+ if(type==='medkit')return a.hp<a.maxHp*.85;
+ if(type==='shield')return a.sh<a.maxSh*.9;
+ if(type==='boost')return !(a.boost>0);
+ if(type==='damage')return !(a.dbuff>0);
+ if(type==='plasma'){const p=player;return !!(p&&!p.dead&&p.plasma<p.plasmaMax);}
+ if(type==='msl'){const p=player;return !!(p&&!p.dead&&p.msl<(p.mslMax||4));}
+ if(type==='sing'){const p=player;return !!(p&&!p.dead&&p.sing<3);}
+ return true;
+}
+function wingTake(a,u){
+ const p=player&&!player.dead?player:null;
+ switch(u.type){
+  case'medkit':a.hp=Math.min(a.maxHp,a.hp+a.maxHp*.4);return'MEDKIT';
+  case'shield':a.sh=a.maxSh*1.5;a.shF=1;return'SHIELD OVERCHARGE';
+  case'boost':a.boost=600;return'SPEED BOOST';
+  case'damage':a.dbuff=600;return'DAMAGE ×1.5';
+  case'plasma':if(p)p.plasma=p.plasmaMax;return'PLASMA RESTOCK (SENT TO YOU)';
+  case'msl':if(p)p.msl=Math.min(p.mslMax||4,p.msl+2);return'MISSILE RELOAD +2 (SENT TO YOU)';
+  case'sing':if(p)p.sing=Math.min(3,p.sing+1);return'SINGULARITY CHARGE (SENT TO YOU)';
+  default:{const g=50+M.lv;M.gold+=g;return'+'+g+' CREDITS';}
+ }
+}
 function stepPickups(){
  const p=player&&!player.dead?player:null;
  for(let i=flotsams.length-1;i>=0;i--){
   const f=flotsams[i];f.x+=f.vx;f.y+=f.vy;f.vx*=.97;f.vy*=.97;f.rot+=.03;let take=--f.life<=0?2:0;
-  if(p){const d=Math.hypot(p.x-f.x,p.y-f.y)||1;if(d<160){f.vx+=(p.x-f.x)/d*.55;f.vy+=(p.y-f.y)/d*.55;}if(d<p.r+16)take=1;}
+  if(p){const d=Math.hypot(p.x-f.x,p.y-f.y)||1;if(d<magR(p.capLv)){const k=magPull(p.capLv);f.vx+=(p.x-f.x)/d*k;f.vy+=(p.y-f.y)/d*k;}if(d<p.r+16)take=1;}
   if(take){
    if(take===1){
     if(f.type==='gold'){const g=Math.round(6+M.lv*.25);M.gold+=g;dmgText(f.x,f.y,p.z,'+'+g,'#ffd700',false);sfx('coin');}
@@ -1891,8 +1955,15 @@ function stepPickups(){
   }
  }
  for(let i=powerups.length-1;i>=0;i--){
-  const u=powerups[i];u.bob+=.05;let take=--u.life<=0?2:0;
+  const u=powerups[i];u.bob+=.05;let take=--u.life<=0?2:0,by=null;
+  {let tg=null,bd=1e9,k=0;if(p){const d=Math.hypot(p.x-u.x,p.y-u.y);if(d<magR(p.capLv)){tg=p;bd=d;k=magPull(p.capLv)*.6;}}
+   if(!tg){const wr=wingMagR();for(const a of allies){if(a.dead||a.cargo||a===M.cargo||!wingWants(a,u.type))continue;const d=Math.hypot(a.x-u.x,a.y-u.y);if(d<wr&&d<bd){tg=a;bd=d;k=.33;}}}
+   u.vx=(u.vx||0)*.9;u.vy=(u.vy||0)*.9;if(tg&&bd>1){u.vx+=(tg.x-u.x)/bd*k;u.vy+=(tg.y-u.y)/bd*k;}u.x+=u.vx;u.y+=u.vy;}
   if(p&&Math.hypot(p.x-u.x,p.y-u.y)<p.r+22)take=1;
+  /* build 90: wingmates collect power-ups they fly through. Repairs and buffs are used by the wingmate
+     (only if it needs them); ammo, singularity charges and credits go to you. */
+  if(!take)for(const a of allies){if(a.dead||a.cargo||a===M.cargo||!wingWants(a,u.type))continue;if(Math.hypot(a.x-u.x,a.y-u.y)<a.r+22){by=a;take=1;break;}}
+  if(take===1&&by){const t=wingTake(by,u);msg('WINGMATE · '+t,70);sfx('power',.5);spark(u.x,u.y,by.z,0,0,0,14,55,PWRC[u.type],1);powerups.splice(i,1);continue;}
   if(take){
    if(take===1){
     let t='';
@@ -2106,7 +2177,7 @@ function tick(){
  ships.length=0;for(const s of team0)ships.push(s);for(const e of enemies)if(!e.dead)ships.push(e);
  readInput();
  if(player&&!player.dead)playerStep();
- for(const a of allies){if(a.dead)continue;aiStep(a);stepShip(a,a.ai.inp);}
+ for(const a of allies){if(a.dead)continue;if(a.boost>0)a.boost--;if(a.dbuff>0)a.dbuff--;aiStep(a);stepShip(a,a.ai.inp);}
  for(let i=0;i<enemies.length;i++){const e=enemies[i];if(e.dead)continue;aiStep(e);stepShip(e,e.ai.inp);}
  collide();stepStations();stepProjectiles();stepMines();stepSing();stepFx();stepPickups();stepWeather();
  compact(allies);compact(enemies);compact(rocks);
@@ -2922,7 +2993,13 @@ function refresh(){show(UI.cur,UI.arg,true);}
 /* centre of an element in #ui content coordinates (works when the UI is rotated, unlike getBoundingClientRect) */
 function uiNodePos(n){const u=$('ui');if(!n||!u)return null;let x=n.offsetWidth/2,y=n.offsetHeight/2,e=n;while(e&&e!==u){x+=e.offsetLeft;y+=e.offsetTop;e=e.offsetParent;}return e===u?[Math.round(x),Math.round(y)]:null;}
 function fmtGold(g){return save&&save.free?'∞':Math.floor(g).toLocaleString('en-US');}
-function hdr(title){return'<div class="hdr"><button class="btn sm" data-a="back">◀ Back</button><h2>'+title+'</h2>'+(save?'<span class="cr" title="'+DIFFS[save.diff].n+' wallet">'+fmtGold(dGold(save))+'</span>':'')+'</div>';}
+/* build 90: a fullscreen toggle on every menu header, the title screen and the pause menu (hidden where the browser has no fullscreen, e.g. iPhone Safari) */
+function fsOK(){const d=document;return !!(d.fullscreenEnabled||d.webkitFullscreenEnabled);}
+function fsOn(){const d=document;return !!(d.fullscreenElement||d.webkitFullscreenElement);}
+function fsBtn(cls){if(!fsOK())return'';const on=fsOn();return'<button class="btn sm fsb'+(cls?' '+cls:'')+'" data-a="fs" title="'+(on?'Exit fullscreen':'Fullscreen')+'" aria-label="'+(on?'Exit fullscreen':'Fullscreen')+'"><svg viewBox="0 0 24 24" width="1.25em" height="1.25em" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg><span class="fsl">'+(on?'Exit fullscreen':'Fullscreen')+'</span></button>';}
+function fsSync(){const on=fsOn();document.querySelectorAll('.fsb').forEach(b=>{const t=on?'Exit fullscreen':'Fullscreen';b.title=t;b.setAttribute('aria-label',t);const l=b.querySelector('.fsl');if(l)l.textContent=t;});}
+document.addEventListener('fullscreenchange',fsSync);document.addEventListener('webkitfullscreenchange',fsSync);
+function hdr(title){return'<div class="hdr"><button class="btn sm" data-a="back">◀ Back</button><h2>'+title+'</h2>'+(save?'<span class="cr" title="'+DIFFS[save.diff].n+' wallet">'+fmtGold(dGold(save))+'</span>':'')+fsBtn()+'</div>';}
 function reachedOf(s){if(s.free)return 500;let m=0;for(const d in s.prog.campaign){const o=s.prog.campaign[d];for(const k in o)if(o[k].stars>0&&+k>m)m=+k;}return Math.min(500,m+1);}
 function slotCount(){if(!save)return 1;if(save.free)return 5;const r=reachedOf(save);return 1+(r>100?1:0)+(r>200?1:0)+(r>300?1:0)+(r>400?1:0);}
 function loadoutFor(){
@@ -2939,11 +3016,11 @@ const SCREENS={
   return'<div class="scr mid"><div class="termhead">Commission Terminal · 10 Sectors · Clearance Granted</div><div class="logo">PARSEC<br>CHRONICLES <em>3D</em><small>THE HUNT FOR HALVARD KRAY</small></div>'+
   '<canvas class="pv" data-idx="13" data-hull="#2a4d8a" data-trail="#7de3ff" width="416" height="256" style="max-width:280px;background:none"></canvas>'+'<p class="tagline">Ten sectors. Five hundred sorties. One renegade waiting at the edge of the map.</p>'+
   '<button class="btn primary" data-a="nav" data-v="pilots" style="font-size:1.05em;padding:1em 2.8em">Launch</button>'+
-  '<div class="row c"><button class="btn sm" data-a="nav" data-v="settings">Settings</button><button class="btn sm" data-a="nav" data-v="help">Manual</button><button class="btn sm" data-a="fs">Fullscreen</button></div>'+
-  '<span class="tag">Renderer: '+rendererLabel()+'</span></div>';
+  '<div class="row c"><button class="btn sm" data-a="nav" data-v="settings">Settings</button><button class="btn sm" data-a="nav" data-v="help">Manual</button></div>'+
+  '<span class="tag">Renderer: '+rendererLabel()+'</span>'+fsBtn('corner')+'</div>';
  },
  pilots(){
-  let h='<div class="scr">'+'<div class="hdr"><button class="btn sm" data-a="back">◀ Back</button><h2>Pilot Select</h2></div><div class="grid g2" style="max-width:980px">';
+  let h='<div class="scr">'+'<div class="hdr"><button class="btn sm" data-a="back">◀ Back</button><h2>Pilot Select</h2>'+fsBtn()+'</div><div class="grid g2" style="max-width:980px">';
   for(let i=0;i<3;i++){
    const d=LS.get('pc_save_'+i);
    if(d){
@@ -3078,7 +3155,7 @@ const SCREENS={
    h+='<div class="ugrid">';
    const cap=DMAX[s.diff];
    for(const k of UPK){const u=UPG[k],l=du[k],mx=l>=cap,c=upCost(k),lk=mx?'':upLock(k);
-    h+='<div class="card"><div class="row"><h3 style="flex:1">'+u.n+'</h3><span class="tag">Lv '+l+' / '+cap+'</span></div><span class="dim sml">'+u.d+'</span><div class="statbar"><i style="width:'+Math.min(100,l/cap*100)+'%"></i></div>'+
+    h+='<div class="card"><div class="row"><h3 style="flex:1">'+u.n+'</h3><span class="tag">Lv '+l+' / '+cap+'</span></div><span class="dim sml">'+u.d+'</span>'+(k==='cap'?'<span class="sml" style="color:#b06bff">Pickup magnet '+magR(l)+' m'+(mx?'':' → '+magR(l+1)+' m')+'</span>':k==='squad'?'<span class="sml" style="color:#b06bff">Wingmate magnet '+(110+2.5*l)+' m'+(mx?'':' → '+(110+2.5*(l+1))+' m')+'</span>':'')+'<div class="statbar"><i style="width:'+Math.min(100,l/cap*100)+'%"></i></div>'+
      '<button class="btn sm'+(mx||lk?' dis':(!s.free&&dGold(s)<c?' warn':''))+'" data-a="buyup" data-v="'+k+'"'+(lk?' data-tip="'+esc(u.n+': '+lk)+'"':'')+'>'+(mx?'Maxed':lk?'🔒 '+lk:'Upgrade · ◈ '+fmtNum(c))+'</button></div>';}
    h+='</div>';
   }else if(t==='dock'){
@@ -3203,7 +3280,7 @@ const SCREENS={
   '<tr><td style="color:#ff7043">PLASMA</td><td>Slow heavy bolt that burns over time. Limited charges, restocked by docking.</td></tr>'+
   '<tr><td style="color:#ffd700">VULCAN</td><td>Bullet stream, best inside 380 m. Overheats. V lets it fire by itself.</td></tr>'+
   '<tr><td style="color:#ffb36b">MISSILE</td><td>Guided warhead: homes on your lock or the nearest hostile, 29+ damage with a small splash. Rack holds 4 per sortie and rearms while you dock or from missile pickups. Carry it in a loadout slot.</td></tr>'+
-  '<tr><td style="color:#b06bff">SING</td><td>Singularity bomb: a 215 m well that drags ships in and grinds them — allies take 25%. One charge a mission once you have broken a captain; rare purple pickups add charges. Captains, elites and bosses can throw one back at you.</td></tr></table>'+
+  '<tr><td style="color:#b06bff">SING</td><td>Singularity bomb: a 215 m well that drags ships in, slows their engines and holds them at the core, where it grinds hardest (up to 2.5× damage at the centre) — bosses resist part of the pull, allies take a light pull and 25% damage. One charge a mission once you have broken a captain; rare purple pickups add charges. Captains, elites and bosses can throw one back at you.</td></tr></table>'+
   '<p><b>Ammo fallback:</b> when plasma, missile or singularity charges run out, the weapon selector automatically returns to your main lasers. Main lasers are permanent and sit outside the loadout; ammo pickups are filtered to the secondary weapons actually fitted.</p>'+
   '<p><b>Flak</b> is a point-defence countermeasure, not a slot weapon: it bursts automatically at incoming plasma when the assist is on, or on G. Nine pellets, 8 s cooldown.</p>'+
   '<p>Shots auto-aim at targets inside your <b>fire arc</b> (widen it with the Fire Arc upgrade). A ghost diamond shows where ion and plasma will land. Targeting upgrades add critical hits, shown in gold.</p>'+
@@ -3220,7 +3297,7 @@ const SCREENS={
   const qsl=(o,k,label,min,max,step)=>{const obj=o==='a'?audioSet:settings;return'<label class="set"><span>'+label+'</span><input type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+obj[k]+'" data-s="'+k+'" data-o="'+o+'"><b>'+Math.round(obj[k]*100)+'%</b></label>';};
   const ms=M?(()=>{const secs=M.clock/60;if(M.mode==='range')return '<div class="mstat"><div class="kv"><span>Mode</span><b>Practice range</b></div><div class="kv"><span>DPS</span><b>'+Math.round(M.rdps||0)+'</b></div><div class="kv"><span>Elapsed</span><b>'+fmtTime(secs)+'</b></div></div>';const st=starTimes(M.mode,M.sea,M.lv),tier=secs<st[0]?3:secs<st[1]?2:1;return '<div class="mstat"><div class="kv"><span>Objective</span><b style="text-align:right">'+esc(objText())+'</b></div><div class="kv"><span>Elapsed</span><b>'+fmtTime(secs)+'</b></div><div class="kv"><span>Stars</span><b style="color:var(--gold)">'+'★'.repeat(tier)+'<span style="color:#3c4654">'+'★'.repeat(3-tier)+'</span></b></div><div class="kv"><span>Kills</span><b>'+M.kills+'</b></div></div>';})():'';
   return'<div class="scr mid dlg"><div class="panel narrow col" style="max-width:380px;text-align:center"><h2>Paused</h2><span class="dim sml">'+(M?(M.mode==='range'?(M.fs?'Flight school':'Practice range')+' · no damage':(M.hunt?'Free Hunt':'Mission '+(M.sea+1)+'-'+M.m))+' · '+MODES[M.mode].n:'')+'</span>'+ms+
-  '<button class="btn primary wide" data-a="resume">Resume</button>'+
+  '<button class="btn primary wide" data-a="resume">Resume</button>'+fsBtn('wide')+
   '<div class="qset"><div class="set"><span>Pilot assist</span><div class="seg"><button class="btn sm'+(settings.assist?' on':'')+'" data-a="set" data-k="assist" data-v="true">On</button><button class="btn sm'+(!settings.assist?' on':'')+'" data-a="set" data-k="assist" data-v="false">Off</button></div></div>'+
   qsl('s','hud','HUD size',.7,1.6,.05)+qsl('a','music','Music',0,1,.05)+qsl('a','sfx','SFX',0,1,.05)+'</div>'+
   '<button class="btn wide" data-a="restart">'+(M&&M.mode==='range'?'Restart range':'Restart mission')+'</button><button class="btn wide" data-a="nav" data-v="settings">All settings</button><button class="btn wide" data-a="nav" data-v="help">Manual</button><button class="btn warn wide" data-a="abort">Abort to hangar</button></div></div>';
