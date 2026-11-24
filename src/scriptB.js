@@ -232,8 +232,9 @@ const designs={};
    Every part is either on the centreline or placed as a mirrored pair. */
 function designShip(idx){
  if(designs[idx])return designs[idx];
- const role=idx%3,tier=idx/3|0,rnd=mulberry32(idx*977+5),L=1+tier*.06,SP=1+tier*.05,K=kit(),add=K.add,sym=K.sym,eng=[];
- const bw=[.17,.25,.34][role],bh=[.13,.16,.21][role],nx=[1.15,1.05,.95][role]*L,ex=[2.4,2.8,4.6][role];
+ /* build 97: role/tier from the roster (ships 15-23 are not in index order); variant hulls get their own wings, a longer nose and +1 engine */
+ const role=shipRole(idx),tier=shipTier(idx),VR=shipVar(idx),WG=shipWings(idx),rnd=mulberry32(idx*977+5),L=1+tier*.06,SP=1+tier*.05,K=kit(),add=K.add,sym=K.sym,eng=[];
+ const bw=[.17,.25,.34][role],bh=[.13,.16,.21][role],nx=[1.15,1.05,.95][role]*L*(VR?1.1:1),ex=[2.4,2.8,4.6][role];
  /* fuselage stations: [u along hull, width, height, vertical offset] */
  const S=[
   [[-.95,.55,.55,0],[-.8,.8,.85,0],[-.5,.98,1,0],[-.15,1,1.05,.02],[.2,.9,1,.03],[.5,.7,.8,.02],[.75,.45,.5,0],[.92,.2,.22,-.01],[1,.04,.05,-.02]],
@@ -258,13 +259,13 @@ function designShip(idx){
   sym('paint',GEO.box,X(iu),iy,iz,0,0,0,il,ih,iw);sym('dark',GEO.box,X(iu)+il/2,iy,iz,0,0,0,.02,ih*.78,iw*.74);sym('trim',GEO.box,X(iu)+il/2-.015,iy,iz,0,0,0,.035,ih*1.06,iw*1.08);}
  /* wings: skin, leading-edge strip, control-surface hinge line */
  const wt=[.03,.04,.06][role];
- WINGS[role].forEach((w,wi)=>{
+ WG.forEach((w,wi)=>{
   const k=wi?1:SP,wy=wi?bh*.25:-bh*.12,P4=w.map(p=>[p[0]*L,p[1]*k]);
   const le=[P4[0],P4[1],[P4[1][0]-.07,P4[1][1]],[P4[0][0]-.09,P4[0][1]]];
   const hg=[[P4[3][0]+.13,P4[3][1]],[P4[2][0]+.1,P4[2][1]*.97],[P4[2][0]+.085,P4[2][1]*.97],[P4[3][0]+.115,P4[3][1]]];
   for(const sd of[1,-1]){add('paint',wingGeo(P4,wt,sd),0,wy,0);add('trim',wingGeo(le,wt*1.12,sd),0,wy,0);if(!wi)add('dark',wingGeo(hg,wt*1.08,sd),0,wy,0);}
  });
- const tip=WINGS[role][0][1],tipx=(tip[0]-.12)*L,tipz=tip[1]*SP;
+ const tip=WG[0][1],tipx=(tip[0]-.12)*L,tipz=tip[1]*SP;
  /* tail fins with tip caps and rudder lines */
  const fin=[[-.42,0],[-.92,.4],[-1.06,.4],[-.92,0]],ftip=[[-.845,.34],[-.92,.4],[-1.06,.4],[-1.039,.34]],rud=[[-.9,.02],[-1.02,.33],[-1.035,.33],[-.915,.02]];
  const finAt=(f,y,z,rx,t)=>{const m=q=>q.map(p=>[p[0]*L,p[1]*f]);add('paint',finGeo(m(fin),t),0,y,z,rx);add('trim',finGeo(m(ftip),t*1.25),0,y,z,rx);add('dark',finGeo(m(rud),t*1.12),0,y,z,rx);};
@@ -272,7 +273,7 @@ function designShip(idx){
  else for(const sd of[1,-1])finAt(role===2?1.12:.94,bh*.5,sd*bw*.56,sd*.34,.035);
  if(role===2)add('paint',finGeo([[-.5*L,0],[-.86*L,-.2],[-.98*L,-.2],[-.9*L,0]],.035),0,-bh*.4,0);
  /* engines: nacelle, intake ring, flared nozzle with recessed glow */
- const ne=[1,2,3][role]+(tier>>1),er=[.1,.105,.11][role]*(ne>3?.86:1),span=bw*(ne>2?2.3:1.5),nac=nacGeo(.62,er),noz=nozGeo(.16,er);
+ const ne=[1,2,3][role]+(tier>>1)+(VR&&role<2?1:0),er=[.1,.105,.11][role]*(ne>3?.86:1),span=bw*(ne>2?2.3:1.5),nac=nacGeo(.62,er),noz=nozGeo(.16,er);
  for(let j=0;j<ne;j++){
   const z=ne===1?0:(j/(ne-1)-.5)*span,y=(ne>2&&Math.floor(Math.abs(j-(ne-1)/2)+.5)%2===0)?bh*.3:0,x=-1.04*L;
   add('metal',nac,x,y,z);add('dark',noz,x+.01,y,z);add('glow',GEO.disc,x-.07,y,z,0,-PI/2,0,er*.66,er*.66,1);
@@ -291,14 +292,14 @@ function designShip(idx){
  if(tier>=2)add('dark',GEO.sph,X(.68),top(.68)*.96,0,0,0,0,.035,.03,.035);
  sym('dark',GEO.box,X(.72),bh*at(.72)[2],bw*at(.72)[0]*.98,0,0,0,.05,.03,.02);
  /* missile pods hung under the wing at its real chord */
- {const wp=WINGS[role][0],wy=-bh*.12;for(let p=0;p<Math.min(tier,3);p++){const zz=bw+.2+p*.2,t=(zz/SP-wp[0][1])/(wp[1][1]-wp[0][1]);if(t<0||t>.85)continue;const le=lerp(wp[0][0],wp[1][0],t)*L,te=lerp(wp[3][0],wp[2][0],t)*L,len=Math.min(.36,(le-te)*.75),xc=(le+te)/2;sym('metal',GEO.cylX,xc,wy-.07,zz,0,0,0,len,.032,.032);sym('trim',GEO.cylX,xc+len*.42,wy-.07,zz,0,0,0,len*.14,.033,.033);sym('dark',GEO.box,xc,wy-.035,zz,0,0,0,len*.4,.05,.04);sym('accent',GEO.sph,xc+len/2,wy-.07,zz,0,0,0,.028,.028,.028);}}
+ {const wp=WG[0],wy=-bh*.12;for(let p=0;p<Math.min(tier,3);p++){const zz=bw+.2+p*.2,t=(zz/SP-wp[0][1])/(wp[1][1]-wp[0][1]);if(t<0||t>.85)continue;const le=lerp(wp[0][0],wp[1][0],t)*L,te=lerp(wp[3][0],wp[2][0],t)*L,len=Math.min(.36,(le-te)*.75),xc=(le+te)/2;sym('metal',GEO.cylX,xc,wy-.07,zz,0,0,0,len,.032,.032);sym('trim',GEO.cylX,xc+len*.42,wy-.07,zz,0,0,0,len*.14,.033,.033);sym('dark',GEO.box,xc,wy-.035,zz,0,0,0,len*.4,.05,.04);sym('accent',GEO.sph,xc+len/2,wy-.07,zz,0,0,0,.028,.028,.028);}}
  /* hull fittings beside the dorsal fairing, mirrored and seated on the skin */
  for(let i=0;i<1+tier;i++){const u=lerp(-.62,-.12,rnd()),q=at(u),gz=bw*q[0]*(.5+rnd()*.25),gy=bh*q[2]+bh*q[1]*.97*Math.pow(1-Math.pow(gz/(bw*q[0]),ex),1/ex);sym(rnd()<.5?'metal':'dark',GEO.box,X(u),gy,gz,0,0,0,.06+rnd()*.12,.03+rnd()*.03,.04+rnd()*.05);}
  /* lights */
  sym('accent',GEO.sph,tipx,0,tipz,0,0,0,.034,.034,.034);
  add('accent',GEO.sph,X(-.9),top(-.9)*.55,0,0,0,0,.03,.03,.03);
  if(tier>=2)sym('accent',GEO.box,X(-.3),bh*.45,bw*at(-.3)[0]*.99,0,0,0,.22,.02,.012);
- if(tier>=3){const wte=WINGS[role][0][2][0]*L,wle=Math.min(tip[0]*L,wte+.42),wl=finGeo([[wle,0],[wte+(wle-wte)*.35,.22],[wte-.03,.22],[wte,0]],.025);add('paint',wl,0,0,tipz);add('paint',wl,0,0,-tipz);wl.dispose();}
+ if(tier>=3){const wte=WG[0][2][0]*L,wle=Math.min(tip[0]*L,wte+.42),wl=finGeo([[wle,0],[wte+(wle-wte)*.35,.22],[wte-.03,.22],[wte,0]],.025);add('paint',wl,0,0,tipz);add('paint',wl,0,0,-tipz);wl.dispose();}
  if(tier>=4){sym('trim',GEO.box,X(-.46),bh*.12,bw*1.01,0,0,0,.46*L,bh*.8,.03);add('dark',GEO.sph,X(-.52),top(-.52)*.8+bh*.42,0,0,0,0,.09,.05,.09);sym('paint',GEO.box,X(-.6),bh*.3,bw*1.22,0,0,0,.42,.12,.1);}
  return designs[idx]={geo:K.bake(),eng,L};
 }
@@ -444,7 +445,7 @@ function updWreck(o,w){const f=w.life/w.max,g=o.o;g.position.set(w.x,w.z*ALT-(1-
 function stationObj(st){
  const g=new THREE.Group(),col=new THREE.Color(st.team?0xff4a38:0x4fffd8),own=[],tier=st.tier|0;
  /* build 96: stronger enemy stations (st.tier 0-3, st.vk size) glow hotter and gain extra parts; all merged into the same meshes, so no extra draw calls */
- if(tier>=2)col.lerp(new THREE.Color(0xff8f40),.12*(tier-1));
+ if(tier>=2)col.lerp(new THREE.Color(st.team?0xff8f40:0x9ff5e0),.12*(tier-1)); /* build 97: home station brightens toward mint */
  const em=new THREE.MeshStandardMaterial({color:0x101010,emissive:col,emissiveIntensity:1.5+.25*tier});
  const bl=new THREE.MeshStandardMaterial({color:0x101010,emissive:col,emissiveIntensity:2.5});
  const tm=new THREE.MeshStandardMaterial({color:new THREE.Color(st.team?0x8a2a24:0x2a8a7a),map:panelTex,roughnessMap:panelTex,metalness:.5,roughness:.7,envMapIntensity:.7});
