@@ -442,8 +442,10 @@ function updWreck(o,w){const f=w.life/w.max,g=o.o;g.position.set(w.x,w.z*ALT-(1-
    a rotating habitat ring on spokes, three tracking turrets, a comms mast with a turning dish, and a reactor below.
    Static parts are merged per material so the whole station is only a handful of draw calls. */
 function stationObj(st){
- const g=new THREE.Group(),col=new THREE.Color(st.team?0xff4a38:0x4fffd8),own=[];
- const em=new THREE.MeshStandardMaterial({color:0x101010,emissive:col,emissiveIntensity:1.5});
+ const g=new THREE.Group(),col=new THREE.Color(st.team?0xff4a38:0x4fffd8),own=[],tier=st.tier|0;
+ /* build 96: stronger enemy stations (st.tier 0-3, st.vk size) glow hotter and gain extra parts; all merged into the same meshes, so no extra draw calls */
+ if(tier>=2)col.lerp(new THREE.Color(0xff8f40),.12*(tier-1));
+ const em=new THREE.MeshStandardMaterial({color:0x101010,emissive:col,emissiveIntensity:1.5+.25*tier});
  const bl=new THREE.MeshStandardMaterial({color:0x101010,emissive:col,emissiveIntensity:2.5});
  const tm=new THREE.MeshStandardMaterial({color:new THREE.Color(st.team?0x8a2a24:0x2a8a7a),map:panelTex,roughnessMap:panelTex,metalness:.5,roughness:.7,envMapIntensity:.7});
  own.push(em,bl,tm);
@@ -476,6 +478,20 @@ function stationObj(st){
   for(const sd of[1,-1]){P(S0,MT.solar,B(22,.8,13),47,-1.5,sd*9.6,0,sd*.14,pm);P(S0,MT.metal,B(.9,1.3,13.4),35.8,-1.5,sd*9.6,0,sd*.14,pm);P(S0,MT.metal,B(.9,1.3,13.4),58.2,-1.5,sd*9.6,0,sd*.14,pm);P(S0,MT.metal,B(22.6,1.2,.9),47,-1.5,sd*2.9,0,0,pm);}
   P(S0,MT.rad,B(9,7,.5),29,4.6,0,0,0,pm);P(S0,bl,SP(1.7),59.6,-2,0,0,0,pm);
  }
+ if(tier>=1){ /* armour plates on the plain hull faces, glow band, arm-tip pods */
+  for(let f=0;f<6;f+=2){const t=(f+.5)*PI/3,sn=Math.sin(t),cs=Math.cos(t);P(S0,tm,B(15,11,2.2),sn*27,0,cs*27,t,-.35);P(S0,em,B(13,.6,.8),sn*28.6,-4.6,cs*28.6,t,-.35);P(S0,MT.dark,B(6,2.4,.6),sn*28.4,2.2,cs*28.4,t,-.35);}
+  P(S0,em,new THREE.TorusGeometry(34.6,.8,6,6).rotateX(PI/2).rotateY(PI/6),0,-11,0);
+  for(let i=0;i<3;i++){const pm=new THREE.Matrix4().makeRotationY(-armA(i));P(S0,MT.metal,B(7,5,6),64,-2,0,0,0,pm);P(S0,em,B(1,5.6,6.6),61,-2,0,0,0,pm);}
+ }
+ if(tier>=2){ /* gun housings on the arms, taller mast with a glow collar */
+  for(let i=0;i<3;i++){const pm=new THREE.Matrix4().makeRotationY(-armA(i));P(S0,MT.metal,B(9,4,7),33,2.5,0,0,0,pm);for(const sd of[1,-1])P(S0,MT.dark,B(12,1.3,1.3),42,3.4,sd*1.8,0,0,pm);}
+  P(S0,em,new THREE.TorusGeometry(4.2,.45,6,12).rotateX(PI/2),0,44,0);P(S0,MT.dark,C(.6,1.1,10,6),0,55,0);P(S0,bl,SP(1.6),0,60.5,0);
+ }
+ if(tier>=3){ /* crown spikes, reactor ring, under-hull turrets */
+  for(let i=0;i<6;i++){const a=i*PI/3,sn=Math.sin(a),cs=Math.cos(a);P(S0,MT.dark,C(.2,2,14,6),sn*19,31,cs*19,a,.5);P(S0,em,C(.15,.7,4,6),sn*22.3,36.5,cs*22.3,a,.5);}
+  P(S0,em,new THREE.TorusGeometry(15,1,6,18).rotateX(PI/2),0,-24,0);
+  for(let i=0;i<3;i++){const a=turA(i)+PI/3,x=Math.cos(a),z=Math.sin(a);P(S0,MT.dark,C(3.6,3,3,8),x*26,-12.5,z*26);P(S0,MT.metal,B(4,2.4,4),x*26,-14.8,z*26);}
+ }
  flush(S0,g);
  /* rotating habitat ring */
  const ring=new THREE.Group();ring.position.y=-12;g.add(ring);
@@ -484,6 +500,10 @@ function stationObj(st){
   const a=i/6*PI*2,a2=a+PI/6;
   P(R0,MT.dark,B(21,1.2,1.2),Math.cos(a)*29.5,0,Math.sin(a)*29.5,-a);
   P(R0,MT.stHull,B(9,5,6),Math.cos(a2)*40,0,Math.sin(a2)*40,-a2);P(R0,MT.win,B(6.5,1.1,6.3),Math.cos(a2)*40,.6,Math.sin(a2)*40,-a2);
+ }
+ if(tier>=2){ /* outer habitat ring */
+  P(R0,MT.metal,new THREE.TorusGeometry(54,1.6,8,56).rotateX(PI/2));
+  for(let i=0;i<6;i++){const a=i/6*PI*2+PI/6,a2=a+PI/6;P(R0,MT.dark,B(13,1,1),Math.cos(a)*47.5,0,Math.sin(a)*47.5,-a);P(R0,MT.stHull,B(8,4.4,5.4),Math.cos(a2)*54,0,Math.sin(a2)*54,-a2);P(R0,MT.win,B(5.6,1,5.6),Math.cos(a2)*54,.5,Math.sin(a2)*54,-a2);}
  }
  flush(R0,ring);
  /* turrets on the shoulder of the core */
@@ -499,6 +519,8 @@ function stationObj(st){
  const dishG=new THREE.Group();dishG.position.y=33;g.add(dishG);
  const dg=new THREE.LatheGeometry([[0,0],[3,.6],[5.6,2.2],[7,3.6]].map(p=>new THREE.Vector2(p[0],p[1])),16),dm=new THREE.Mesh(dg,MT.metal);dm.position.set(7.5,1,0);dm.rotation.z=-.7;dm.castShadow=true;dishG.add(dm);own.push(dg);
  const fg=C(.3,.3,5,4),fm=new THREE.Mesh(fg,MT.dark);fm.position.set(9.2,3,0);fm.rotation.z=-.7;dishG.add(fm);own.push(fg);
+ /* build 96: the structure scales with the station's size (st.vk); the defence-field ring below does not */
+ {const body=new THREE.Group();for(const c of[...g.children])body.add(c);body.scale.setScalar(st.vk||1);g.add(body);}
  /* defense-field ring at ship height, soft glow on the floor */
  const am=new THREE.MeshBasicMaterial({color:col.clone().multiplyScalar(1.2),transparent:true,opacity:.16,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),ag=new THREE.RingGeometry(st.aura-1.2,st.aura,120).rotateX(-PI/2),au=new THREE.Mesh(ag,am);au.position.y=-6;g.add(au);
  const flm=new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:.09,blending:THREE.AdditiveBlending,depthWrite:false}),flg=new THREE.CircleGeometry(st.aura*1.06,72).rotateX(-PI/2),fd=new THREE.Mesh(flg,flm);fd.position.y=FLOOR+3;fd.visible=false;g.add(fd);

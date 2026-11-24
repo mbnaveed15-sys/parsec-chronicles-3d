@@ -758,9 +758,12 @@ function sanitize(d){
   s.trail[r]=pick(d.trail&&d.trail[r],Number.isInteger(d.trail&&d.trail[r])?s.trails[r]:arrList(d.trail&&d.trail[r],TRAILS.length));
   s.trim[r]=pick(d.trim&&d.trim[r],Number.isInteger(d.trim&&d.trim[r])?s.trims[r]:arrList(d.trim&&d.trim[r],TRIMS.length));
   s.best[r]=Math.max.apply(null,s.ships[r]);
+  {const mp=d.mpick&&d.mpick[r];if(Array.isArray(mp)){(s.mpick||(s.mpick={}))[r]=mp.filter(k=>typeof k==='string'&&/^s[0-3]$/.test(k)).filter((k,i,a)=>a.indexOf(k)===i);}const ml=d.mlv&&d.mlv[r];if(ml&&typeof ml==='object'){const o=(s.mlv||(s.mlv={}))[r]={};for(const k in ml)if(/^(w[0-5]|s[0-3]@\d+)$/.test(k))o[k]=clamp((+ml[k])|0,1,MODLV[r]);}}
   s.wmods[r]={};const wm=d.wmods&&d.wmods[r]||{};for(const k in wm){const i=+k;if(i>=0&&i<WEAPONS.length&&wm[k])s.wmods[r][i]=1;}
   const md=d.mods||{};s.mods[r]={};
   for(const k in md){const i=+k;if(i>=0&&i<SHIPS.length&&Array.isArray(md[k]&&md[k][r]))s.mods[r][i]=md[k][r].filter(v=>Number.isInteger(v)&&v>=0&&v<MODS.length);}
+  /* build 96 fix: the game stores ship mods as mods[difficulty][ship]; loading a pilot only read mods[ship][difficulty], so fitted ship mods were dropped */
+  {const mr=md[r];if(mr&&typeof mr==='object'&&!Array.isArray(mr))for(const k in mr){const i=+k;if(i>=0&&i<SHIPS.length&&Array.isArray(mr[k]))s.mods[r][i]=mr[k].filter((v,j,a)=>Number.isInteger(v)&&v>=0&&v<MODS.length&&a.indexOf(v)===j);}}
   }
  }
  migrate(s,d);initGear(s);
@@ -1140,11 +1143,11 @@ function mkShip(idx,team,x,y,ang){
 function mkPlayer(x,y,ang){
  const u=dUp(save),sh=dGet(save,'ship',0),c=SHIPS[sh],mods=(save.mods[save.diff]&&save.mods[save.diff][sh])||[],s=mkShip(sh,0,x,y,ang);
  s.isPlayer=true;s.hull=HULLS[dGet(save,'hull',0)].c;s.trail=TRAILS[dGet(save,'trail',0)].c;s.trim=TRIMS[dGet(save,'trim',0)].c;s.prism=!!TRAILS[dGet(save,'trail',0)].rb;
- s.maxHp=s.hp=Math.round((c.hp+u.hull*20)*(mods.includes(0)?1.1:1));s.maxSh=s.sh=Math.round(c.hp*.4+u.hull*12);
- s.spd=Math.min(11,(c.spd+u.engines*.3)*(mods.includes(1)?1.06:1));s.acc0=.16*(1+u.engines*.04);s.turn0=.055;
- s.dm=c.dmg/10*(mods.includes(2)?1.08:1);s.wl=u.weapons;s.heatMax=100+u.engines*25;s.plasmaMax=s.plasma=5+u.cap;
+ s.maxHp=s.hp=Math.round((c.hp+u.hull*20)*(1+smodK(sh,0)));s.maxSh=s.sh=Math.round(c.hp*.4+u.hull*12);
+ s.spd=Math.min(11,(c.spd+u.engines*.3)*(1+smodK(sh,1)));s.acc0=.16*(1+u.engines*.04);s.turn0=.055;
+ s.dm=c.dmg/10*(1+smodK(sh,2));s.wl=u.weapons;s.heatMax=100+u.engines*25;s.plasmaMax=s.plasma=5+u.cap;
  s.cdm=Math.max(.4,1-u.cap*.03);s.crit=Math.min(.45,u.target*.008);s.critM=1.5+u.target*.022;s.arc=(10+u.arc*9)*DEG;
- s.ramB=u.hull*3;s.ramRes=mods.includes(3)?.9:1;s.capLv=u.cap;s.restock=0;
+ s.ramB=u.hull*3;s.ramRes=1-smodK(sh,3);s.capLv=u.cap;s.restock=0;
  return s;
 }
 function mkAI(s,ram){
@@ -1197,8 +1200,13 @@ function mkStation(team,x,y,mul){
     health and damage x0.7 / x1.2 / x1.8 overall (Cadet unchanged), +0/+1/+2 shots per burst, fire 0/10/20% faster, zones 0/10/20% wider */
  const X=team?stDiff():null;
  if(X){const k=X.k;S.hp=S.maxHp=Math.round(S.hp*k);for(const t of S.turrets)t.hp=t.maxHp=Math.round(S.hp*.11);S.gen.hp=S.gen.maxHp=Math.round(S.hp*.18);S.burn*=k;S.tdmg*=k;S.burst+=X.b;S.tcd=Math.round(S.tcd*X.f);S.aura=Math.round(S.aura*X.z);S.atk=Math.round(S.atk*X.z);S.dk=k;S.gf=X.f;}
+ /* build 96: enemy stations look as strong as they are. Size grows +3.5% per sector and +6% per difficulty step (Cadet/Pilot/Ace),
+    capped at x1.45; style tier 0-3 = sector/3 + difficulty rank (armour plating, outer ring, gun housings, crown spikes, hotter glow).
+    The hitbox (r), turret mounts and vertical clearance grow with the model. Cadet Sector 1 is unchanged (x1, tier 0). */
+ if(team){const v=stLook();S.vk=v.k;S.tier=v.t;S.r=Math.round(46*v.k);}
  return S;
 }
+function stLook(){const sea=(M&&M.sea)|0,rk=((DIFFS[save&&save.diff]||{}).rank)|0;return{k:Math.min(1.45,1+sea*.035+rk*.06),t:Math.min(3,(sea/3|0)+rk)};}
 function stDiff(){const d=save&&save.diff;return d==='ace'?{k:1.8/1.4,b:2,f:.8,z:1.2}:d==='pilot'?{k:1.2,b:1,f:.9,z:1.1}:{k:1,b:0,f:1,z:1};}
 
 /* ---------------- MISSION SETUP ---------------- */
@@ -1270,13 +1278,34 @@ function spawnWave(no){
 
 /* ---------------- DAMAGE ---------------- */
 function hasWmod(i){return !!(save&&save.wmods&&save.wmods[save.diff]&&save.wmods[save.diff][i]);}
+/* build 96: mod picks and mod levels.
+   Weapon mods open when their weapon unlocks (Laser/Vulcan S1, Ion S2, Plasma S3, Missile S4, Sing S5).
+   Ship mods: one pick in Sectors 1, 3, 5 and 7 on this difficulty. Picking unlocks that mod (you still pay to fit it); the others stay locked
+   until the next pick. Ship mods already owned count as picked; owned weapon mods are kept.
+   Levels: a mod starts at Lv 1. Level ceiling by difficulty (Cadet 3, Pilot 4, Ace 5) opens across the sectors like the gear ceiling.
+   Level n costs the mod's base price x 2 / 4 / 7 / 12 (Lv 2 / 3 / 4 / 5). */
+const MODLV={cadet:3,pilot:4,ace:5},MOD_LVK=[1,1,2,4,7,12];
+const MODEFF=[[.10,.025],[.06,.015],[.08,.02],[.10,.025]],WMODEFF=[.12,.03];
+function mpList(){const d=save.diff,P=save.mpick||(save.mpick={}),L=P[d]||(P[d]=[]);for(let j=L.length-1;j>=0;j--)if(L[j][0]!=='s')L.splice(j,1);const Ms=save.mods&&save.mods[d]||{};for(const sh in Ms)for(const i of Ms[sh]||[])if(!L.includes('s'+i))L.push('s'+i);return L;}
+function mpTotal(){return save.free?99:Math.min(4,Math.ceil(gearSector()/2));}
+function mpLeft(){return Math.max(0,mpTotal()-mpList().length);}
+function mpHas(k){if(save.free)return true;if(k[0]==='w')return wUnlocked(+k[1])||hasWmod(+k[1]);return mpList().includes(k);}
+function mlvAt(s){const c=MODLV[save.diff]||3;return 1+Math.floor((c-1)*s/10);}
+function mlvCap(){return save.free?(MODLV[save.diff]||3):mlvAt(gearSector());}
+function mlvOpens(l){for(let s=1;s<=10;s++)if(mlvAt(s)>=l)return s;return 10;}
+function mlvGet(k){const o=save&&save.mlv&&save.mlv[save.diff];return Math.max(1,Math.min(MODLV[save.diff]||5,(o&&o[k])|0));}
+function mlvSet(k,v){const o=save.mlv||(save.mlv={});(o[save.diff]||(o[save.diff]={}))[k]=v;}
+function mlvCost(base,l){return Math.round(base*(MOD_LVK[l+1]||12));}
+function wmodBonus(i){return hasWmod(i)?WMODEFF[0]+WMODEFF[1]*(mlvGet('w'+i)-1):0;}
+function smodK(sh,i){const L=(save.mods[save.diff]&&save.mods[save.diff][sh])||[];if(!L.includes(i))return 0;const e=MODEFF[i];return e[0]+e[1]*(mlvGet('s'+i+'@'+sh)-1);}
+function nextPickSector(){const g=gearSector();return g>=7?0:g+(g%2?2:1);}
 function wmodCost(i){return 900+i*250;}
 function dtMul(t,dt){if(!dt)return 1;if(t.kind==='ship'){if(dt==='laser'&&t.sh>0)return 1.12;if(dt==='ion'&&t.sh>0)return .82;if(dt==='plasma')return 1.08;if(dt==='vulcan')return t.sh>0?.92:1.06;}if(t.kind==='station'){if(dt==='ion')return 1.25;if(dt==='msl')return .9;if(dt==='plasma')return 1.15;}return 1;}
 function projectorGuard(t){if(t.team!==1)return false;for(const e of enemies){if(e.dead||e.special!=='shield')continue;if(Math.hypot(e.x-t.x,e.y-t.y)<340)return true;}return false;}
 function damage(t,amt,src,o){
  if(t.dead||!(amt>0))return;o=o||0;
  if(o.dt)amt*=dtMul(t,o.dt);
- if(o.dt&&src&&src.isPlayer){const wi={laser:0,ion:1,plasma:2,vulcan:3,msl:4}[o.dt];if(wi!=null&&hasWmod(wi))amt*=1.12;}
+ if(o.dt&&src&&src.isPlayer){const wi={laser:0,ion:1,plasma:2,vulcan:3,msl:4}[o.dt];if(wi!=null&&hasWmod(wi))amt*=1+wmodBonus(wi);}
  if(t.kind==='ship'&&projectorGuard(t))amt*=.55;
  if(t.isPlayer&&M&&M.dmgTaken)amt*=M.dmgTaken;
  if(t.cargo&&M&&M.sea>=5)amt*=.75; /* build 91: late-sector freighters (Sector 6+) take 25% less damage */
@@ -1733,7 +1762,7 @@ function collide(){
   for(const r of rocks){if(r.dead)continue;const rd=Math.hypot(r.x-s.x,r.y-s.y);if(rd>r.r+s.r)continue;if(s.z*140>Math.sqrt(Math.max(0,r.r*r.r-rd*rd))+s.r*.4)continue;const imp=bump(s,r.x,r.y,r.r+s.r*.4);if(imp)crash(s,imp,r);if(s.dead)break;}
   if(s.dead)continue;
   for(const st of stations){
-   if(st.dead||st.team===s.team||s.z*140>110)continue;const d=Math.hypot(st.x-s.x,st.y-s.y);if(d>st.r+s.r)continue;
+   if(st.dead||st.team===s.team||s.z*140>110*(st.vk||1))continue;const d=Math.hypot(st.x-s.x,st.y-s.y);if(d>st.r+s.r)continue;
    if(s.ai&&s.ai.ram&&st.team!==s.team){damage(st,s.maxHp*.4+15,s,0);kill(s,null,{noCount:true});break;}
    const imp=bump(s,st.x,st.y,st.r);if(imp)crash(s,imp,null);
   }
@@ -1913,9 +1942,9 @@ function stepStations(){
   for(let i=0;i<3;i++){
    const tu=st.turrets[i];if(tu.dead)continue;if(tu.cd>0)tu.cd--;
    if(!tg){tu.ang+=.008;tu.burst=0;continue;}
-   const a=turA(i),tx=st.x+Math.cos(a)*30,ty=st.y+Math.sin(a)*30,dd=Math.hypot(tg.x-tx,tg.y-ty),tt=dd/10;
+   const a=turA(i),tx=st.x+Math.cos(a)*30*(st.vk||1),ty=st.y+Math.sin(a)*30*(st.vk||1),dd=Math.hypot(tg.x-tx,tg.y-ty),tt=dd/10;
    const des=Math.atan2(tg.y+tg.vy*tt-ty,tg.x+tg.vx*tt-tx),df=angDiff(tu.ang,des),far=clamp((dd-st.atk)/Math.max(1,STATION_DET-st.atk),0,1),spr=.03+.11*far;tu.ang+=clamp(df,-.07,.07);
-   if(tu.burst>0){if(--tu.bt<=0){tu.bt=6;tu.burst--;shoot('turret',st.team,st,tx+Math.cos(tu.ang)*14,ty+Math.sin(tu.ang)*14,Math.min(.5,tg.z),tu.ang+rand(-spr,spr),10,Math.max(72,Math.ceil(dd/10)+12),st.tdmg,st.team?'#ff6a5a':'#7dffd8',4);sfxAt('laser',tx,ty);if(tu.burst===0)tu.cd=(st.tcd||105)+i*17;}}
+   if(tu.burst>0){if(--tu.bt<=0){tu.bt=6;tu.burst--;shoot('turret',st.team,st,tx+Math.cos(tu.ang)*14*(st.vk||1),ty+Math.sin(tu.ang)*14*(st.vk||1),Math.min(.5,tg.z),tu.ang+rand(-spr,spr),10,Math.max(72,Math.ceil(dd/10)+12),st.tdmg,st.team?'#ff6a5a':'#7dffd8',4);sfxAt('laser',tx,ty);if(tu.burst===0)tu.cd=(st.tcd||105)+i*17;}}
    else if(tu.cd<=0&&Math.abs(df)<.25&&!M.done){tu.burst=st.burst||4;tu.bt=0;}
   }
   if(tg){if(!st.sec)st.sec=stationGuns(st);stepStationGuns(st,tg,bd);}
@@ -1953,7 +1982,7 @@ function stepProjectiles(){
    dead=true;break;
   }
   if(!dead)for(const r of rocks){if(r.dead)continue;const rd=Math.hypot(r.x-p.x,r.y-p.y);if(rd>r.r+p.r)continue;if(p.z*140>Math.sqrt(Math.max(0,r.r*r.r-rd*rd)))continue;dead=true;if(!r.moon)damage(r,p.dmg*(p.type==='vulcan'?3:1),p.owner,0);break;}
-  if(!dead)for(const st of stations){if(st.dead||st.team===p.team||p.z*140>110)continue;const dx=st.x-p.x,dy=st.y-p.y;if(dx*dx+dy*dy<(st.r+p.r)*(st.r+p.r)){dead=true;hitTally(p.owner);damage(st,p.dmg,p.owner,{crit:p.crit,acc:p.type==='vulcan',dt:p.type});break;}}
+  if(!dead)for(const st of stations){if(st.dead||st.team===p.team||p.z*140>110*(st.vk||1))continue;const dx=st.x-p.x,dy=st.y-p.y;if(dx*dx+dy*dy<(st.r+p.r)*(st.r+p.r)){dead=true;hitTally(p.owner);damage(st,p.dmg,p.owner,{crit:p.crit,acc:p.type==='vulcan',dt:p.type});break;}}
   if(!dead){
    const foes=p.team?team0:enemies;
    for(const s of foes){
@@ -2617,18 +2646,47 @@ function drawRock2D(r){
  c.restore();
 }
 function drawStation2D(st){
- const c=ctx,col=st.team?'#b23a30':'#4fc3b0';w2s(st.x,st.y,0);if(!onScr(st.aura+40))return;const x=SX,y=SY;
+ const SK=st.vk||1,c=ctx,col=st.team?'#b23a30':'#4fc3b0';w2s(st.x,st.y,0);if(!onScr(st.aura+40))return;const x=SX,y=SY;
  c.strokeStyle=rgba(col,.18);c.lineWidth=1.5;c.setLineDash([5,9]);c.beginPath();c.ellipse(x,y,st.aura,st.aura*TILT,0,0,TAU);c.stroke();c.setLineDash([]);
  c.strokeStyle=rgba(col,.14);c.lineWidth=1;c.setLineDash([6,10]);c.beginPath();c.ellipse(x,y,st.atk,st.atk*TILT,0,0,TAU);c.stroke();c.setLineDash([]);
- c.fillStyle='rgba(0,0,0,.3)';c.beginPath();c.ellipse(x+12,y+24,56,30,0,0,TAU);c.fill();
- c.save();c.translate(x,y-6);c.scale(1,TILT);
+ c.fillStyle='rgba(0,0,0,.3)';c.beginPath();c.ellipse(x+12*SK,y+24*SK,56*SK,30*SK,0,0,TAU);c.fill();
+ c.save();c.translate(x,y-6*SK);c.scale(SK,TILT*SK);stTier2D(c,st,col,0);
  for(let i=0;i<3;i++){c.save();c.rotate(armA(i));c.fillStyle='#4a525e';c.fillRect(20,-3,34,6);c.fillStyle='#16284a';c.fillRect(34,-11,24,22);c.strokeStyle='rgba(120,170,255,.55)';c.lineWidth=1;c.strokeRect(34,-11,24,22);c.beginPath();c.moveTo(46,-11);c.lineTo(46,11);c.stroke();c.fillStyle='#ff7a30';c.fillRect(25,-1,9,2);if(M.t%70<12){c.fillStyle=col;c.fillRect(58,-2,4,4);}c.restore();}
  c.save();c.rotate(st.rot);c.strokeStyle='#59626e';c.lineWidth=2;for(let i=0;i<6;i++){const a=i*TAU/6;c.beginPath();c.moveTo(Math.cos(a)*24,Math.sin(a)*24);c.lineTo(Math.cos(a)*40,Math.sin(a)*40);c.stroke();}c.strokeStyle='#7a8490';c.lineWidth=4;c.beginPath();c.arc(0,0,40,0,TAU);c.stroke();for(let i=0;i<6;i++){c.save();c.rotate(i*TAU/6+TAU/12);c.fillStyle='#9aa2ac';c.fillRect(35.5,-4,9,8);c.fillStyle='#ffe2a0';c.fillRect(38.5,-3,1.6,6);c.restore();}c.restore();
  c.beginPath();for(let i=0;i<6;i++){const a=i*TAU/6;c.lineTo(Math.cos(a)*26,Math.sin(a)*26);}c.closePath();
  const g=c.createLinearGradient(-26,-26,26,26);g.addColorStop(0,st.flash>0?'#ffffff':'#a8b2be');g.addColorStop(1,'#39414c');c.fillStyle=g;c.fill();c.strokeStyle=col;c.lineWidth=3;c.shadowColor=col;c.shadowBlur=12;c.stroke();c.shadowBlur=0;
  c.fillStyle='#ffe2a0';for(let i=0;i<24;i++){const a=(i+.5)*TAU/24;c.fillRect(Math.cos(a)*21-.9,Math.sin(a)*21-.9,1.8,1.8);}c.beginPath();c.arc(0,0,12,0,TAU);c.fillStyle='#6a7480';c.fill();c.strokeStyle=col;c.lineWidth=1.5;c.stroke();{const da=st.rot*2.2;c.fillStyle='#c8d0d8';c.beginPath();c.arc(Math.cos(da)*7,Math.sin(da)*7,5,0,TAU);c.fill();c.strokeStyle='#39414c';c.lineWidth=1;c.stroke();}if(M.t%70<12){c.fillStyle=col;c.beginPath();c.arc(0,0,2.5,0,TAU);c.fill();}
+ stTier2D(c,st,col,1);
  for(let i=0;i<3;i++){const a=turA(i),tx=Math.cos(a)*30,ty=Math.sin(a)*30;if(st.turrets[i].dead){c.fillStyle='#15181d';c.beginPath();c.arc(tx,ty,5,0,TAU);c.fill();continue;}const ta=st.turrets[i].ang;c.strokeStyle='#15181d';c.lineWidth=4;c.beginPath();c.moveTo(tx,ty);c.lineTo(tx+Math.cos(ta)*16,ty+Math.sin(ta)*16);c.stroke();c.fillStyle='#2a3038';c.beginPath();c.arc(tx,ty,6,0,TAU);c.fill();}
  c.restore();
+}
+/* build 96: 2D style tiers for stronger stations. layer 0 draws under the arms, layer 1 over the core. */
+function stTier2D(c,st,col,layer){
+ const t=st.tier|0;if(!t)return;
+ if(layer===0){
+  if(t>=3){c.strokeStyle=rgba(col,.35+Math.sin(M.t*.08)*.12);c.lineWidth=2;c.setLineDash([3,6]);c.beginPath();c.arc(0,0,64,0,TAU);c.stroke();c.setLineDash([]);}
+  if(t>=2){c.save();c.rotate(-st.rot*.7);c.strokeStyle='#5a636e';c.lineWidth=3;c.beginPath();c.arc(0,0,52,0,TAU);c.stroke();
+   for(let i=0;i<6;i++){c.save();c.rotate(i*TAU/6);c.strokeStyle='#3a414c';c.lineWidth=1.5;c.beginPath();c.moveTo(42,0);c.lineTo(52,0);c.stroke();c.fillStyle='#8a929c';c.fillRect(48,-4,8,8);c.fillStyle=col;c.fillRect(50.5,-1,3,2);c.restore();}c.restore();}
+  return;
+ }
+ for(let i=0;i<3;i++)for(const sd of[-.52,.52]){c.save();c.rotate(turA(i)+sd);
+  if(t>=3){c.fillStyle='#262b33';c.beginPath();c.moveTo(31,-3.5);c.lineTo(41,0);c.lineTo(31,3.5);c.closePath();c.fill();c.fillStyle=col;c.fillRect(38,-1,3,2);}
+  c.fillStyle=st.team?'#5a1f1a':'#1f5a50';c.beginPath();c.moveTo(24,-8);c.lineTo(31,-6);c.lineTo(31,6);c.lineTo(24,8);c.closePath();c.fill();c.strokeStyle=rgba(col,.8);c.lineWidth=1;c.stroke();
+  if(t>=2){c.fillStyle='#3a414c';c.fillRect(27,-2,8,4);c.fillStyle='#15181d';c.fillRect(35,-1,6,2);}
+  c.restore();}
+}
+/* build 96: one button for a mod card: pick (asks twice) -> install -> level up -> maxed */
+function modBtn(key,own,base,act,i,name,lkey){
+ const s=save,L=MODLV[s.diff],lk=lkey||key;
+ if(!own){
+  if(key[0]==='w'&&!mpHas(key)){const w=WEAPONS[+key[1]].n+' unlocks in Sector '+WUNLOCK[+key[1]];return'<button class="btn sm dis" data-tip="'+esc(name+': '+w)+'">🔒 '+w+'</button>';}
+  if(!mpHas(key)){if(mpLeft()<=0){const why=nextPickSector()?'Next pick in Sector '+nextPickSector():'No picks left';return'<button class="btn sm dis" data-tip="'+esc(name+': '+why)+'">🔒 '+why+'</button>';}
+   const cf=UI.mpConfirm===key;return'<button class="btn sm'+(cf?' gold':'')+'" data-a="mpick" data-v="'+key+'">'+(cf?'Confirm: pick '+esc(name)+'?':'Pick to unlock ('+mpLeft()+' left)')+'</button>';}
+  return'<button class="btn sm'+(!s.free&&dGold(s)<base?' warn':' primary')+'" data-a="'+act+'" data-v="'+i+'">'+(act==='wmod'?'Install':'Fit')+' · ◈ '+fmtNum(base)+'</button>';
+ }
+ const lv=mlvGet(lk);if(lv>=L)return'<button class="btn sm on dis">Maxed · Lv '+lv+'</button>';
+ if(lv>=mlvCap()){const w='Lv '+(lv+1)+' unlocks in Sector '+mlvOpens(lv+1);return'<button class="btn sm dis" data-tip="'+esc(name+': '+w)+'">🔒 '+w+'</button>';}
+ const c=mlvCost(base,lv);return'<button class="btn sm'+(!s.free&&dGold(s)<c?' warn':'')+'" data-a="modlv" data-v="'+lk+'|'+base+'">Lv '+(lv+1)+' · ◈ '+fmtNum(c)+'</button>';
 }
 function rangeSpawn(count,around){
  const c=around&&player?{x:player.x,y:player.y}:(M&&M.rangeCenter)||{x:player?player.x:0,y:player?player.y:0};
@@ -3060,7 +3118,7 @@ function fitScrolls(){
   el.style.maxHeight='none';
  }
 }
-function show(name,arg,keep){
+function show(name,arg,keep){syncAssist();
  if(name&&save&&state!=='play'){try{wUnlockCheck();}catch(e){}}
  const el=$('ui'),st=keep?el.scrollTop:0,mem=keep?uiMemo(el):null;if(name!=='settings'){UI.rebind=null;UI.rebindPend=null;}UI.cur=name;UI.arg=arg;
  if(!name){el.className='';el.innerHTML='';UI.shown='';return;}
@@ -3074,6 +3132,14 @@ function show(name,arg,keep){
  {const fh=document.getElementById('fthint');if(fh&&name!=='hangar')fh.remove();}if(name==='hangar'&&state==='menu')setTimeout(firstRunHints,600);
  if(!keep&&state!=='play'&&name&&UI.shown!==name){UI.shown=name;uiFocusFirst();setTimeout(function(){const a=document.activeElement;if(!(a&&a.closest&&a.closest('#ui')))uiFocusFirst();},160);}
 }
+/* build 96: Ace keeps its own Pilot Assist profile, all off by default. Cadet/Pilot keep the existing one.
+   The live settings.assist* values belong to settings.assistProf ('std' or 'ace'); switching difficulty swaps the profiles. */
+const AKEYS=['assist','assistAim','assistCm','assistClimb','assistBrace','assistRoll'];
+function syncAssist(){try{if(!save||!settings)return;const want=(save.diff==='ace'&&!save.free)?'ace':'std',cur=settings.assistProf||'std';if(want===cur)return;
+ const snap={};for(const k of AKEYS)snap[k]=!!settings[k];settings['assist_'+cur]=snap;
+ let p=settings['assist_'+want],first=false;if(!p||typeof p!=='object'){p={};for(const k of AKEYS)p[k]=want!=='ace';first=want==='ace';}
+ for(const k of AKEYS)settings[k]=!!p[k];settings.assistProf=want;saveSettings();
+ if(first)toast('Ace: Pilot Assist starts off. Turn it on in Systems → Auto.');}catch(e){}}
 function refresh(){show(UI.cur,UI.arg,true);}
 /* build 94: a refresh rebuilds the menu, so remember every scrolled inner list (Cosmetics columns, Shop grid, Settings panes) and the focused button, and put them back */
 function uiKey(n){return n.tagName+'.'+(typeof n.className==='string'?n.className.replace(/\b(kb|on|in)\b/g,'').trim():'');}
@@ -3151,7 +3217,7 @@ const SCREENS={
   let d='';for(const k in DIFFS)d+='<button class="btn sm'+(s.diff===k?' on':'')+'" data-a="diff" data-v="'+k+'" title="Separate loadout, ships and unlocks">'+DIFFS[k].n+'</button>';
   const sqc=wingCap(),sqh=squadHealthy(),sqFee=rebuildFee(),sqMiss=Math.max(0,sqc-sqh);let dots='';for(let i=0;i<sqc;i++)dots+='<span class="'+(i<sqh?'':'down')+'">'+(i<sqh?'WING':'DOWN')+'</span>';
   const nl=nextLv(),nsea=Math.min(9,(nl-1)/50|0),nm=(nl-1)%50+1,nmode=modeFor(nm),NS=SEAS[nsea],MO=MODES[nmode];
-  const hull=Math.round((sh.hp+u.hull*20)*(mods.includes(0)?1.1:1)),shield=Math.round(sh.hp*.4+u.hull*12);
+  const hull=Math.round((sh.hp+u.hull*20)*(1+smodK(dGet(s,'ship',0),0))),shield=Math.round(sh.hp*.4+u.hull*12);
   const tech=UPK.reduce((a,k)=>a+(u[k]||0),0),techMax=DMAX[s.diff]*UPK.length;
   const load=loadoutFor(),pct=(v,m)=>Math.max(4,Math.min(100,Math.round(v/m*100)));
   return'<div class="scr">'+hdr('Hangar · '+esc(s.name))+
@@ -3240,10 +3306,12 @@ const SCREENS={
  shop(){
   const t=UI.tab,s=save,r=reached(),du=dUp(s);
   let h='<div class="scr shopscr">'+hdr('Shop · '+DIFFS[s.diff].n)+'<span class="dim sml">Gear, ships and unlocks are separate on '+DIFFS[s.diff].n+'. Tech ceiling '+DMAX[s.diff]+' per track'+(gearCeil()<DMAX[s.diff]?' · Sector '+gearSector()+' allows up to Lv '+gearCeil()+' (+'+(DMAX[s.diff]/10)+' per sector)':'')+'.</span><div class="tabs"><button class="btn sm'+(t==='up'?' on':'')+'" data-a="tab" data-v="up">Upgrades</button><button class="btn sm'+(t==='dock'?' on':'')+'" data-a="tab" data-v="dock">Dockyard</button><button class="btn sm'+(t==='mods'?' on':'')+'" data-a="tab" data-v="mods">Ship Mods</button><button class="btn sm'+(t==='wmod'?' on':'')+'" data-a="tab" data-v="wmod">Weapon Mods</button></div>';
+  if(t==='wmod'||t==='mods'){const mpUsed=mpList(),mpT=mpTotal(),mpL=mpLeft(),MPN=k=>MODS[+k[1]].n;const LVL='Mod levels go up to Lv '+(MODLV[s.diff])+' on '+DIFFS[s.diff].n+(mlvCap()<MODLV[s.diff]?' · Lv '+(mlvCap()+1)+' opens in Sector '+mlvOpens(mlvCap()+1):'')+'.';if(t==='wmod'){h+='<div class="panel mpbar" style="max-width:1100px;margin-bottom:.6em"><span class="sml">Each weapon mod opens when its weapon unlocks. '+LVL+'</span></div>';}else{h+='<div class="panel mpbar" style="max-width:1100px;margin-bottom:.6em"><b>Mod picks: '+(s.free?'all open':mpL+' of '+mpT+' free')+'</b>'+(s.free?'':' <span class="sml" style="opacity:.75">· ship mod picks in Sectors 1, 3, 5 and 7 · '+(nextPickSector()?'next pick in Sector '+nextPickSector():'all 4 picks earned')+'</span>')+'<br><span class="sml">Chosen: '+(mpUsed.length?mpUsed.map(MPN).join(', '):'none yet')+'</span><br><span class="sml" style="opacity:.75">Pick a mod to unlock it, then fit it. '+LVL+'</span></div>';}}
   if(t==='wmod'){
    h+='<div class="grid g3" style="max-width:1100px">';
    for(let i=0;i<WEAPONS.length;i++){const own=hasWmod(i),cost=wmodCost(i);
-    h+='<div class="panel col"><h3 style="margin:0 0 .3em">'+WEAPONS[i].n+' MOD</h3><p class="dim sml">Permanent +12% damage with '+WEAPONS[i].n+'.</p><button class="btn '+(own?'':'primary')+'" '+(own?'disabled':'data-a="wmod" data-v="'+i+'"')+'>'+(own?'INSTALLED':'INSTALL · ◈ '+fmtNum(cost))+'</button></div>';
+    const key='w'+i,lv=own?mlvGet(key):0,pct=Math.round((WMODEFF[0]+WMODEFF[1]*(Math.max(1,lv)-1))*100);
+    h+='<div class="panel col"><h3 style="margin:0 0 .3em">'+WEAPONS[i].n+' MOD'+(own?' <span class="tag">Lv '+lv+' / '+MODLV[s.diff]+'</span>':'')+'</h3><p class="dim sml">Permanent +'+pct+'% damage with '+WEAPONS[i].n+(own&&lv<MODLV[s.diff]?' (next level +'+Math.round(WMODEFF[1]*100)+'%)':'')+'.</p>'+modBtn(key,own,cost,'wmod',i,WEAPONS[i].n+' mod')+'</div>';
    }
    return h+'</div></div></div>';
   }
@@ -3281,8 +3349,10 @@ const SCREENS={
   }else{
    const c=SHIPS[dGet(s,'ship',0)],own=(s.mods[s.diff]&&s.mods[s.diff][dGet(s,'ship',0)])||[];
    h+='<div class="panel"><div class="row"><div style="flex:0 0 200px;max-width:40%"><canvas class="pv" data-idx="'+c.i+'" width="312" height="192"></canvas></div><div class="col" style="flex:1"><h3>Mods for '+c.n+'</h3><span class="dim sml">Mods are fitted to one hull and stay with it. Switch ships in the Dockyard to fit another.</span></div></div><div class="ugrid" style="margin-top:.8em">';
-   MODS.forEach((md,i)=>{const has=own.includes(i),dl=diffLock(md),lock=!has&&(r<md.at||!!dl),why=dl||('Unlocks at mission '+md.at);
-    h+='<div class="card'+(has?' sel':'')+(lock?' lock':'')+'"><h3>'+md.n+'</h3><span class="dim sml">'+md.d+'</span>'+(has?'<button class="btn sm on dis">Fitted</button>':lock?'<button class="btn sm dis" data-tip="'+esc(md.n+': '+why)+'">🔒 '+why+'</button>':'<button class="btn sm'+(!s.free&&dGold(s)<md.cost?' warn':'')+'" data-a="buymod" data-v="'+i+'">Fit · ◈ '+fmtNum(md.cost)+'</button>')+'</div>';});
+   const shI=dGet(s,'ship',0);
+   MODS.forEach((md,i)=>{const has=own.includes(i),dl=diffLock(md),key='s'+i,lk='s'+i+'@'+shI,lv=has?mlvGet(lk):0,e=MODEFF[i],pct=Math.round((e[0]+e[1]*(Math.max(1,lv)-1))*1000)/10;
+    const desc=md.d.replace(/\d+%/,pct+'%');
+    h+='<div class="card'+(has?' sel':'')+(dl&&!has?' lock':'')+'"><h3>'+md.n+(has?' <span class="tag">Lv '+lv+' / '+MODLV[s.diff]+'</span>':'')+'</h3><span class="dim sml">'+desc+(has&&lv<MODLV[s.diff]?' (next level '+(i===3?'−':'+')+(e[1]*100)+'%)':'')+'</span>'+(dl&&!has?'<button class="btn sm dis" data-tip="'+esc(md.n+': '+dl)+'">🔒 '+dl+'</button>':modBtn(key,has,md.cost,'buymod',i,md.n,lk))+'</div>';});
    h+='</div></div>';
   }
   return h+'</div>';
@@ -3338,7 +3408,7 @@ const SCREENS={
    ['audio','Comms','<h3>Comms / Audio</h3>'+sl('a','music','Music volume',0,1,.05)+sl('a','sfx','SFX volume',0,1,.05)],
    ['display','Optics','<h3>Optics / Display</h3>'+'<div class="set" data-n="preset quality performance"><span>Preset</span><div class="seg"><button class="btn sm" data-a="preset" data-v="quality">Quality</button><button class="btn sm" data-a="preset" data-v="balanced">Balanced</button><button class="btn sm" data-a="preset" data-v="performance">Performance</button></div></div>'+seg('gfx','Graphics',[['high','High 3D'],['low','Low 3D'],['classic','Classic 2D']])+(SOFT_GL?'<p class="dim sml" style="color:#ffb96a">Software graphics detected'+(SOFT_AUTO?' — auto-switched to Classic 2D this session':'')+' ('+SOFT_GPU.slice(0,64)+'). Enable hardware acceleration in your browser for smooth 3D.</p>':'')+(window.R3D&&R3D.failed?'<p class="dim sml">3D unavailable on this device — running Classic 2D.</p>':'')+seg('res','Resolution',[['1080','1080p'],['native','Native'],['720','720p']])+'<div class="set" data-n="renderer"><span>Renderer</span><b style="flex:1;text-align:left;font-weight:400" class="dim">'+rendererLabel()+'</b></div>'+sl('s','hud','HUD size',.7,1.6,.05)+sl('s','shake','Screen shake',0,1.5,.05)+sl('s','text','Text size',.8,1.4,.05)+seg('glow','Player glow outline',[[true,'On'],[false,'Off']])+seg('mapGrid','Big map grid',[[true,'On'],[false,'Off']],'map coordinates')+seg('hc','High contrast UI',[[true,'On'],[false,'Off']])+seg('cb','Colour-blind palette',[['none','Off'],['deuter','Deuteranopia'],['protan','Protanopia'],['tritan','Tritanopia']])+seg('tailCam','Tail camera',[['float','Floating'],['fixed','Fixed']])+seg('lang','Language',[['en','English'],['ur','اردو']])+'<div class="row" style="margin-top:.7em"><button class="btn sm warn" data-a="resetcfg">Reset all settings</button></div>'],
    ['flight','Flight','<h3>Flight Control</h3>'+sl('s','turn','Turn speed',.6,1.6,.05)+sl('s','thrust','Thrust power',.6,1.6,.05)+'<h3 style="margin-top:.6em">Bindings</h3>'+bindRow('fire','Fire')+bindRow('lock','Lock target')+bindRow('brace','Brace')+bindRow('flak','Flak')+bindRow('a1','Ability 1')+bindRow('a2','Ability 2')+'<p class="dim sml">Click a binding, then press the new key. If the key is already in use you will be warned first; Esc cancels.</p><p class="dim sml">Classic 2D uses the diorama scheme: W/S thrust, A/D turn, R/F climb and brace. Cockpit pitch and throttle are 3D-only.</p>'],
-   ['autopilot','Autopilot','<h3>Pilot Assist</h3><p class="setnote">Auto-aim locks the nearest hostile and flies the lead solution; the AIM touch button is hidden while Auto-aim is on.</p>'+seg('assist','Pilot assist',[[true,'On'],[false,'Off']])+(settings.assist||q?seg('assistAim','Auto-aim',[[true,'On'],[false,'Off']])+seg('assistCm','Auto countermeasures',[[true,'On'],[false,'Off']],'flak flares missiles plasma countermeasures')+'<p class="setnote">Flak shoots down plasma; flares spoil missiles. Both fire automatically on their own cooldowns.</p>'+seg('assistClimb','Auto-climb obstacles',[[true,'On'],[false,'Off']])+seg('assistBrace','Auto-brace (shield)',[[true,'On'],[false,'Off']])+seg('assistRoll','Auto-roll dodge',[[true,'On'],[false,'Off']])+seg('hideAssisted','Hide assisted buttons',[[true,'On'],[false,'Off']]):'<p class="dim sml">Turn Pilot assist on to configure its individual behaviours.</p>')],
+   ['autopilot','Autopilot','<h3>Pilot Assist</h3><p class="setnote">'+((settings.assistProf==='ace')?'These apply to Ace only. Ace starts with every assist off; Cadet and Pilot keep their own settings.':'These apply to Cadet and Pilot. Ace keeps its own set, off by default.')+'</p><p class="setnote">Auto-aim locks the nearest hostile and flies the lead solution; the AIM touch button is hidden while Auto-aim is on.</p>'+seg('assist','Pilot assist',[[true,'On'],[false,'Off']])+(settings.assist||q?seg('assistAim','Auto-aim',[[true,'On'],[false,'Off']])+seg('assistCm','Auto countermeasures',[[true,'On'],[false,'Off']],'flak flares missiles plasma countermeasures')+'<p class="setnote">Flak shoots down plasma; flares spoil missiles. Both fire automatically on their own cooldowns.</p>'+seg('assistClimb','Auto-climb obstacles',[[true,'On'],[false,'Off']])+seg('assistBrace','Auto-brace (shield)',[[true,'On'],[false,'Off']])+seg('assistRoll','Auto-roll dodge',[[true,'On'],[false,'Off']])+seg('hideAssisted','Hide assisted buttons',[[true,'On'],[false,'Off']]):'<p class="dim sml">Turn Pilot assist on to configure its individual behaviours.</p>')],
    ['controls','Bindings','<h3>Control Bindings</h3>'+seg('land','Force landscape',[[true,'On'],[false,'Off']])+seg('haptics','Haptic feedback (vibration)',[[true,'On'],[false,'Off']],'vibrate touch')+sl('s','tbAlpha','Touch button opacity',.2,1,.05)+'<p class="dim sml">Vibration works on most Android phones; iPhone browsers do not support it.</p>'+'<div class="row" style="margin-top:.6em"><button class="btn sm" data-a="layout">Touch layout editor</button><button class="btn sm" data-a="fs">Fullscreen</button></div><p class="dim sml" style="margin-top:.7em">Key bindings are listed in the Manual (H).</p>']
   ];
   const TABS=[['audio','Comms'],['display','Optics'],['flight','Flight'],['autopilot','Auto'],['controls','Bindings']];
@@ -3452,7 +3522,7 @@ function applyContract(c){
  if(c.mode==='recon'){M.scanNodes=[];M.detected=0;const rn=Math.max(1,M.scanTotal||3);for(let i=0;i<rn;i++){let x=0,y=0;for(let k=0;k<40;k++){const a=rand(TAU),d=420+i*230+(k>20?rand(-150,250):0);x=clamp(player.x+Math.cos(a)*d,-WORLD_HALF+150,WORLD_HALF-150);y=clamp(player.y+Math.sin(a)*d,-WORLD_HALF+150,WORLD_HALF-150);if(reconClear(x,y))break;}M.scanNodes.push({x,y,prog:0,done:false});}}
  msg('CONTRACT: '+c.mods.map(m=>m[1]).join(' · '),110);
 }
-function launchMission(lv,hunt){cockpitThrottle=0;if(TEL&&TEL.thr)TEL.thr.value=0;startMission(lv,hunt);window.__perf=16;if(PENDING_CONTRACT){applyContract(PENDING_CONTRACT);PENDING_CONTRACT=null;QA_MODE=null;}if(viewMode!==0&&player){applyCockpitWorld(true);player.z=Math.max(player.z,.4);}state='play';show('');acc=0;if(touchOn&&!TEL)buildTouch();layoutTouch();audioInit();missionBoot();}
+function launchMission(lv,hunt){syncAssist();cockpitThrottle=0;if(TEL&&TEL.thr)TEL.thr.value=0;startMission(lv,hunt);window.__perf=16;if(PENDING_CONTRACT){applyContract(PENDING_CONTRACT);PENDING_CONTRACT=null;QA_MODE=null;}if(viewMode!==0&&player){applyCockpitWorld(true);player.z=Math.max(player.z,.4);}state='play';show('');acc=0;if(touchOn&&!TEL)buildTouch();layoutTouch();audioInit();missionBoot();}
 function leaveMission(){state='menu';M=null;player=null;lockT=null;layoutTouch();}
 function checkDeeds(r){
  const got=[];r=r||{};
@@ -3528,7 +3598,7 @@ const ACT={
  copy(){const t=$('iot');t.select();try{if(navigator.clipboard&&navigator.clipboard.writeText)navigator.clipboard.writeText(t.value).then(()=>toast('Copied'),()=>{document.execCommand('copy');toast('Copied');});else{document.execCommand('copy');toast('Copied');}}catch(e){toast('Select the text and copy it manually');}},
  doimp(v){let d=null;try{d=JSON.parse($('iot').value);}catch(e){}if(!d||typeof d!=='object'||!d.up||!d.prog){sfx('deny');toast('That is not a valid pilot export');return;}const s=sanitize(d);if(!LS.set('pc_save_'+pilotFree(),s)){storeFull();return;}toast('Pilot imported');show('pilots');},
  free(){save=freeSave();slotIdx=-1;show('hangar');},
- diff(v){if(DIFFS[v]){save.diff=v;persist();refresh();}},
+ diff(v){if(DIFFS[v]){save.diff=v;UI.mpConfirm=null;persist();refresh();}},
  sector(v){UI.zoom=uiNodePos(document.querySelector('.snode[data-v="'+(+v)+'"]'));show('missions',+v);},
  secpick(v){v=+v;const op=save.free||v===0||starsOf(v*50)>0;if(UI.secSel===v&&op){ACT.sector(v);return;}UI.secSel=v;refresh();if(document.documentElement.classList.contains('kbnav')){const n=document.querySelector('.snode.sel');if(n){try{n.focus({preventScroll:true});}catch(e){}kbMark(n);}}},
  mission(v){show('brief',{lv:+v});},
@@ -3550,14 +3620,19 @@ const ACT={
  },
  school(){startSchool();},
  rangeReset(){if(!M||M.mode!=='range')return;player.x=M.rangeCenter.x;player.y=M.rangeCenter.y;player.vx=player.vy=0;M.rdps=0;rangeSpawn(4,false);msg('RANGE RESET',60);},
- wmod(v){const i=+v;if(hasWmod(i))return;const cost=wmodCost(i);if(!save.free&&dGold(save)<cost){sfx('deny');toast('Not enough credits');return;}if(!save.wmods)save.wmods={};if(!save.wmods[save.diff])save.wmods[save.diff]={};if(!save.free)dGoldAdd(save,-cost);save.wmods[save.diff][i]=1;persist();sfx('buy');toast(WEAPONS[i].n+' mod installed');refresh();},
+ wmod(v){const i=+v;if(hasWmod(i)||!mpHas('w'+i))return;const cost=wmodCost(i);if(!save.free&&dGold(save)<cost){sfx('deny');toast('Not enough credits');return;}if(!save.wmods)save.wmods={};if(!save.wmods[save.diff])save.wmods[save.diff]={};if(!save.free)dGoldAdd(save,-cost);save.wmods[save.diff][i]=1;persist();sfx('buy');toast(WEAPONS[i].n+' mod installed');refresh();},
  settab(v){UI.setTab=v;UI.setQ='';refresh();},
  setclear(){UI.setQ='';refresh();},
  buyup(k){const u=UPG[k],du=dUp(save);if(!u||du[k]>=DMAX[save.diff]||upLock(k))return;if(!spend(upCost(k)))return;du[k]++;persist();sfx('buy');deedPing();refresh();},
  rebuild(){const cap=wingCap();if(!save||save.free)return;if((save.sq[save.diff]|0)>=cap){toast('Squadron at full strength');return;}const fee=rebuildFee();if(!spend(fee))return;save.sq[save.diff]=(save.sq[save.diff]|0)+1;persist();sfx('buy');toast('Wing rebuilt');refresh();},
  buyship(v){const c=SHIPS[+v],L=dList(save,'ships');if(!c||L.includes(c.i)||reached()<c.at||diffLock(c))return;if(!spend(c.cost))return;L.push(c.i);dSet(save,'ship',c.i);save.best[save.diff]=Math.max(save.best[save.diff]||0,c.i);persist();sfx('buy');toast(c.n+' commissioned');deedPing();refresh();},
  useship(v){const i=+v;if(dList(save,'ships').includes(i)){dSet(save,'ship',i);persist();refresh();}},
- buymod(v){const i=+v,md=MODS[i],sh=dGet(save,'ship',0),M=save.mods[save.diff]||(save.mods[save.diff]={}),own=M[sh]||(M[sh]=[]);if(!md||own.includes(i)||reached()<md.at||diffLock(md))return;if(!spend(md.cost))return;own.push(i);persist();sfx('buy');refresh();},
+ mpick(v){const k=String(v);if(!/^s[0-3]$/.test(k)||mpHas(k))return;if(diffLock(MODS[+k[1]]))return;if(mpLeft()<=0){sfx('deny');toast(nextPickSector()?'No mod picks left · next in Sector '+nextPickSector():'No mod picks left');return;}
+  if(UI.mpConfirm!==k){UI.mpConfirm=k;refresh();return;}UI.mpConfirm=null;mpList().push(k);persist();sfx('buy');toast(MODS[+k[1]].n+' unlocked');refresh();},
+ modlv(v){const p=String(v).split('|'),k=p[0],base=+p[1];if(!/^(w[0-5]|s[0-3]@\d+)$/.test(k)||!(base>0))return;
+  if(k[0]==='w'){if(!hasWmod(+k[1])||base!==wmodCost(+k[1]))return;}else{const i=+k[1],sh=+k.split('@')[1];if(sh!==dGet(save,'ship',0)||!((save.mods[save.diff]||{})[sh]||[]).includes(i)||base!==MODS[i].cost)return;}
+  const lv=mlvGet(k);if(lv>=MODLV[save.diff]||lv>=mlvCap())return;if(!spend(mlvCost(base,lv)))return;mlvSet(k,lv+1);persist();sfx('buy');toast('Mod upgraded to Lv '+(lv+1));refresh();},
+ buymod(v){const i=+v,md=MODS[i],sh=dGet(save,'ship',0),M=save.mods[save.diff]||(save.mods[save.diff]={}),own=M[sh]||(M[sh]=[]);if(!md||own.includes(i)||!mpHas('s'+i)||diffLock(md))return;if(!spend(md.cost))return;own.push(i);persist();sfx('buy');refresh();},
  buyhull(v){const i=+v,o=HULLS[i],L=dList(save,'hulls');if(!o||L.includes(i)||reached()<o.at||diffLock(o))return;if(!spend(o.cost))return;L.push(i);dSet(save,'hull',i);UI.pvH=-1;persist();sfx('buy');toast(o.n+' applied');deedPing();refresh();},
  usehull(v){const i=+v;if(dList(save,'hulls').includes(i)){dSet(save,'hull',i);UI.pvH=-1;persist();refresh();}},
  buytrail(v){const i=+v,o=TRAILS[i],L=dList(save,'trails');if(!o||L.includes(i)||reached()<o.at||diffLock(o))return;if(!spend(o.cost))return;L.push(i);dSet(save,'trail',i);UI.pvT=-1;persist();sfx('buy');toast(o.n+' applied');deedPing();refresh();},
