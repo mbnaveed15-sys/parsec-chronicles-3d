@@ -484,6 +484,25 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
 .modgrid .mcard .btn{white-space:normal;margin-top:auto}
 @media (max-width:560px){.modgrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-height:460px){.mhead{margin-bottom:.3em}.mhead canvas.pv{width:72px!important;height:44px!important;flex-basis:72px}.mpanel{padding:.4em .6em}.mpc{margin-bottom:.35em;padding:.3em .7em}}
+
+/* build 98: no scrollbars in menus; lists page instead (see uiFit) */
+#ui,#ui *{scrollbar-width:none!important}
+#ui.fit{overflow:hidden!important}
+#ui .endpanel,#ui .panel.narrow{max-height:none!important;overflow:visible!important}
+#ui::-webkit-scrollbar,#ui *::-webkit-scrollbar{display:none!important;width:0!important;height:0!important}
+#ui .cscroll{position:static!important;overflow:visible!important;padding-right:0}
+#ui .cosgrid>.cosm-col,#ui .dockgrid>.cosm-col{min-height:0}
+#ui .setpane{overflow:visible!important}
+#ui .ugrid,#ui .dockcols,#ui .setcols{height:auto!important;max-height:none!important;overflow:visible!important}
+.pgbar{display:flex;align-items:center;justify-content:center;gap:.6em;grid-column:1/-1;margin:.35em 0 0;font-size:.9em}
+.pgbar .btn{min-width:2.6em}
+.pgbar .btn[disabled]{opacity:.35;pointer-events:none}
+.pgbar span{opacity:.85;font-variant-numeric:tabular-nums}
+.dgrid{grid-template-columns:repeat(auto-fill,minmax(min(230px,100%),1fr))!important;max-width:1200px!important}
+.dgrid .card{padding:.45em .6em;gap:.25em}
+.manualnav .btn.on{border-color:var(--c);color:var(--c)}
+.help table.hrow{table-layout:fixed;width:100%;margin:0}
+.help table.hrow td:first-child{width:34%}
 </style>
 </head>
 <body>
@@ -2475,7 +2494,7 @@ function resize(){
  else{cw=iw;ch=ih;app.style.width=cw+'px';app.style.height=ch+'px';app.style.transform='none';}
  $('rot').style.display=(portrait&&!settings.land)?'flex':'none';
  VS=Math.min(1,ch/680);W=cw/VS;H=ch/VS;updateViewportMetrics();
- size2D();fitScrolls();
+ rotMedia(ROT);size2D();fitScrolls();
  if(window.R3D&&R3D.resize){try{R3D.resize();}catch(e){}}
  layoutTouch();
 }
@@ -3169,25 +3188,75 @@ document.addEventListener('pointerdown',function(e){
  tipTarget=el;TIPEL.textContent=el.getAttribute('data-tip')||'';TIPEL.classList.add('on');tipPlace(e.clientX,e.clientY);
  clearTimeout(TIPT);TIPT=setTimeout(tipHide,2600);
 },true);
-function fitScrolls(){
- const ui=document.getElementById('ui');if(!ui||!ui.offsetHeight)return;
- const appH=(function(){var a=document.getElementById('app');return (a&&a.clientHeight)||(typeof ch==='number'&&ch>0?ch:window.innerHeight||ui.offsetHeight);})();
- const nodes=ui.querySelectorAll('.dockcols,.setcols,.ugrid');
- for(let i=0;i<nodes.length;i++){
-  const el=nodes[i];
-  if(!el.getClientRects().length)continue;
-  // distance from the top of the app to this block, in logical (untransformed) px
-  let top=0,n=el;
-  while(n&&n!==ui){top+=n.offsetTop;n=n.offsetParent;}
-  let avail=appH-top-18;
-  if(avail<120)avail=120;
-  el.style.height=avail+'px';
-  el.style.maxHeight='none';
- }
+/* build 98: menus never scroll. uiPrep() marks long lists as pageable; uiFit() first tries a gentle scale (down to 0.8), otherwise
+   pages the lists to the space left and zooms whatever still overflows (down to 0.5). Runs after every render and on resize. */
+function pgItems(c){return Array.prototype.filter.call(c.children,e=>!e.classList.contains('pgbar'));}
+function pgHead(e){return e&&(e.tagName==='H3'||e.classList.contains('cgrp'));}
+function pgSet(c,n){
+ const it=pgItems(c),key=c.dataset.pg,tot=it.length;
+ c._n=Math.min(n,tot);if(!(n<tot)){it.forEach(e=>e.style.display='');if(c._pgbar){c._pgbar.remove();c._pgbar=null;}return;}
+ n=Math.max(1,n|0);const pages=Math.ceil(tot/n);let pi=UI.pg[key];
+ if(pi==null){const s=it.findIndex(e=>e.classList.contains('sel'));pi=s>0?Math.floor(s/n):0;}
+ pi=clamp(pi|0,0,pages-1);UI.pg[key]=pi;
+ it.forEach((e,i)=>{e.style.display=(i>=pi*n&&i<(pi+1)*n)?'':'none';});
+ const last=it[Math.min(tot,(pi+1)*n)-1];if(pgHead(last)&&n>1)last.style.display='none';
+ let bar=c._pgbar;if(!bar){bar=document.createElement('div');bar.className='pgbar';c._pgbar=bar;if(c.tagName==='TBODY'){const t=c.closest('table');t.parentNode.insertBefore(bar,t.nextSibling);}else c.appendChild(bar);}
+ bar.innerHTML='<button class="btn sm" data-a="pg" data-v="'+key+':-1"'+(pi?'':' disabled')+' aria-label="Previous page">◀</button><span>'+(pi+1)+' / '+pages+'</span><button class="btn sm" data-a="pg" data-v="'+key+':1"'+(pi<pages-1?'':' disabled')+' aria-label="Next page">▶</button>';
 }
+function uiPrep(ui){
+ const scr=ui.querySelector('.scr');if(!scr||scr.dataset.prep)return scr;scr.dataset.prep='1';const cur=UI.cur||'x';
+ const mark=(el,key)=>{if(el&&!el.dataset.pg)el.dataset.pg=key;};
+ mark(scr.querySelector('.plist'),'pilots');
+ if(cur==='deeds'){const g=scr.querySelector('.grid.g2');if(g){g.classList.add('dgrid');mark(g,'deeds');}}
+ scr.querySelectorAll('.cscroll').forEach((c,i)=>mark(c,cur+(UI.tab||'')+'-c'+i));
+ if(cur==='shop'&&UI.tab==='up')mark(scr.querySelector('.ugrid'),'up');
+ scr.querySelectorAll('.setpane').forEach((c,i)=>mark(c,'set-'+(UI.setTab||'')+i));
+ if(cur==='hangar')mark(scr.querySelector('.baylower'),'hangar');
+ if(cur==='missions')scr.querySelectorAll('.mlist,.mgrid2').forEach((c,i)=>mark(c,'mis'+i));
+ const hp=scr.querySelector('.panel.help');
+ if(hp){/* manual: one section at a time (the buttons above switch), long tables page by rows */
+  const kids=Array.prototype.slice.call(hp.childNodes),secs=[];let curS=null;
+  for(const k of kids){const id=k.id&&/^sec-/.test(k.id)?k.id.slice(4):null;if(id||!curS){curS={id:id||'intro',nodes:[]};secs.push(curS);}curS.nodes.push(k);}
+  if(secs.length>1&&secs[0].id==='intro'){secs[1].nodes=secs[0].nodes.concat(secs[1].nodes);secs.shift();}
+  const want=secs.some(s=>s.id===UI.helpSec)?UI.helpSec:secs[0].id;hp.innerHTML='';
+  for(const s of secs){const d=document.createElement('div');d.className='hsec';d.dataset.sec=s.id;if(s.id!==want)d.style.display='none';s.nodes.forEach(n=>d.appendChild(n));hp.appendChild(d);}
+  hp.querySelectorAll('.hsec').forEach(d=>{if(d.style.display==='none')return;
+   /* split each table into one-row tables so the section pages cleanly, then page the section */
+   d.querySelectorAll('table').forEach(t=>{const rows=t.querySelectorAll('tr');if(rows.length<2)return;const f=document.createDocumentFragment();rows.forEach(r=>{const nt=document.createElement('table');nt.className=(t.className+' hrow').trim();nt.appendChild(r);f.appendChild(nt);});t.replaceWith(f);});
+   mark(d,'help-'+d.dataset.sec);});
+  scr.querySelectorAll('.manualnav [data-a="jump"]').forEach(b=>b.classList.toggle('on',b.dataset.v===want));
+ }
+ return scr;
+}
+function uiFit(){
+ const ui=document.getElementById('ui');if(!ui||!ui.classList.contains('on')||UI.cur==='layout')return;const scr=uiPrep(ui);if(!scr)return;UI.pg=UI.pg||{};
+ scr.style.scale='';const H=ui.clientHeight,W=ui.clientWidth;if(!H||!W)return;
+ const C=Array.prototype.filter.call(scr.querySelectorAll('[data-pg]'),c=>c.offsetParent!==null||c.tagName==='TBODY');
+ C.forEach(c=>pgSet(c,Infinity));
+ /* layout size, unaffected by the entrance animation or by our own scale */
+ const need=()=>Math.max(scr.offsetHeight/H,scr.scrollWidth/W);
+ let z=1/need();
+ if(z<.8&&C.length){
+  const sizeOf=f=>C.forEach(c=>pgSet(c,Math.max(+(c.dataset.pgmin||1),Math.ceil(pgItems(c).length*f))));
+  let lo=0,hi=1;for(let k=0;k<9;k++){const f=(lo+hi)/2;sizeOf(f);if(need()<=1/.9)lo=f;else hi=f;}
+  sizeOf(lo||1e-4);
+  /* then let each list take any room left (columns of different lengths) */
+  for(const c of C){const tot=pgItems(c).length;while(c._n<tot){const n0=c._n;pgSet(c,n0+1);if(need()>1/.9){pgSet(c,n0);break;}}}
+  z=1/need();
+ }
+ z=need()<=1?1:Math.min(1,Math.max(.42,z*.995));
+ if(z<1){scr.style.transformOrigin='50% 0';scr.style.scale=String(z);}
+ ui.classList.toggle('fit',need()*z<=1.002);ui.scrollTop=0;
+}
+const RMQ=new WeakMap(),RST=new WeakMap();let RMQON=null;
+function rotUnits(v,on){return on?v.replace(/(\d)(dvh|svh|vh|dvw|svw|vw)\b/g,(m,d,u)=>d+({dvh:'dvw',svh:'svw',vh:'vw',dvw:'dvh',svw:'svh',vw:'vh'})[u]):v;}
+function rotRules(rs,on){for(const r of rs){if(r.type===4){if(!RMQ.has(r))RMQ.set(r,r.media.mediaText);const t=RMQ.get(r);r.media.mediaText=on?t.replace(/(max|min)-(width|height)/g,(m,a,b)=>a+'-'+(b==='width'?'height':'width')):t;rotRules(r.cssRules,on);}
+ else if(r.type===1&&r.style){let o=RST.get(r);if(o===undefined){o=null;for(let i=0;i<r.style.length;i++){const k=r.style[i],v=r.style.getPropertyValue(k);if(/\d(dvh|svh|vh|dvw|svw|vw)\b/.test(v)){(o=o||[]).push([k,v,r.style.getPropertyPriority(k)]);}}RST.set(r,o);}if(o)for(const [k,v,p] of o)r.style.setProperty(k,rotUnits(v,on),p);}}}
+function rotMedia(on){on=!!on;if(on===RMQON)return;RMQON=on;try{for(const sh of document.styleSheets){let rs;try{rs=sh.cssRules;}catch(e){continue;}rotRules(rs,on);}}catch(e){}}
+function fitScrolls(){try{uiFit();}catch(e){if(window.console)console.warn('uiFit',e);}}
 function show(name,arg,keep){syncAssist();
  if(name&&save&&state!=='play'){try{wUnlockCheck();}catch(e){}}
- const el=$('ui'),st=keep?el.scrollTop:0,mem=keep?uiMemo(el):null;if(name!=='settings'){UI.rebind=null;UI.rebindPend=null;}UI.cur=name;UI.arg=arg;
+ const el=$('ui'),st=keep?el.scrollTop:0,mem=keep?uiMemo(el):null;if(name!=='settings'){UI.rebind=null;UI.rebindPend=null;}UI.cur=name;UI.arg=arg;if(!keep||!UI.pg)UI.pg={};
  if(!name){el.className='';el.innerHTML='';UI.shown='';return;}
  var html=SCREENS[name](arg);
  if(state==='menu'&&HUBNAME[name])html=html.replace(/(<div class="scr[^>]*>)/,'$1'+hubNav(name));
@@ -3719,7 +3788,8 @@ const ACT={
  set(v,el){const k=el.dataset.k;settings[k]=v==='true'?true:v==='false'?false:v;if(k==='gfx'){SOFT_AUTO=false;if(v==='classic')LS.del('pc_force3d');else LS.set('pc_force3d',1);if(SOFT_GL&&v!=='classic')toast('Software graphics — 3D will stutter. Enable hardware acceleration.');}saveSettings();applyGfx();resize();refresh();},
  preset(v){SOFT_AUTO=false;const P={quality:{gfx:'high',res:isTouch?'1080':'native',shake:1,glow:true},balanced:{gfx:'high',res:'1080',shake:1,glow:true},performance:{gfx:'low',res:'720',shake:.3,glow:false}}[v];if(!P)return;Object.assign(settings,P);saveSettings();applyGfx();resize();refresh();toast('Preset: '+v.charAt(0).toUpperCase()+v.slice(1));},
  resetcfg(){SOFT_AUTO=false;Object.assign(settings,{glow:true,hud:1,shake:1,text:1,turn:1,thrust:1,land:true,assist:true,assistAim:true,assistClimb:true,assistCm:true,assistBrace:true,assistRoll:true,hideAssisted:false,haptics:true,tbAlpha:1,mapGrid:true,gfx:isTouch?'low':'high',res:'1080',hc:false,lang:'en',cb:'none',tailCam:'float',binds:Object.assign({},DEF_BINDS)});Object.assign(audioSet,{music:.55,sfx:.8});saveSettings();applyGfx();setVol();resize();refresh();toast('Settings reset to defaults');},
- jump(v){const el=document.getElementById('sec-'+v);if(el&&el.scrollIntoView)el.scrollIntoView({block:'start',behavior:'smooth'});},
+ jump(v){UI.helpSec=String(v);UI.pg={};show('help');},
+ pg(v){const a=String(v).split(':');UI.pg[a[0]]=(UI.pg[a[0]]|0)+(+a[1]||0);fitScrolls();const b=document.querySelector('#ui .pgbar [data-v="'+v+'"]:not([disabled])');if(b)b.focus();},
  layout(){if(!save){toast('Select a pilot first — layouts are saved per pilot');return;}editLayout=true;if(!TEL)buildTouch();show('layout');layoutTouch();},
  lmirror(){save.touch.mirror=!save.touch.mirror;layoutTouch();refresh();},
  lsize(v){save.touch.scale=clamp((save.touch.scale||1)+(+v)*.1,.6,1.6);layoutTouch();},
