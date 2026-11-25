@@ -493,6 +493,8 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
 #ui .cscroll{position:static!important;overflow:visible!important;padding-right:0}
 #ui .cosgrid>.cosm-col,#ui .dockgrid>.cosm-col{min-height:0}
 #ui .setpane{overflow:visible!important}
+/* build 99: the Systems page grows with its rows so uiFit sees them and pages them */
+#ui .setscr{height:auto!important;min-height:100%}
 #ui .ugrid,#ui .dockcols,#ui .setcols{height:auto!important;max-height:none!important;overflow:visible!important}
 .pgbar{display:flex;align-items:center;justify-content:center;gap:.6em;grid-column:1/-1;margin:.35em 0 0;font-size:.9em}
 .pgbar .btn{min-width:2.6em}
@@ -3200,6 +3202,8 @@ function pgSet(c,n){
  pi=clamp(pi|0,0,pages-1);UI.pg[key]=pi;
  it.forEach((e,i)=>{e.style.display=(i>=pi*n&&i<(pi+1)*n)?'':'none';});
  const last=it[Math.min(tot,(pi+1)*n)-1];if(pgHead(last)&&n>1)last.style.display='none';
+ /* build 99: a heading pushed off the end of a page now starts the next page instead of vanishing */
+ if(pi>0&&pgHead(it[pi*n-1])&&n>1)it[pi*n-1].style.display='';
  let bar=c._pgbar;if(!bar){bar=document.createElement('div');bar.className='pgbar';c._pgbar=bar;if(c.tagName==='TBODY'){const t=c.closest('table');t.parentNode.insertBefore(bar,t.nextSibling);}else c.appendChild(bar);}
  bar.innerHTML='<button class="btn sm" data-a="pg" data-v="'+key+':-1"'+(pi?'':' disabled')+' aria-label="Previous page">◀</button><span>'+(pi+1)+' / '+pages+'</span><button class="btn sm" data-a="pg" data-v="'+key+':1"'+(pi<pages-1?'':' disabled')+' aria-label="Next page">▶</button>';
 }
@@ -3210,7 +3214,7 @@ function uiPrep(ui){
  if(cur==='deeds'){const g=scr.querySelector('.grid.g2');if(g){g.classList.add('dgrid');mark(g,'deeds');}}
  scr.querySelectorAll('.cscroll').forEach((c,i)=>mark(c,cur+(UI.tab||'')+'-c'+i));
  if(cur==='shop'&&UI.tab==='up')mark(scr.querySelector('.ugrid'),'up');
- scr.querySelectorAll('.setpane').forEach((c,i)=>mark(c,'set-'+(UI.setTab||'')+i));
+ scr.querySelectorAll('.setpane>.setgroup').forEach((c,i)=>mark(c,'set-'+(UI.setTab||'')+i));
  if(cur==='hangar')mark(scr.querySelector('.baylower'),'hangar');
  if(cur==='missions')scr.querySelectorAll('.mlist,.mgrid2').forEach((c,i)=>mark(c,'mis'+i));
  const hp=scr.querySelector('.panel.help');
@@ -3237,11 +3241,15 @@ function uiFit(){
  const need=()=>Math.max(scr.offsetHeight/H,scr.scrollWidth/W);
  let z=1/need();
  if(z<.8&&C.length){
+  /* build 99: size pages while showing page 1, then go back to the page the player was on (sizing on a later, shorter
+     page made it think everything fitted, so Next jumped straight to the last few items) */
+  const was={};C.forEach(c=>{const k=c.dataset.pg;was[k]=UI.pg[k];UI.pg[k]=0;});
   const sizeOf=f=>C.forEach(c=>pgSet(c,Math.max(+(c.dataset.pgmin||1),Math.ceil(pgItems(c).length*f))));
   let lo=0,hi=1;for(let k=0;k<9;k++){const f=(lo+hi)/2;sizeOf(f);if(need()<=1/.9)lo=f;else hi=f;}
   sizeOf(lo||1e-4);
   /* then let each list take any room left (columns of different lengths) */
   for(const c of C){const tot=pgItems(c).length;while(c._n<tot){const n0=c._n;pgSet(c,n0+1);if(need()>1/.9){pgSet(c,n0);break;}}}
+  C.forEach(c=>{const k=c.dataset.pg;if(was[k]==null)delete UI.pg[k];else UI.pg[k]=was[k];pgSet(c,c._n);});
   z=1/need();
  }
  z=need()<=1?1:Math.min(1,Math.max(.42,z*.995));
