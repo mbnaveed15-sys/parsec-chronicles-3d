@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#05070c">
-<title>Parsec Chronicles 3D · Build 100</title>
+<title>Parsec Chronicles 3D · Build 101</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
@@ -530,6 +530,29 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
 #ui .morecue span{position:absolute;left:-.6em;right:-.7em;bottom:0;padding:1.4em 0 .3em;text-align:center;font-size:.72em;letter-spacing:.14em;color:#7de3ff;
  background:linear-gradient(rgba(5,12,22,0),rgba(5,12,22,.96) 70%);transition:opacity .2s}
 #ui div.scrolly.atend .morecue span{opacity:0}
+/* build 101: Deeds tabs, totals and the scrolling list */
+#ui .dtabs{display:flex;flex-wrap:wrap;gap:.3em;width:100%;max-width:1200px;margin:.45em 0 .35em}
+#ui .dtabs .btn{padding:.3em .6em;font-size:.82em}
+#ui .dtabs .dn{opacity:.65;font-size:.85em;margin-left:.15em}
+#ui .dwrap{position:relative;width:100%;max-width:1200px}
+#ui .dscroll .dgrid{margin-top:0;padding-bottom:.4em}
+#ui .dhd{grid-column:1/-1;margin:.6em 0 0}
+#ui .dgrid>.dhd:first-child{margin-top:.2em}
+#ui .dsum{width:100%;max-width:1200px}
+#ui .dtot{display:flex;justify-content:space-between;gap:1em;flex-wrap:wrap;margin-top:.35em;font-size:.92em}
+.dpb{height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
+.dpb i{display:block;height:100%;background:var(--c)}
+.dpb.big{height:8px;margin-top:.3em}.dpb.big i{background:var(--gold)}
+#ui .dcyc{display:none;align-items:center;justify-content:space-between;gap:.5em;width:100%;margin:.4em 0 .35em}
+#ui .dcyc b{flex:1;text-align:center;font-weight:600}
+@media (max-width:600px){#ui .dtabs{display:none}#ui .dcyc{display:flex}#ui .dsum .row.sml{display:none}}
+/* build 101: Hangar Next operation panel fills its column: Deploy and the Hunt / Practice / School row share the spare height, 44 px+ tap targets */
+#ui .bayops{box-sizing:border-box;min-height:100%}
+#ui .bayops>.btn.primary.wide{flex:1 1 auto;min-height:58px!important;max-height:100px;font-size:.74em!important;display:flex!important;align-items:center;justify-content:center;flex-wrap:wrap;gap:.15em .6em;margin-top:.3em!important}
+#ui .bayops>.row{flex:1 1 auto;align-items:stretch;max-height:80px;gap:.4em!important}
+#ui .bayops>.row .btn{min-height:54px!important;height:auto;font-size:.66em!important;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.2;padding:.4em .35em!important;margin-top:0!important}
+@media(max-height:430px){#ui .bayops{gap:.3em!important}#ui .bayops>.btn.primary.wide{font-size:.66em!important;min-height:56px!important}#ui .bayops>.row .btn{font-size:.6em!important;min-height:54px!important}}
+@media (max-height:500px){#ui .dtabs .dn{display:none}#ui .dsum .row.sml{display:none}#ui .dtabs{margin:.3em 0 .25em;gap:.2em}#ui .dtabs .btn{padding:.25em .45em;font-size:.74em}#ui .dtot{margin-top:0}}
 #ui .ugrid,#ui .dockcols,#ui .setcols{height:auto!important;max-height:none!important;overflow:visible!important}
 .pgbar{display:flex;align-items:center;justify-content:center;gap:.6em;grid-column:1/-1;margin:.35em 0 0;font-size:.9em}
 .pgbar .btn{min-width:2.6em}
@@ -732,18 +755,102 @@ const DEEDS=[
  {id:'tr5',c:'Collection',n:'Afterglow',d:'Own 5 engine trails.',g:400},{id:'trAll',c:'Collection',n:'Light Show',d:'Own every engine trail.',g:2500},
  {id:'upMax',c:'Collection',n:'Fully Tuned',d:'Max out any upgrade.',g:800},{id:'wing6',c:'Collection',n:'Full Wing',d:'Fly with 6 wingmates.',g:2000}
 ];
-/* progress [current, goal] for counter-based deeds; the rest are earned by a single mission result */
+/* build 101: deeds for the whole 500-mission campaign. New deeds are only ever appended (saves store earned deeds by id). */
+const DCATS=['Campaign','Sectors','Ranks','Combat','Arsenal','Missions','Defence','Frontier','Skill','Wealth','Collection'];
+(function(){
+ const P=(c,id,n,d,g)=>{DEEDS.push({id,c,n,d,g});};
+ const SG=[300,500,800,1200,1600,2200,2800,3600,4500,6000];
+ for(let i=0;i<10;i++){const S=SEAS[i];
+  P('Sectors','cap'+(i+1),S.boss+' Falls','Defeat '+S.boss+', captain of '+S.n+' (mission '+(i*50+50)+').',SG[i]);
+  P('Sectors','clr'+(i+1),S.n+' Charted','Clear all 50 missions of '+S.n+' ('+(i*50+1)+'–'+(i*50+50)+').',Math.round(SG[i]*1.5));
+  P('Sectors','gold'+(i+1),S.n+' Mastered','Earn 3★ on every mission of '+S.n+'.',SG[i]*2);}
+ const C='Campaign';
+ P(C,'r25','First Steps','Unlock mission 25.',200);
+ P(C,'r150','Beyond the Beacons','Unlock mission 150.',1500);P(C,'r200','Deep Charter','Unlock mission 200.',2000);
+ P(C,'r300','No Turning Back','Unlock mission 300.',4000);P(C,'r350','Dark Water','Unlock mission 350.',5000);
+ P(C,'r400','Ghost Lanes','Unlock mission 400.',6000);P(C,'r450','The Last Fifty','Unlock mission 450.',7000);
+ P(C,'w1000','Fleet Admiral','Win 1,000 missions.',10000);P(C,'w1500','Grand Admiral','Win 1,500 missions.',20000);
+ P(C,'st1500','Star Chart','Earn 1,500 stars in total.',8000);P(C,'st2500','Supernova','Earn 2,500 stars in total.',12000);P(C,'st4500','Every Star in the Sky','Earn all 4,500 stars (every mission, 3★, on all three difficulties).',25000);
+ const R='Ranks';
+ P(R,'pSec1','Pilot Navigator','Clear a whole sector on Pilot difficulty.',1500);P(R,'pSec5','Pilot\'s Wings','Clear 5 sectors on Pilot difficulty.',6000);P(R,'pSec10','Pilot Campaign Complete','Clear all 10 sectors on Pilot difficulty.',15000);
+ P(R,'aSec1','Ace Navigator','Clear a whole sector on Ace difficulty.',3000);P(R,'aSec5','Ace of Sectors','Clear 5 sectors on Ace difficulty.',10000);P(R,'aSec10','Ace Campaign Complete','Clear all 10 sectors on Ace difficulty.',25000);
+ P(R,'aw50','Ace Regular','Win 50 missions on Ace.',3000);P(R,'aw250','Ace Veteran','Win 250 missions on Ace.',8000);P(R,'aw500','Ace Legend','Win 500 missions on Ace.',15000);
+ P(R,'ab10','Ace Headhunter','Defeat 10 bosses on Ace.',5000);P(R,'ab50','Ace Warlord','Defeat 50 bosses on Ace.',15000);
+ P(R,'aFlaw','Untouchable Ace','Earn 3★ with no hull damage on Ace.',3000);
+ const K='Combat';
+ P(K,'k10k','Annihilator','Destroy 10,000 hostile ships.',10000);P(K,'k25k','Extinction Event','Destroy 25,000 hostile ships.',20000);
+ P(K,'el100','Elite Slayer','Destroy 100 elite ships.',2500);P(K,'el250','Elite Nemesis','Destroy 250 elite ships.',5000);P(K,'el500','Crown Hunter','Destroy 500 elite ships.',9000);
+ P(K,'ram100','Juggernaut','Score 100 ram kills.',2500);P(K,'ram250','Living Battering Ram','Score 250 ram kills.',5000);
+ P(K,'cb10','Chain Reaction','Reach a ×10 kill streak.',500);P(K,'cb20','Rampage','Reach a ×20 kill streak.',1500);P(K,'cb30','Unstoppable Force','Reach a ×30 kill streak.',4000);
+ P(K,'hunt100','Exterminator','Score 100 kills in one Hunt.',4000);P(K,'hunt120','Hunt Perfected','Score 120 kills in one Hunt.',6000);
+ P(K,'boss50','Captain Collector','Defeat 50 bosses.',9000);P(K,'boss100','Bane of Captains','Defeat 100 bosses.',14000);P(K,'boss150','Every Captain, Every Rank','Defeat 150 bosses.',20000);
+ const A='Arsenal',WN=[['wl','Laser',['Beam Rider','Lightbringer','Laser Saint']],['wi','Ion',['Static Charge','Storm Caller','Ion Tempest']],['wp','Plasma',['Hot Hands','Plasma Torch','Star Forger']],['wv','Vulcan',['Trigger Happy','Bullet Storm','Lead Hurricane']],['wm','Missile',['Fire and Forget','Missile Command','Warhead Master']]];
+ for(const w of WN){P(A,w[0]+'25',w[2][0],'Destroy 25 ships with the '+w[1]+'.',300);P(A,w[0]+'250',w[2][1],'Destroy 250 ships with the '+w[1]+'.',1500);P(A,w[0]+'1k',w[2][2],'Destroy 1,000 ships with the '+w[1]+'.',5000);}
+ P(A,'ws10','Event Horizon','Destroy 10 ships with the Singularity.',600);P(A,'ws100','Gravity Well','Destroy 100 ships with the Singularity.',2500);P(A,'ws500','Black Star','Destroy 500 ships with the Singularity.',7000);
+ P(A,'crit100','Sharp Eye','Destroy 100 ships with critical hits.',600);P(A,'crit1k','Weak Spot','Destroy 1,000 ships with critical hits.',3000);P(A,'crit5k','Surgeon','Destroy 5,000 ships with critical hits.',8000);
+ const Mi='Missions',MN=[['esc','Escort',['Convoy Guard','Lifeline','Shepherd of Fleets']],['hnd','Hunted',['Tracker','Manhunter','Nemesis']],['def','Defend',['Gatekeeper','Rampart','Iron Wall']],['tw','Total War',['Warmonger','Siegebreaker','Total Victory']]];
+ for(const w of MN){P(Mi,w[0]+'10',w[2][0],'Win 10 '+w[1]+' missions.',500);P(Mi,w[0]+'50',w[2][1],'Win 50 '+w[1]+' missions.',2000);P(Mi,w[0]+'150',w[2][2],'Win 150 '+w[1]+' missions.',6000);}
+ P(Mi,'bat50','Line Pilot','Win 50 Battle missions.',800);P(Mi,'bat250','Battle Hardened','Win 250 Battle missions.',3000);P(Mi,'bat750','Warhorse','Win 750 Battle missions.',9000);
+ P(Mi,'rec1','Quiet Eyes','Win a Recon contract.',500);P(Mi,'rec10','Ghost Runner','Win 10 Recon contracts.',2000);P(Mi,'rec25','Shadow Cartographer','Win 25 Recon contracts.',5000);
+ P(Mi,'ctr1','Freelancer','Win a daily contract.',300);P(Mi,'ctr10','Contractor','Win 10 daily contracts.',1500);P(Mi,'ctr50','Mercenary','Win 50 daily contracts.',6000);P(Mi,'ctr100','Fixer\'s Favourite','Win 100 daily contracts.',12000);
+ const D='Defence';
+ P(D,'stk25','Station Breaker','Destroy 25 enemy stations.',1500);P(D,'stk100','Demolition Crew','Destroy 100 enemy stations.',4000);P(D,'stk250','Orbital Wrecker','Destroy 250 enemy stations.',8000);
+ P(D,'dp1','Not a Scratch','Win a Defend mission with your home station above 90% hull.',800);P(D,'dp10','Fortress','Do it 10 times.',3000);P(D,'dp50','Impregnable','Do it 50 times.',8000);
+ P(D,'defAce','Ace Bulwark','Win a Defend mission on Ace.',2000);P(D,'defFive','Five Waves','Win a Defend mission with 5 assault waves.',2500);
+ P(D,'stMax','Home Fortress','Max out the Home Station upgrade on any difficulty.',3000);
+ const F='Frontier',FN=[['stm','in a storm',['Storm Chaser','Lightning Rod','Eye of the Storm']],['fog','in fog',['Fog Walker','Blind Faith','Ghost in the Mist']],['rad','in a radiation zone',['Hot Zone','Glowing Record','Half-Life']],['drf','among drifting asteroids',['Rock Hopper','Drift Runner','Belt Master']]];
+ for(const w of FN){P(F,w[0]+'1',w[2][0],'Win a mission '+w[1]+'.',300);P(F,w[0]+'25',w[2][1],'Win 25 missions '+w[1]+'.',2000);P(F,w[0]+'100',w[2][2],'Win 100 missions '+w[1]+'.',6000);}
+ P(F,'der1','Ambush Survivor','Trigger a derelict ambush and still win.',400);P(F,'der25','Wreck Diver','Do it 25 times.',2500);P(F,'der50','Salvage King','Do it 50 times.',5000);
+ const S='Skill';
+ P(S,'nh10','Clean Sheet','Win 10 missions with no hull damage.',1000);P(S,'nh50','Phantom','Win 50 missions with no hull damage.',4000);P(S,'nh150','Untouchable','Win 150 missions with no hull damage.',10000);
+ P(S,'flaw25','Immaculate','Earn 3★ with no hull damage 25 times.',4000);P(S,'flaw50','Perfection','Earn 3★ with no hull damage 50 times.',8000);
+ P(S,'sw10','Quick Draw','Win 10 missions in under 20 seconds.',1000);P(S,'sw50','Speed Demon','Win 50 missions in under 20 seconds.',4000);
+ P(S,'nhBoss','Dance with the Captain','Win a boss mission with no hull damage.',2000);
+ P(S,'nhDeep','Deep Ghost','Win mission 250 or later with no hull damage.',3000);P(S,'nhEdge','Edge Walker','Win mission 450 or later with no hull damage.',6000);
+ P(S,'thread','By a Thread','Win a mission with under 10% hull left.',400);
+ P(S,'fw10','Band of Brothers','Win 10 missions with a full wing of 6 and lose no one.',2500);P(S,'fw50','No One Left Behind','Win 50 missions with a full wing of 6 and lose no one.',8000);
+ const G='Wealth';
+ P(G,'g5m','Multi-Millionaire','Earn 5,000,000 credits.',15000);P(G,'g10m','Rift Baron','Earn 10,000,000 credits.',25000);P(G,'v2000','Ageless Pilot','Fly 2,000 voyages.',10000);
+ const L='Collection';
+ P(L,'sh10','Squadron Owner','Own 10 ships.',1200);P(L,'sh20','Collector','Own 20 ships.',2500);
+ P(L,'pt20','Colourist','Own 20 hull colours.',2000);P(L,'tr10','Streaker','Own 10 engine trails.',1200);
+ P(L,'tm6','Detailer','Own 6 trims.',600);P(L,'tmAll','Pinstriper','Own every trim.',2500);
+ P(L,'up3','Specialist','Max out 3 upgrade tracks on one difficulty.',2500);P(L,'upAll','Fully Loaded','Max out all 8 upgrade tracks on one difficulty.',10000);
+ P(L,'modAll','Custom Job','Fit all 4 ship mods to one ship.',2000);P(L,'wmAll','Master Armourer','Fit every weapon mod on one difficulty.',4000);
+ P(L,'sql10','Squad Leader','Reach squadron level 10.',500);P(L,'sql50','Wing Commander','Reach squadron level 50.',3000);P(L,'sql100','Air Marshal','Reach squadron level 100.',6000);P(L,'sql250','Legendary Squadron','Reach squadron level 250.',12000);
+ /* group by category (stable, so tiers keep their order) */
+ const o=DEEDS.map((d,i)=>[d,i]).sort((a,b)=>(DCATS.indexOf(a[0].c)-DCATS.indexOf(b[0].c))||(a[1]-b[1]));DEEDS.length=0;o.forEach(x=>DEEDS.push(x[0]));
+})();
+/* progress [current, goal] for counter-based deeds; the rest are earned by a single mission result.
+   build 101: the table is built once and every entry is a function, so the Deeds screen only computes what it shows */
+let DT=null;
+function deedT(){if(DT)return DT;
+ const c=()=>save.cnt,du=()=>dUp(save),G=d=>(save.gear&&save.gear[d])||{},n=k=>dList(save,k).length;
+ const secN=d=>{let x=0;for(let s=0;s<10;s++)if(sectorCleared(s,d))x++;return x;};
+ const gold3=s=>DRANKS.some(d=>{for(let m=1;m<=50;m++)if(starsOf(s*50+m,d)<3)return false;return true;});
+ const maxed=d=>UPK.filter(u=>u!=='wing'&&(G(d)[u]|0)>=DMAX[d]).length,best=()=>Math.max.apply(null,DRANKS.map(maxed));
+ DT={first:()=>[c().wins,1],ram:()=>[c().ram,10],boss:()=>[c().boss,1],sector:()=>[c().sectors,1],sec10:()=>[c().sectors,10],
+  mEsc:()=>[c().wEsc,1],mHun:()=>[c().wHun,1],mDef:()=>[c().wDef,1],mTot:()=>[c().wTot,1],dPil:()=>[c().wPil,1],dAce:()=>[c().wAce,1],dAceB:()=>[c().bAce,1],flaw10:()=>[c().flaw,10],
+  sh5:()=>[n('ships'),5],sh15:()=>[n('ships'),SHIPS.length],pt10:()=>[n('hulls'),10],ptAll:()=>[n('hulls'),HULLS.length],tr5:()=>[n('trails'),5],trAll:()=>[n('trails'),TRAILS.length],
+  upMax:()=>[UPK.some(u=>du()[u]>=DMAX[save.diff])?1:0,1],wing6:()=>[du().wing,6],
+  pSec1:()=>[secN('pilot'),1],pSec5:()=>[secN('pilot'),5],pSec10:()=>[secN('pilot'),10],aSec1:()=>[secN('ace'),1],aSec5:()=>[secN('ace'),5],aSec10:()=>[secN('ace'),10],
+  aw50:()=>[c().wAce,50],aw250:()=>[c().wAce,250],aw500:()=>[c().wAce,500],ab10:()=>[c().bAce,10],ab50:()=>[c().bAce,50],
+  sh10:()=>[n('ships'),10],sh20:()=>[n('ships'),20],pt20:()=>[n('hulls'),20],tr10:()=>[n('trails'),10],tm6:()=>[n('trims'),6],tmAll:()=>[n('trims'),TRIMS.length],
+  up3:()=>[best(),3],upAll:()=>[best(),UPK.length-1],stMax:()=>[DRANKS.some(d=>(G(d).station|0)>=DMAX[d])?1:0,1],
+  modAll:()=>{const md=(save.mods&&save.mods[save.diff])||{};let b=0;for(const k in md)if(Array.isArray(md[k]))b=Math.max(b,md[k].length);return[b,MODS.length];},
+  wmAll:()=>[Object.keys((save.wmods&&save.wmods[save.diff])||{}).length,WEAPONS.length]};
+ for(let i=1;i<=10;i++){DT['cap'+i]=()=>[DRANKS.some(d=>starsOf(i*50,d)>0)?1:0,1];DT['clr'+i]=()=>[DRANKS.some(d=>sectorCleared(i-1,d))?1:0,1];DT['gold'+i]=()=>[gold3(i-1)?1:0,1];}
+ return DT;}
 function deedProg(id){
- const c=save.cnt,k=id.match(/^([a-zA-Z]+?)(\d+)(k|m)?$/);
+ const c=save.cnt,k=id.match(/^([a-zA-Z]+?)(\d+)(k|m)?$/),T=deedT();
  const tot=()=>{let n=0;for(const d in save.prog.campaign){const o=save.prog.campaign[d];for(const l in o)n+=o[l].stars;}return n;};
- const du=dUp(save);
- const T={first:[c.wins,1],ram:[c.ram,10],boss:[c.boss,1],sector:[c.sectors,1],sec10:[c.sectors,10],
-  mEsc:[c.wEsc,1],mHun:[c.wHun,1],mDef:[c.wDef,1],mTot:[c.wTot,1],dPil:[c.wPil,1],dAce:[c.wAce,1],dAceB:[c.bAce,1],flaw10:[c.flaw,10],
-  sh5:[dList(save,'ships').length,5],sh15:[dList(save,'ships').length,SHIPS.length],pt10:[dList(save,'hulls').length,10],ptAll:[dList(save,'hulls').length,HULLS.length],tr5:[dList(save,'trails').length,5],trAll:[dList(save,'trails').length,TRAILS.length],
-  upMax:[UPK.some(u=>du[u]>=DMAX[save.diff])?1:0,1],wing6:[du.wing,6]};
- if(T[id])return T[id];if(!k)return null;
- const n=+k[2]*(k[3]==='k'?1000:k[3]==='m'?1000000:1),src={k:c.kills,g:c.gold,v:c.voy,w:c.wins,boss:c.boss,sec:c.sectors,ram:c.ram,el:c.elite,hunt:c.hunt,r:reached(),st:null}[k[1]];
- if(k[1]==='st')return[tot(),n];if(src===undefined)return null;return[src,n];
+ if(T[id])return T[id]();if(!k)return null;
+ const n=+k[2]*(k[3]==='k'?1000:k[3]==='m'?1000000:1);
+ if(k[1]==='st')return[tot(),n];
+ const src={k:c.kills,g:c.gold,v:c.voy,w:c.wins,boss:c.boss,sec:c.sectors,ram:c.ram,el:c.elite,hunt:c.hunt,r:reachedOf(save),
+  flaw:c.flaw,nh:c.nh,sw:c.sw,fw:c.fw,stk:c.stk,crit:c.crit,ctr:c.ctr,cb:c.streak,bat:c.wBat,esc:c.wEsc,hnd:c.wHun,def:c.wDef,tw:c.wTot,rec:c.wRec,
+  stm:c.wStm,fog:c.wFog,rad:c.wRad,drf:c.wDrf,der:c.wDer,dp:c.defP,sql:save.squadLvl|0,wl:c.wk0,wi:c.wk1,wp:c.wk2,wv:c.wk3,wm:c.wk4,ws:c.wk5}[k[1]];
+ if(src===undefined)return null;return[src|0,n];
 }
 const LORE=[
  'A wreck here still broadcasts its registry. The name is one you served beside.',
@@ -801,7 +908,7 @@ function loadSettings(){
 }
 function applyTouchAlpha(){try{const a=clamp(+settings.tbAlpha||1,.2,1);document.documentElement.style.setProperty('--tbo',a);}catch(e){}}
 function saveSettings(){applyTouchAlpha();let o=settings;if(SOFT_AUTO&&settings.gfx==='classic'&&!LS.get('pc_force3d')){o=Object.assign({},settings);o.gfx=SOFT_PREV||'high';}LS.set('pc_settings',o);LS.set('pc_audio',audioSet);try{document.body.classList.toggle('hc',!!settings.hc);document.documentElement.lang=settings.lang||'en';window.tailFixed=settings.tailCam==='fixed';}catch(e){}}
-function newSave(name){const s={v:2,name:name||'Pilot',gold:{cadet:0,pilot:0,ace:0},up:{},prog:{campaign:{cadet:{},pilot:{},ace:{}}},diff:'cadet',ach:{},hulls:{},trails:{},trims:{},hull:{},trail:{},trim:{},sq:{},sqCap:{},ship:{},ships:{},best:{},mods:{},wmods:{},gear:{},lore:{},loadout:[3],vulcanAuto:false,contracts:{},climb:0,memorial:0,squadXP:0,squadLvl:0,cnt:{kills:0,gold:0,wins:0,voy:0,ram:0,boss:0,sectors:0,hunt:0,elite:0,flaw:0,wEsc:0,wHun:0,wDef:0,wTot:0,wPil:0,wAce:0,bAce:0},touch:{mirror:false,scale:1,stick:true,pos:{}}};initGear(s);for(const d of DRANKS){s.ships[d]=[0];s.hulls[d]=[0];s.trails[d]=[0];s.trims[d]=[0];s.ship[d]=0;s.hull[d]=0;s.trail[d]=0;s.trim[d]=0;s.sq[d]=0;s.sqCap[d]=0;s.best[d]=0;s.wmods[d]={};}return s;}
+function newSave(name){const s={v:2,name:name||'Pilot',gold:{cadet:0,pilot:0,ace:0},up:{},prog:{campaign:{cadet:{},pilot:{},ace:{}}},diff:'cadet',ach:{},hulls:{},trails:{},trims:{},hull:{},trail:{},trim:{},sq:{},sqCap:{},ship:{},ships:{},best:{},mods:{},wmods:{},gear:{},lore:{},loadout:[3],vulcanAuto:false,contracts:{},climb:0,memorial:0,squadXP:0,squadLvl:0,cnt:{kills:0,gold:0,wins:0,voy:0,ram:0,boss:0,sectors:0,hunt:0,elite:0,flaw:0,wEsc:0,wHun:0,wDef:0,wTot:0,wPil:0,wAce:0,bAce:0,wBat:0,wRec:0,ctr:0,crit:0,stk:0,nh:0,sw:0,fw:0,streak:0,wStm:0,wFog:0,wRad:0,wDrf:0,wDer:0,defP:0,wk0:0,wk1:0,wk2:0,wk3:0,wk4:0,wk5:0},touch:{mirror:false,scale:1,stick:true,pos:{}}};initGear(s);for(const d of DRANKS){s.ships[d]=[0];s.hulls[d]=[0];s.trails[d]=[0];s.trims[d]=[0];s.ship[d]=0;s.hull[d]=0;s.trail[d]=0;s.trim[d]=0;s.sq[d]=0;s.sqCap[d]=0;s.best[d]=0;s.wmods[d]={};}return s;}
 function initGear(s){if(!s.gear)s.gear={};for(const d of DRANKS){const g=s.gear[d]||(s.gear[d]=UPK.reduce((o,k)=>(o[k]=0,o),{weapons:0,hull:0,engines:0,cap:0,target:0,arc:0,squad:0,station:0,wing:0}));const cap=DMAX[d];for(const k of UPK)g[k]=clamp((+g[k])|0,0,cap);}}
 function fixLoadout(s,d){
  const src=Array.isArray(d&&d.loadout)?d.loadout:null,out=[];
@@ -863,6 +970,9 @@ function sanitize(d){
  if(d.lore)for(const k in d.lore)s.lore[k]=1;
  s.vulcanAuto=!!d.vulcanAuto;s.dmg=cleanDmg(d.dmg);
  if(d.cnt)for(const k in s.cnt)s.cnt[k]=Math.max(0,+d.cnt[k]||0);
+ /* build 101: Battle wins and no-damage wins were never counted before. Seed them from what the save does record: one Battle win per
+    Battle mission with stars (any difficulty), and no-damage wins from the 3-star no-damage count. */
+ if(d.cnt&&d.cnt.wBat===undefined){let n=0;for(const df of DRANKS){const o=s.prog.campaign[df];for(const k in o)if(o[k].stars>0&&modeFor((+k-1)%50+1)==='battle')n++;}s.cnt.wBat=n;s.cnt.nh=Math.max(s.cnt.nh,s.cnt.flaw);}
  if(d.touch&&typeof d.touch==='object'){s.touch.mirror=!!d.touch.mirror;s.touch.scale=clamp(+d.touch.scale||1,.6,1.6);s.touch.stick=d.touch.stick!==false;if(d.touch.pos)for(const k in d.touch.pos){const p=d.touch.pos[k];if(Array.isArray(p)&&p.length===2)s.touch.pos[k]=[clamp(+p[0]||0,0,1),clamp(+p[1]||0,0,1)];}}
  return s;
 }
@@ -1483,7 +1593,9 @@ function kill(t,src,o){
   if(t.team===1){
    if(!o.noCount){
     M.kills++;M.combo=M.comboT>0?M.combo+1:1;M.comboT=330;if(M.combo>M.best)M.best=M.combo;const kg=Math.round(8+M.lv*.3)*(t.boss?5:t.marked?3:t.elite?2:1);M.gold+=Math.round(kg*(1+Math.min(10,M.combo-1)*.1));if(M.combo>1){dmgText(t.x,t.y,t.z+.2,'×'+M.combo+' STREAK','#ffd166',true);sfx('streak',Math.min(10,M.combo));}
-    if(!save.free){save.cnt.kills++;if(t.elite)save.cnt.elite++;if(o.ram&&src&&src.isPlayer)save.cnt.ram++;}
+    if(!save.free){const C=save.cnt;C.kills++;if(t.elite)C.elite++;if(o.ram&&src&&src.isPlayer)C.ram++;
+     /* build 101: kills per weapon (o.wk tags plasma burn, missile splash and singularity) and critical-hit kills */
+     if(src&&src.isPlayer){const wi=o.wk!=null?o.wk:{laser:0,ion:1,plasma:2,vulcan:3,msl:4}[o.dt];if(wi!=null)C['wk'+wi]=(C['wk'+wi]|0)+1;if(o.crit)C.crit=(C.crit|0)+1;}}
     if(o.ram&&src&&src.isPlayer){M.ram++;msg('RAM KILL',70);}
    }
    const n=1+(Math.random()<.5?1:0);for(let i=0;i<n;i++)drop(t.x+rand(-20,20),t.y+rand(-20,20),['gold','gold','health','fuel'][Math.random()*4|0]);
@@ -1492,7 +1604,7 @@ function kill(t,src,o){
   if(t.isPlayer)shake=22;
  }else if(t.kind==='station'){
   explode(t.x,t.y,0,150,true);for(let i=0;i<5;i++)explode(t.x+rand(-50,50),t.y+rand(-50,50),rand(.1,.4),50,false);
-  if(t.team===1)M.gold+=Math.round(40+M.lv);
+  if(t.team===1){M.gold+=Math.round(40+M.lv);if(!save.free)save.cnt.stk=(save.cnt.stk|0)+1;}
   msg(t.team?'ENEMY STATION DESTROYED':'YOUR STATION IS LOST');
  }else{
   burst(t.x,t.y,.1,14,'#9a8f84',2.4,40,5);spark(t.x,t.y,.1,0,0,0,18,t.r*2,'#c8b8a0',1);
@@ -1640,7 +1752,7 @@ function stepSing(){
    if(g.t%10===0){
     let dmg=g.hostile?(s.isPlayer?2.7:1.0):(same?.7:3.0*(1+1.5*q));
     dmg*=1+(M.lv||0)*.02+(g.pw||0)*.025;
-    damage(s,dmg,g.owner,{acc:true});
+    damage(s,dmg,g.owner,{acc:true,wk:5});
    }
   }
   if(g.t%5===0)spark(g.x+rand(-R*.45,R*.45),g.y+rand(-R*.45,R*.45),g.z,0,0,0,18,3,'#b06bff',0);
@@ -1824,7 +1936,7 @@ function playerStep(){
 /* ---------------- SHIP PHYSICS ---------------- */
 function stepShip(s,inp){
  if(s.slow>0)s.slow--;if(s.brace>0)s.brace--;if(s.braceCd>0)s.braceCd--;if(s.flash>0)s.flash--;if(s.shF>0)s.shF-=.06;if(s.ramT>0)s.ramT--;if(s.roll>0)s.roll--;if(s.rollCd>0)s.rollCd--;
- if(s.burn>0){if(--s.burnT<=0){s.burnT=20;s.burn--;damage(s,s.burnDmg,s.burnBy,0);if(s.dead)return;}if((M.t+s.pid)%3===0)spark(s.x+rand(-s.r,s.r)*.5,s.y+rand(-s.r,s.r)*.5,s.z,rand(-.4,.4),rand(-.4,.4),.006,24,5,'#ff7a30',0);}
+ if(s.burn>0){if(--s.burnT<=0){s.burnT=20;s.burn--;damage(s,s.burnDmg,s.burnBy,{wk:2});if(s.dead)return;}if((M.t+s.pid)%3===0)spark(s.x+rand(-s.r,s.r)*.5,s.y+rand(-s.r,s.r)*.5,s.z,rand(-.4,.4),rand(-.4,.4),.006,24,5,'#ff7a30',0);}
  if(s.slow>0&&(M.t+s.pid)%6===0)spark(s.x+rand(-s.r,s.r)*.6,s.y+rand(-s.r,s.r)*.6,s.z,0,0,.004,18,3.5,'#c87dff',0);
  flushDmg(s);
  s.shT++;if(s.shT>300&&s.sh<s.maxSh)s.sh=Math.min(s.maxSh,s.sh+s.maxSh*.004);
@@ -2123,7 +2235,7 @@ function stepProjectiles(){
     if(p.type==='ion')s.slow=s.cargo?Math.max(s.slow,60):160+((p.owner&&p.owner.wl)||0)*3;
     if(p.type==='plasma'){s.burn=5;s.burnT=20;s.burnDmg=p.burn;s.burnBy=p.owner;}
     damage(s,d,p.owner,{crit:p.crit,acc:p.type==='vulcan',dt:p.type});
-    if(p.type==='msl'){burst(s.x,s.y,s.z,16,'#ffb36b',2.5,30,4);for(const o of foes){if(o===s||o.dead)continue;if(Math.hypot(o.x-s.x,o.y-s.y)<74)damage(o,p.dmg*.45,p.owner,{acc:true});}}
+    if(p.type==='msl'){burst(s.x,s.y,s.z,16,'#ffb36b',2.5,30,4);for(const o of foes){if(o===s||o.dead)continue;if(Math.hypot(o.x-s.x,o.y-s.y)<74)damage(o,p.dmg*.45,p.owner,{acc:true,wk:4});}}
     break;
    }
   }
@@ -3121,54 +3233,74 @@ function drawCockpitFrame(c,hw,hh){
  c.strokeStyle='rgba(125,227,255,.22)';c.lineWidth=1.5;
  c.beginPath();c.moveTo(0,dy+hh*.03);c.lineTo(hw*.16,dy);c.lineTo(hw*.84,dy);c.lineTo(hw,dy+hh*.03);c.stroke();
 }
+let HUDB=60; /* build 101: bottom edge of the top HUD bar, in HUD units */
 function drawHUD(){
  const m=M,p=player;if(!m||!p)return;
  const c=ctx,U=HU(),hw=W/U,hh=H/U;c.save();c.scale(U,U);c.textBaseline='middle';if(cockpitOn&&U3)drawCockpitFrame(c,hw,hh);
- /* status bars */
- const bar=(y,label,f,col,txt)=>{c.fillStyle='rgba(10,18,30,.62)';rr(c,10,y,168,14,4);c.fill();c.strokeStyle='rgba(125,227,255,.16)';c.lineWidth=1;c.stroke();c.fillStyle='rgba(255,255,255,.07)';rr(c,56,y+3.5,106,7,3);c.fill();c.fillStyle=col;rr(c,56,y+3.5,106*clamp(f,0,1),7,3);c.fill();c.fillStyle='#a9bdcc';c.font='700 8px Orbitron';c.textAlign='left';c.fillText(label,15,y+7.5);if(txt){c.fillStyle='#ffffff';c.textAlign='right';c.font='700 8px "Exo 2"';c.fillText(txt,172,y+7.5);}};
- bar(10,'HULL',p.hp/p.maxHp,p.hp<p.maxHp*.28?'#ff5a4a':'#5fe08a',Math.max(0,Math.ceil(p.hp))+'/'+p.maxHp);
- bar(27,'SHLD',p.sh/p.maxSh,'#5ac8f5',Math.ceil(p.sh)+'');
- bar(44,'HEAT',p.heat/p.heatMax,p.over?'#ff5a4a':'#ffb347',p.over?'LOCKED':'');
- bar(61,'ALT',p.z,p.z>.65?'#ffffff':p.z>.35?'#c8d4e0':'#7f93a6',p.z>.65?'PLANETS':p.z>.35?'ROCKS':'');
- /* weapons */
- const wy=82,LO=p.loadout||[0];
+ /* build 101: status bars, weapons and ability chips run along the top, left of the minimap (was a column down the left side);
+    on touch screens they stay left of the centre pause button.
+    Icons instead of words where possible; 4 bars in a row when there is room, otherwise 2 x 2. */
+ const msz=clamp(Math.min(hw,hh)*.18,90,150),avail=Math.max(220,Math.min(hw-msz-36,touchOn?hw/2-48:1e9)),cols=avail>=4*112+18?4:2,bw=Math.min(190,(avail-(cols-1)*6)/cols),bh=16;
+ const icon=(k,x,y,col)=>{c.save();c.translate(x,y);c.fillStyle=col;c.strokeStyle=col;c.lineWidth=1.6;c.lineJoin='round';c.beginPath();
+  if(k==='hull'){c.rect(-1.6,-5,3.2,10);c.rect(-5,-1.6,10,3.2);c.fill();}
+  else if(k==='shld'){c.moveTo(0,-5.5);c.lineTo(4.8,-3.6);c.quadraticCurveTo(4.6,3,0,5.8);c.quadraticCurveTo(-4.6,3,-4.8,-3.6);c.closePath();c.fill();}
+  else if(k==='heat'){c.moveTo(0,-6);c.quadraticCurveTo(5,-1,3.6,2.6);c.quadraticCurveTo(2.2,6,0,6);c.quadraticCurveTo(-2.2,6,-3.6,2.6);c.quadraticCurveTo(-4,-.5,-1,-2.5);c.quadraticCurveTo(-.4,.6,1,1);c.quadraticCurveTo(1.6,-2.5,0,-6);c.fill();}
+  else{c.moveTo(0,-6);c.lineTo(5,0);c.lineTo(1.8,0);c.lineTo(1.8,5.5);c.lineTo(-1.8,5.5);c.lineTo(-1.8,0);c.lineTo(-5,0);c.closePath();c.fill();}
+  c.restore();};
+ let bi=0;
+ const bar=(k,f,col,txt)=>{const x=10+(bi%cols)*(bw+6),y=8+((bi/cols)|0)*(bh+4);bi++;
+  c.fillStyle='rgba(8,14,24,.72)';rr(c,x,y,bw,bh,5);c.fill();c.strokeStyle='rgba(125,227,255,.2)';c.lineWidth=1;c.stroke();
+  icon(k,x+10,y+bh/2,col);const tx=x+20,tw=bw-26;
+  c.fillStyle='rgba(255,255,255,.08)';rr(c,tx,y+4,tw,bh-8,3);c.fill();c.fillStyle=col;rr(c,tx,y+4,tw*clamp(f,0,1),bh-8,3);c.fill();
+  if(txt){c.font='700 9px "Exo 2"';c.textAlign='right';c.lineWidth=3;c.strokeStyle='rgba(0,0,0,.75)';c.strokeText(txt,x+bw-8,y+bh/2+.5);c.fillStyle='#ffffff';c.fillText(txt,x+bw-8,y+bh/2+.5);}};
+ bar('hull',p.hp/p.maxHp,p.hp<p.maxHp*.28?'#ff5a4a':'#5fe08a',Math.max(0,Math.ceil(p.hp))+'/'+p.maxHp);
+ bar('shld',p.sh/p.maxSh,'#5ac8f5',Math.ceil(p.sh)+'');
+ bar('heat',p.heat/p.heatMax,p.over?'#ff5a4a':'#ffb347',p.over?'LOCKED':'');
+ bar('alt',p.z,p.z>.65?'#ffffff':p.z>.35?'#c8d4e0':'#7f93a6',p.z>.65?'PLANETS':p.z>.35?'ROCKS':'');
+ /* weapons and abilities: round badges with a cooldown ring (full ring = ready) */
+ const ring=(x,y,r,f,col,on)=>{c.fillStyle=on?'rgba(20,44,64,.94)':'rgba(8,14,24,.78)';c.beginPath();c.arc(x,y,r,0,TAU);c.fill();
+  c.lineWidth=2.6;c.strokeStyle='rgba(255,255,255,.12)';c.beginPath();c.arc(x,y,r-1.6,0,TAU);c.stroke();
+  const k=clamp(f,0,1);c.strokeStyle=col;c.globalAlpha=k>=1?1:.6;c.beginPath();c.arc(x,y,r-1.6,-Math.PI/2,-Math.PI/2+TAU*k);c.stroke();c.globalAlpha=1;
+  if(on){c.lineWidth=1.2;c.strokeStyle='#ffffff';c.beginPath();c.arc(x,y,r+1.6,0,TAU);c.stroke();}};
+ const wy=8+Math.ceil(4/cols)*(bh+4)+2,LO=p.loadout||[0],WR=touchOn?18.5:16,AB={0:'LSR',1:'ION',2:'PLS',3:'VUL',4:'MSL',5:'SNG'};
  for(let i=0;i<LO.length;i++){
-  const wi=LO[i],x=10+i*42,sel=p.wep===wi,w=WEAPONS[wi];
-  c.fillStyle=sel?'rgba(20,44,64,.9)':'rgba(10,18,30,.6)';rr(c,x,wy,39,28,4);c.fill();c.strokeStyle=sel?w.c:'rgba(125,227,255,.16)';c.lineWidth=sel?1.5:1;c.stroke();
-  c.fillStyle=sel?w.c:'#8296a8';c.font='700 7px Orbitron';c.textAlign='center';c.fillText(w.n,x+19.5,wy+8);
+  const wi=LO[i],x=10+WR+i*(WR*2+5),y=wy+WR,sel=p.wep===wi,w=WEAPONS[wi];
   let sub='',f=0;
-  if(wi===0){f=p.cd[0]/(p.lcdLast||1);sub=p.charge>8?(p.charge>=p.chargeT?'READY':'CHARGE'):(60/(p.lcdMax||20)).toFixed(1)+'/s';}
-  else if(wi===1){f=p.cd[1]/52;sub='∞';}
-  else if(wi===2){f=p.cd[2]/70;sub=p.plasma+' / '+p.plasmaMax;}
-  else if(wi===3){f=p.vover>0?1:p.vheat/75;sub=p.vover>0?'COOLING':save.vulcanAuto?'AUTO':'';}
-  else if(wi===4){f=p.cd[4]/105;sub=p.msl+' / '+p.mslMax;}
-  else if(wi===5){f=p.singCd/420;sub=p.sing+' / 3';}
-  else{f=0;sub='';}
-  c.fillStyle='#d8e6f2';c.font='600 8px "Exo 2"';c.fillText(sub,x+19.5,wy+17);
-  c.fillStyle='rgba(255,255,255,.1)';c.fillRect(x+4,wy+23,31,2);
-  c.fillStyle=wi===3?(p.vover>0?'#ff5a4a':'#ffd700'):w.c;c.fillRect(x+4,wy+23,31*(wi===4?clamp(p.msl/(p.mslMax||1),0,1):wi===3?f:1-f),2);
+  if(wi===0){f=1-p.cd[0]/(p.lcdLast||1);sub=p.charge>8?(p.charge>=p.chargeT?'READY':Math.round(p.charge/p.chargeT*100)+'%'):(60/(p.lcdMax||20)).toFixed(1);}
+  else if(wi===1){f=1-p.cd[1]/52;sub='∞';}
+  else if(wi===2){f=1-p.cd[2]/70;sub=p.plasma+'/'+p.plasmaMax;}
+  else if(wi===3){f=p.vover>0?0:1-p.vheat/75;sub=p.vover>0?'COOL':save.vulcanAuto?'AUTO':'';}
+  else if(wi===4){f=clamp(p.msl/(p.mslMax||1),0,1);sub=p.msl+'/'+p.mslMax;}
+  else if(wi===5){f=1-p.singCd/420;sub=p.sing+'/3';}
+  ring(x,y,WR,f,wi===3&&p.vover>0?'#ff5a4a':w.c,sel);
+  c.textAlign='center';c.fillStyle=sel?w.c:'#a9bdcc';c.font='800 '+(touchOn?8:7)+'px Orbitron';c.fillText(AB[wi]||w.n.slice(0,3),x,y-4);
+  c.fillStyle='#ffffff';c.font='700 '+(touchOn?10:8.5)+'px "Exo 2"';c.fillText(sub,x,y+(touchOn?6:5));
  }
- const mini=(x,label,f,col)=>{c.fillStyle='rgba(10,18,30,.6)';rr(c,x,wy+32,66,13,3);c.fill();c.fillStyle=col;c.globalAlpha=.3+.7*(f>=1?1:0);rr(c,x+2,wy+34,62*clamp(f,0,1),9,2);c.fill();c.globalAlpha=1;c.fillStyle='#ffffff';c.font='700 7px Orbitron';c.textAlign='center';c.fillText(label,x+33,wy+39);};
- mini(10,'CM AUTO',1-p.flakCd/500,settings.assistCm?'#ffd700':'#5d522f');mini(80,'BRACE',p.brace>0?1:1-p.braceCd/600,'#ff9a3c');
- mini(230,'FLARE 7',1-(p.ab1cd||0)/720,'#ffd166');mini(300,'OVRCHG 8',(!save||save.free||((save.cnt&&save.cnt.wins)||0)>=3)?1-(p.ab2cd||0)/1080:.0,'#b06bff');
- if(save.vulcanAuto){c.fillStyle='rgba(10,18,30,.6)';rr(c,150,wy+32,70,13,3);c.fill();c.fillStyle='#7de3ff';c.font='700 7px Orbitron';c.textAlign='center';c.fillText('VULCAN AUTO',185,wy+39);}
- let by=wy+50;c.textAlign='left';c.font='700 8px Orbitron';
- const tagl=(t,col)=>{c.fillStyle=col;c.fillText(t,12,by);by+=11;};
- if(m.docked)tagl('⚓ DOCKED — REPAIRING','#6fe08a');
- if(lockT&&!lockT.dead)tagl('◎ LOCK: '+(lockT.kind==='station'?'STATION':(lockT.label||lockT.name).toUpperCase()),'#ffd166');
- if(p.boost>0)tagl('SPEED BOOST '+Math.ceil(p.boost/60)+'s','#7de3ff');
- if(p.dbuff>0)tagl('DAMAGE ×1.5 '+Math.ceil(p.dbuff/60)+'s','#ff5a5a');
- if(p.slow>0)tagl('ION SLOWED','#c87dff');
+ const chips=[['CM',1-p.flakCd/500,settings.assistCm?'#ffd700':'#8a7a3a'],['BRC',p.brace>0?1:1-p.braceCd/600,'#ff9a3c']];
+ if(save.vulcanAuto)chips.push(['VA',1,'#7de3ff']);
+ chips.push(['FLR',1-(p.ab1cd||0)/720,'#ffd166'],['OVR',(!save||save.free||((save.cnt&&save.cnt.wins)||0)>=3)?1-(p.ab2cd||0)/1080:0,'#b06bff']);
+ const right=10+avail,CR=touchOn?13:11;let cx=10+LO.length*(WR*2+5)+4+CR,cy=wy+WR,bot=wy+WR*2;
+ for(const ch of chips){if(cx+CR>right){cx=10+CR;cy+=CR*2+6;bot=cy+CR;}
+  ring(cx,cy,CR,ch[1],ch[2],false);c.fillStyle=ch[1]>=1?'#ffffff':'#9fb2c2';c.font='800 '+(touchOn?7.5:6.5)+'px Orbitron';c.textAlign='center';c.fillText(ch[0],cx,cy+.5);cx+=CR*2+5;}
+ /* status tags flow in a row under the top bar */
+ let tx2=10,by=bot+10;c.textAlign='left';c.font='700 9px Orbitron';
+ const tagl=(t,col)=>{const w=c.measureText(t).width+12;if(tx2+w>right){tx2=10;by+=14;}c.fillStyle='rgba(8,14,24,.6)';rr(c,tx2,by-7,w,14,4);c.fill();c.fillStyle=col;c.fillText(t,tx2+6,by);tx2+=w+5;};
+ if(m.docked)tagl('⚓ REPAIRING','#6fe08a');
+ if(lockT&&!lockT.dead)tagl('◎ '+(lockT.kind==='station'?'STATION':(lockT.label||lockT.name).toUpperCase()),'#ffd166');
+ if(p.boost>0)tagl('» '+Math.ceil(p.boost/60)+'s','#7de3ff');
+ if(p.dbuff>0)tagl('✕1.5 '+Math.ceil(p.dbuff/60)+'s','#ff5a5a');
+ if(p.slow>0)tagl('ION SLOW','#c87dff');
  if(p.burn>0)tagl('BURNING','#ff7043');
- if(m.weather!=='clear')tagl(m.weather==='storm'?'⚡ ION STORM':'≋ DUST FOG','#b8a8e8');
- if(m.hazard&&m.hazard!=='none'&&!(m.hazard==='derelict'&&m.derelict&&m.derelict.done))tagl({radiation:'☢ RADIATION',drift:'☄ ASTEROID DRIFT',derelict:'⌖ DERELICT NEARBY'}[m.hazard]||'','#ffb36b');
+ if(m.weather!=='clear')tagl(m.weather==='storm'?'⚡ STORM':'≋ FOG','#b8a8e8');
+ if(m.hazard&&m.hazard!=='none'&&!(m.hazard==='derelict'&&m.derelict&&m.derelict.done))tagl({radiation:'☢ RADIATION',drift:'☄ DRIFT',derelict:'⌖ DERELICT'}[m.hazard]||'','#ffb36b');
+ HUDB=by+9;
  hudExtras(c,hw,hh);
  /* objective + clock moved into the pause menu to keep the play HUD clear */
  /* boss bar */
  const B=m.boss&&!m.boss.dead?m.boss:m.mark&&!m.mark.dead?m.mark:null;
- if(B){const bw2=Math.min(400,hw*.4),bx=hw/2-bw2/2,byy=8;c.fillStyle='rgba(10,18,30,.68)';rr(c,bx-4,byy-4,bw2+8,18,5);c.fill();c.fillStyle='#ffd166';rr(c,bx,byy,bw2*clamp(B.hp/B.maxHp,0,1),11,3);c.fill();c.fillStyle='#000';c.font='700 7.5px Orbitron';c.textAlign='center';c.fillText((B.label||B.name).toUpperCase(),hw/2,byy+6);}
+ if(B){const bw2=Math.min(400,hw*.4),bx=hw/2-bw2/2,byy=HUDB+4;c.fillStyle='rgba(10,18,30,.68)';rr(c,bx-4,byy-4,bw2+8,18,5);c.fill();c.fillStyle='#ffd166';rr(c,bx,byy,bw2*clamp(B.hp/B.maxHp,0,1),11,3);c.fill();c.fillStyle='#000';c.font='700 7.5px Orbitron';c.textAlign='center';c.fillText((B.label||B.name).toUpperCase(),hw/2,byy+6);}
  /* objective flash (panel itself lives in pause) */
- if(m.objFlash>0&&!bigMap){const a=Math.min(1,m.objFlash/30);let t=m.objFlashText||objText();c.globalAlpha=a*.95;c.font='700 10px Orbitron';c.textAlign='center';let w=Math.min(hw*.82,c.measureText(t).width+26);while(c.measureText(t).width>w-20&&t.length>6)t=t.slice(0,-2)+'…';const fy=B?30:6,x=hw/2-w/2;c.fillStyle='rgba(10,18,30,.85)';rr(c,x,fy,w,20,6);c.fill();c.strokeStyle='rgba(125,227,255,.4)';c.lineWidth=1;c.stroke();c.fillStyle='#cfe9ff';c.fillText(t,hw/2,fy+11);c.globalAlpha=1;}
+ if(m.objFlash>0&&!bigMap){const a=Math.min(1,m.objFlash/30);let t=m.objFlashText||objText();c.globalAlpha=a*.95;c.font='700 10px Orbitron';c.textAlign='center';let w=Math.min(hw*.82,c.measureText(t).width+26);while(c.measureText(t).width>w-20&&t.length>6)t=t.slice(0,-2)+'…';const fy=B?HUDB+26:HUDB+2,x=hw/2-w/2;c.fillStyle='rgba(10,18,30,.85)';rr(c,x,fy,w,20,6);c.fill();c.strokeStyle='rgba(125,227,255,.4)';c.lineWidth=1;c.stroke();c.fillStyle='#cfe9ff';c.fillText(t,hw/2,fy+11);c.globalAlpha=1;}
  /* minimap */
  const ms=clamp(Math.min(hw,hh)*.18,90,150),mx0=hw-ms-12,my0=12;drawMap(mx0,my0,ms,false);
  MAPR.x=mx0*U;MAPR.y=my0*U;MAPR.w=ms*U;MAPR.h=ms*U;
@@ -3279,7 +3411,7 @@ function uiPrep(ui){
  const scr=ui.querySelector('.scr');if(!scr||scr.dataset.prep)return scr;scr.dataset.prep='1';const cur=UI.cur||'x';
  const mark=(el,key)=>{if(el&&!el.dataset.pg)el.dataset.pg=key;};
  mark(scr.querySelector('.plist'),'pilots');
- if(cur==='deeds'){const g=scr.querySelector('.grid.g2');if(g){g.classList.add('dgrid');mark(g,'deeds');}}
+ /* build 101: Deeds no longer page: the list scrolls in a marked box (setFit) */
  if(cur!=='cosm')scr.querySelectorAll('.cscroll').forEach((c,i)=>mark(c,cur+(UI.tab||'')+'-c'+i));
  /* build 100: Shop upgrades, Hangar cards, Systems and Cosmetics no longer page (they fit, or scroll in a marked box: see setFit) */
  if(cur==='missions')scr.querySelectorAll('.mlist,.mgrid2').forEach((c,i)=>mark(c,'mis'+i));
@@ -3301,7 +3433,7 @@ function uiPrep(ui){
 /* build 100: Systems submenus. 1) full size; 2) denser rows; 3) a gentle scale (down to 0.85); 4) only then the settings
    list scrolls inside a marked box (border, visible scrollbar, fades and a "more below" cue). */
 function setFit(scr,H,need){
- const B=Array.prototype.slice.call(scr.querySelectorAll(UI.cur==='cosm'?'.cosgrid .cscroll':'.setpane'));if(!B.length)return;
+ const B=Array.prototype.slice.call(scr.querySelectorAll(UI.cur==='cosm'?'.cosgrid .cscroll':UI.cur==='deeds'?'.dscroll':'.setpane'));if(!B.length)return;
  scr.classList.remove('setdense');
  B.forEach(sp=>{sp.classList.remove('scrolly','scrolled','atend');sp.style.maxHeight='';const c=sp.querySelector(':scope>.morecue');if(c)c.remove();const r=sp.parentNode.querySelector(':scope>.srail');if(r)r.remove();});
  if(need()<=1)return;
@@ -3317,7 +3449,7 @@ function setFit(scr,H,need){
   setCue(sp);}
 }
 /* a list that scrolls opens with the current pick in view (Cosmetics) */
-function boxSel(el){el.querySelectorAll('.scrolly').forEach(b=>{const s=b.querySelector('.sel');if(!s)return;b.scrollTop=Math.max(0,s.offsetTop-b.offsetTop-b.clientHeight/3);setCue(b);});}
+function boxSel(el){if(UI.cur==='deeds')return;el.querySelectorAll('.scrolly').forEach(b=>{const s=b.querySelector('.sel');if(!s)return;b.scrollTop=Math.max(0,s.offsetTop-b.offsetTop-b.clientHeight/3);setCue(b);});}
 function setCue(sp){const t=sp.scrollTop,mx=Math.max(1,sp.scrollHeight-sp.clientHeight);sp.classList.toggle('scrolled',t>2);sp.classList.toggle('atend',t>=mx-3);
  const rl=sp.parentNode&&sp.parentNode.querySelector(':scope>.srail');if(!rl)return;
  const top=sp.offsetTop+6,h=Math.max(30,sp.offsetHeight-12),th=Math.max(26,h*sp.clientHeight/sp.scrollHeight);
@@ -3431,7 +3563,7 @@ function fsBtn(cls){if(!fsOK())return'';const on=fsOn();return'<button class="bt
 function fsSync(){const on=fsOn();document.querySelectorAll('.fsb').forEach(b=>{const t=on?'Exit fullscreen':'Fullscreen';b.title=t;b.setAttribute('aria-label',t);const l=b.querySelector('.fsl');if(l)l.textContent=t;});}
 document.addEventListener('fullscreenchange',fsSync);document.addEventListener('webkitfullscreenchange',fsSync);
 /* build 100: the build number is shown on the title screen, in Systems and on the pause menu; bump it with every build */
-const BUILD_NO=100;
+const BUILD_NO=101;
 function hdr(title){return'<div class="hdr"><button class="btn sm" data-a="back">◀ Back</button><h2>'+title+'</h2>'+(save?'<span class="cr" title="'+DIFFS[save.diff].n+' wallet">'+fmtGold(dGold(save))+'</span>':'')+fsBtn()+'</div>';}
 function reachedOf(s){if(s.free)return 500;let m=0;for(const d in s.prog.campaign){const o=s.prog.campaign[d];for(const k in o)if(o[k].stars>0&&+k>m)m=+k;}return Math.min(500,m+1);}
 function slotCount(){if(!save)return 1;if(save.free)return 5;const r=reachedOf(save);return 1+(r>100?1:0)+(r>200?1:0)+(r>300?1:0)+(r>400?1:0);}
@@ -3665,14 +3797,31 @@ const SCREENS={
   return h+'</div>';
  },
  deeds(){
-  const c=save.cnt;
-  let h='<div class="scr">'+hdr('Deeds')+'<div class="panel"><div class="row sml dim"><span>Kills '+c.kills+'</span><span>Credits earned '+fmtNum(c.gold)+'</span><span>Voyages '+c.voy+'</span><span>Wins '+c.wins+'</span><span>Ram kills '+c.ram+'</span><span>Bosses '+c.boss+'</span><span>Best hunt '+c.hunt+'</span><span>Elites '+c.elite+'</span><span>Deeds '+Object.keys(save.ach).length+' / '+DEEDS.length+'</span></div></div><div class="grid g2" style="max-width:980px">';
-  let cat='';
-  for(const d of DEEDS){const has=save.ach[d.id];
-   if(d.c!==cat){cat=d.c;const all=DEEDS.filter(x=>x.c===cat),n=all.filter(x=>save.ach[x.id]).length;h+='<h3 style="grid-column:1/-1;margin:.6em 0 0">'+cat+' <span class="dim sml">'+n+' / '+all.length+'</span></h3>';}
-   const p=has?null:deedProg(d.id),bar=p&&p[1]>1?'<div style="height:6px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden"><div style="height:100%;width:'+Math.min(100,p[0]/p[1]*100).toFixed(1)+'%;background:var(--c)"></div></div><span class="dim sml">'+fmtNum(Math.min(p[0],p[1]))+' / '+fmtNum(p[1])+'</span>':'';
-   h+='<div class="card'+(has?' sel':'')+'"><div class="row"><h3 style="flex:1">'+d.n+'</h3>'+(has?'<span class="tag g">Earned</span>':'<span class="tag">◈ '+fmtNum(d.g)+'</span>')+'</div><span class="dim sml">'+d.d+'</span>'+bar+'</div>';}
-  return h+'</div></div>';
+  /* build 101: category tabs and one scrolling list (a marked box when it does not fit: see setFit), no pages */
+  const c=save.cnt,tab=(UI.dtab==='close'||DCATS.includes(UI.dtab))?UI.dtab:'all',got=d=>!!save.ach[d.id];
+  const earned=DEEDS.filter(got),gEarn=earned.reduce((a,d)=>a+d.g,0);
+  const card=d=>{const has=got(d),p=has?null:deedProg(d.id),bar=p&&p[1]>1?'<div class="dpb"><i style="width:'+Math.min(100,p[0]/p[1]*100).toFixed(1)+'%"></i></div><span class="dim sml">'+fmtNum(Math.min(p[0],p[1]))+' / '+fmtNum(p[1])+'</span>':'';
+   return'<div class="card'+(has?' sel':'')+'"><div class="row"><h3 style="flex:1">'+esc(d.n)+'</h3>'+(has?'<span class="tag g">Earned</span>':'<span class="tag">◈ '+fmtNum(d.g)+'</span>')+'</div><span class="dim sml">'+esc(d.d)+'</span>'+bar+'</div>';};
+  let h='<div class="scr dscr">'+hdr('Deeds')+'<div class="panel dsum"><div class="row sml dim"><span>Kills '+fmtNum(c.kills)+'</span><span>Wins '+fmtNum(c.wins)+'</span><span>Bosses '+c.boss+'</span><span>Elites '+c.elite+'</span><span>Ram kills '+c.ram+'</span><span>Best streak ×'+(c.streak|0)+'</span><span>Best hunt '+c.hunt+'</span><span>Voyages '+fmtNum(c.voy)+'</span><span>Credits earned '+fmtNum(c.gold)+'</span></div>'+
+   '<div class="dtot"><span><b>'+earned.length+' / '+DEEDS.length+'</b> deeds earned</span><span class="dim">◈ '+fmtNum(gEarn)+' from deeds</span></div><div class="dpb big"><i style="width:'+(earned.length/DEEDS.length*100).toFixed(1)+'%"></i></div></div>';
+  const tb=(k,l,L)=>'<button class="btn sm'+(tab===k?' on':'')+'" data-a="dtab" data-v="'+k+'">'+l+(L?' <span class="dn">'+L.filter(got).length+'/'+L.length+'</span>':'')+'</button>';
+  h+='<div class="dtabs">'+tb('all','All',DEEDS)+tb('close','Closest')+DCATS.map(k=>tb(k,k,DEEDS.filter(d=>d.c===k))).join('')+'</div>';
+  /* narrow screens: one row, step through the same tabs with arrows */
+  {const K=['all','close'].concat(DCATS),i=Math.max(0,K.indexOf(tab)),L=tab==='all'?DEEDS:DEEDS.filter(d=>d.c===tab),lab=tab==='all'?'All deeds':tab==='close'?'Closest to done':tab;
+   h+='<div class="dcyc"><button class="btn sm" data-a="dtab" data-v="'+K[(i+K.length-1)%K.length]+'" aria-label="Previous category">◀</button><b>'+lab+(tab==='close'?'':' <span class="dn">'+L.filter(got).length+' / '+L.length+'</span>')+'</b><button class="btn sm" data-a="dtab" data-v="'+K[(i+1)%K.length]+'" aria-label="Next category">▶</button></div>';}
+  let body='';
+  if(tab==='close'){
+   const L=[];for(const d of DEEDS){if(got(d))continue;const p=deedProg(d.id);if(p&&p[1]>1&&p[0]>0)L.push([d,p[0]/p[1]]);}
+   L.sort((a,b)=>b[1]-a[1]);
+   body='<h3 class="dhd">Closest to done <span class="dim sml">your '+Math.min(16,L.length)+' nearest counters</span></h3>'+L.slice(0,16).map(x=>card(x[0])).join('');
+   if(!L.length)body+='<p class="dim">Fly a few missions and your nearest deeds show up here.</p>';
+  }else{
+   let cat='';
+   for(const d of DEEDS){if(tab!=='all'&&d.c!==tab)continue;
+    if(d.c!==cat){cat=d.c;const all=DEEDS.filter(x=>x.c===cat);body+='<h3 class="dhd">'+cat+' <span class="dim sml">'+all.filter(got).length+' / '+all.length+'</span></h3>';}
+    body+=card(d);}
+  }
+  return h+'<div class="dwrap"><div class="dscroll"><div class="grid g2 dgrid">'+body+'</div></div></div></div>';
  },
  settings(){
   const sl=(o,k,label,min,max,step)=>{const obj=o==='a'?audioSet:settings;return'<label class="set" data-n="'+label.toLowerCase()+'"><span>'+label+'</span><input type="range" min="'+min+'" max="'+max+'" step="'+step+'" value="'+obj[k]+'" data-s="'+k+'" data-o="'+o+'"><b>'+Math.round(obj[k]*100)+'%</b></label>';};
@@ -3762,7 +3911,8 @@ const SCREENS={
  },
  end(a){
   const m=M;
-  let d='',dg=0;for(const x of a.deeds)dg+=x.g;for(const x of a.deeds)d+='<div class="kv"><span>Deed: '+x.n+'</span><b style="color:var(--gold)">+◈ '+x.g+'</b></div>';
+  let d='',dg=0;for(const x of a.deeds)dg+=x.g;for(const x of a.deeds.slice(0,4))d+='<div class="kv"><span>Deed: '+x.n+'</span><b style="color:var(--gold)">+◈ '+fmtNum(x.g)+'</b></div>';
+  if(a.deeds.length>4){let rg=0;for(const x of a.deeds.slice(4))rg+=x.g;d+='<div class="kv"><span>+ '+(a.deeds.length-4)+' more deeds (see Deeds)</span><b style="color:var(--gold)">+◈ '+fmtNum(rg)+'</b></div>';}
   return'<div class="scr mid dlg"><div class="panel narrow col endpanel" style="max-width:460px;text-align:center"><div class="verdict '+(a.win?'w':'l')+'">'+(a.win?'Victory':'Defeat')+'</div>'+
   (a.win?'<div class="stars big">'+[0,1,2].slice(0,a.stars).map(i=>'<b style="animation-delay:'+(.25+i*.3)+'s">★</b>').join('')+'<i>'+'★'.repeat(3-a.stars)+'</i></div>':'<span class="dim">'+esc(m.why||'Mission failed')+'</span>')+
   '<div class="kv"><span>'+(m.hunt?'Free Hunt':'Mission '+(m.sea+1)+'-'+m.m+' · '+MODES[m.mode].n)+'</span><b>'+DIFFS[m.diff].n+'</b></div>'+
@@ -3802,12 +3952,14 @@ function launchMission(lv,hunt){syncAssist();cockpitThrottle=0;if(TEL&&TEL.thr)T
 function leaveMission(){state='menu';M=null;player=null;lockT=null;layoutTouch();}
 function checkDeeds(r){
  const got=[];r=r||{};
- const ev={nohit:r.win&&r.noHit,flawless:r.win&&r.noHit&&r.stars===3,swift:r.win&&r.secs<20,swift15:r.win&&r.secs<15};
+ const ev={nohit:r.win&&r.noHit,flawless:r.win&&r.noHit&&r.stars===3,swift:r.win&&r.secs<20,swift15:r.win&&r.secs<15,
+  nhBoss:!!(r.win&&r.noHit&&r.mode==='boss'),nhDeep:!!(r.win&&r.noHit&&!r.hunt&&r.lv>=250),nhEdge:!!(r.win&&r.noHit&&!r.hunt&&r.lv>=450),thread:!!(r.win&&r.hpF>0&&r.hpF<.1),
+  aFlaw:!!(r.win&&r.noHit&&r.stars===3&&r.diff==='ace'),defAce:!!(r.win&&r.mode==='defend'&&r.diff==='ace'),defFive:!!(r.win&&r.mode==='defend'&&r.waves>=5)};
  for(const d of DEEDS){if(save.ach[d.id])continue;let ok=ev[d.id];if(ok===undefined){const p=deedProg(d.id);ok=!!p&&p[0]>=p[1];}if(ok){save.ach[d.id]=1;dGoldAdd(save,d.g);got.push(d);}}
  return got;
 }
 /* collection deeds can be earned in the hangar: check after each purchase */
-function deedPing(){if(!save||save.free)return;const g=checkDeeds();if(g.length){persist();sfx('buy');toast('Deed earned: '+g.map(d=>d.n).join(', ')+' (+◈ '+fmtNum(g.reduce((a,d)=>a+d.g,0))+')');}}
+function deedPing(){if(!save||save.free)return;const g=checkDeeds();if(g.length){persist();sfx('buy');toast((g.length>3?g.length+' deeds earned':'Deed earned: '+g.map(d=>d.n).join(', '))+' (+◈ '+fmtNum(g.reduce((a,d)=>a+d.g,0))+')');}}
 function showEnd(){
  const m=M,win=m.win,hunt=m.hunt,secs=m.clock/60;let stars=0,reward=0,deeds=[];const sqLost=Math.max(0,m.wingLost||0);if(!save.free&&!m.tutOn&&m.mode!=='range'){const o=dmgOf(),f=s=>s?(s.dead?.5:clamp(1-s.hp/s.maxHp,0,.75)):0;o.p=f(player);o.w=allies.filter(a=>a.ai&&a.ai.slot&&!a.dead).map(f);}if(sqLost>0&&!save.free&&!m.tutOn){save.sq[save.diff]=Math.max(0,(save.sq[save.diff]|0)-sqLost);save.memorial=(save.memorial||0)+sqLost;persist();}
  if(win){const st=starTimes(m.mode,m.sea,m.lv);stars=secs<st[0]?3:secs<st[1]?2:1;reward=hunt?Math.round((m.kills*10+150)*m.D.r):missionReward(m.lv,m.mode,m.diff);
@@ -3818,13 +3970,19 @@ function showEnd(){
  const total=reward+m.gold;
  if(!save.free){
   const c=save.cnt;dGoldAdd(save,total);c.gold+=total;c.voy++;
-  if(hunt)c.hunt=Math.max(c.hunt,m.kills);
+  if(hunt)c.hunt=Math.max(c.hunt,m.kills);c.streak=Math.max(c.streak|0,m.best|0);
   if(win){
    c.wins++;if(m.mode==='boss')c.boss++;
    if(!hunt){const mk={escort:'wEsc',hunted:'wHun',defend:'wDef',totalwar:'wTot'}[m.mode];if(mk)c[mk]++;if(m.diff==='pilot')c.wPil++;if(m.diff==='ace'){c.wAce++;if(m.mode==='boss')c.bAce++;}if(m.noHit&&stars===3)c.flaw++;}
+   /* build 101: counters for the new deeds */
+   {const mk2={battle:'wBat',recon:'wRec'}[m.mode];if(!hunt&&mk2)c[mk2]++;if(m.contract)c.ctr++;if(m.noHit)c.nh++;if(secs<20)c.sw++;
+    if(m.weather==='storm')c.wStm++;else if(m.weather==='fog')c.wFog++;
+    if(m.hazard==='radiation')c.wRad++;else if(m.hazard==='drift')c.wDrf++;else if(m.hazard==='derelict'&&m.derelict&&m.derelict.done)c.wDer++;
+    if(sqLost===0&&allies.filter(a=>a.ai&&a.ai.slot&&!a.dead).length>=6)c.fw++;
+    if(m.mode==='defend'){const hs=stationOf(0);if(hs&&!hs.dead&&hs.hp>=hs.maxHp*.9)c.defP++;}}
    if(!hunt){const o=save.prog.campaign[m.diff],old=o[m.lv]?o[m.lv].stars:0;if(stars>old)o[m.lv]={stars};let n=0;for(let s=0;s<10;s++)if(sectorCleared(s,m.diff))n++;c.sectors=Math.max(c.sectors,n);}
   }
-  deeds=checkDeeds({win,noHit:m.noHit,stars,secs,hunt,kills:m.kills});
+  deeds=checkDeeds({win,noHit:m.noHit,stars,secs,hunt,kills:m.kills,mode:m.mode,lv:m.lv,diff:m.diff,hpF:player&&player.maxHp?player.hp/player.maxHp:0,waves:m.mode==='defend'?defWavesFor(m.lv):0});
   persist();
  }
  state='end';T.fire=T.burn=T.climb=T.brake=false;T.son=false;
@@ -3897,6 +4055,7 @@ const ACT={
  school(){startSchool();},
  rangeReset(){if(!M||M.mode!=='range')return;player.x=M.rangeCenter.x;player.y=M.rangeCenter.y;player.vx=player.vy=0;M.rdps=0;rangeSpawn(4,false);msg('RANGE RESET',60);},
  wmod(v){const i=+v;if(hasWmod(i)||!mpHas('w'+i))return;const cost=wmodCost(i);if(!save.free&&dGold(save)<cost){sfx('deny');toast('Not enough credits');return;}if(!save.wmods)save.wmods={};if(!save.wmods[save.diff])save.wmods[save.diff]={};if(!save.free)dGoldAdd(save,-cost);save.wmods[save.diff][i]=1;persist();sfx('buy');toast(WEAPONS[i].n+' mod installed');refresh();},
+ dtab(v){UI.dtab=v;{const sp=document.querySelector('#ui .dscroll');if(sp)sp.scrollTop=0;}refresh();},
  settab(v){UI.setTab=v;UI.setQ='';{const sp=document.querySelector('#ui .setpane');if(sp)sp.scrollTop=0;}refresh();},
  setclear(){UI.setQ='';refresh();},
  buyup(k){const u=UPG[k],du=dUp(save);if(!u||du[k]>=DMAX[save.diff]||upLock(k))return;if(!spend(upCost(k)))return;du[k]++;persist();sfx('buy');deedPing();refresh();},
