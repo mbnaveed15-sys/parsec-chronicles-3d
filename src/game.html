@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#05070c">
-<title>Parsec Chronicles 3D · Build 105</title>
+<title>Parsec Chronicles 3D · Build 106</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
@@ -555,6 +555,28 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
 #ui .pwrap{position:relative;width:100%;max-width:980px}
 #ui .pwrap>.plist.scrolly{align-content:start}
 #ui .pwrap>.plist.scrolly::before,#ui .pwrap>.plist.scrolly>.morecue{grid-column:1/-1}
+/* build 106: compact pilot list (one row per pilot) */
+#ui .pbar{display:flex;flex-wrap:wrap;gap:.45em .6em;align-items:center;max-width:980px;padding:.45em .6em}
+#ui .pnew{display:flex;gap:.4em;flex:1 1 320px;min-width:0}
+#ui .pnew input{flex:1 1 auto;min-width:0;margin:0}
+#ui .pbar .btn{min-height:44px;margin:0}
+#ui .pfree{flex:0 0 auto}
+#ui .plist{display:flex;flex-direction:column;gap:.35em;width:100%}
+#ui .phd,#ui .prow{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr) minmax(0,.8fr) 206px;gap:.6em;align-items:center}
+#ui .phd{font:600 .58em/1.2 Orbitron,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:var(--dim);padding:.2em 1.3em .1em}
+#ui .prow{flex:0 0 auto;min-height:52px;padding:.3em .45em .3em .8em;border:1px solid var(--ln);border-radius:10px;background:rgba(10,18,30,.62)}
+#ui .prow.pdelq{border-color:rgba(255,107,107,.6)}
+#ui .pnm,#ui .pmis{display:flex;flex-direction:column;min-width:0;gap:.05em}
+#ui .pnm b{font-family:'Exo 2',sans-serif;font-size:.98em;color:#eaf6ff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ui .pmis b{font-family:Orbitron,sans-serif;font-size:.8em;color:var(--c)}
+#ui .pnm span,#ui .pmis span{font-size:.68em;color:var(--dim);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ui .pnm input{margin:0;min-width:0;width:100%}
+#ui .pcr{font-family:Orbitron,sans-serif;font-size:.78em;color:var(--gold);white-space:nowrap}
+#ui .pact{display:flex;gap:.3em;justify-content:flex-end}
+#ui .pact .btn{min-height:44px;min-width:44px;margin:0}
+#ui .pact .pfly{padding:.4em 1.2em}
+#ui .pact .pic{padding:0;font-size:1.05em;line-height:1}
+@media (max-width:560px){#ui .phd{display:none}#ui .prow{grid-template-columns:minmax(0,1fr) auto;row-gap:.25em}#ui .pmis{grid-column:1;flex-direction:row;gap:.5em;align-items:baseline}#ui .pcr{grid-column:2;text-align:right}#ui .pact{grid-column:1/-1}}
 #ui .dgrid>.dhd:first-child{margin-top:.2em}
 #ui .dsum{width:100%;max-width:1200px}
 #ui .dtot{display:flex;justify-content:space-between;gap:1em;flex-wrap:wrap;margin-top:.35em;font-size:.92em}
@@ -3673,7 +3695,7 @@ function fsBtn(cls){if(!fsOK())return'';const on=fsOn();return'<button class="bt
 function fsSync(){const on=fsOn();document.querySelectorAll('.fsb').forEach(b=>{const t=on?'Exit fullscreen':'Fullscreen';b.title=t;b.setAttribute('aria-label',t);const l=b.querySelector('.fsl');if(l)l.textContent=t;});}
 document.addEventListener('fullscreenchange',fsSync);document.addEventListener('webkitfullscreenchange',fsSync);
 /* build 100: the build number is shown on the title screen, in Systems and on the pause menu; bump it with every build */
-const BUILD_NO=105;
+const BUILD_NO=106;
 function hdr(title){return'<div class="hdr"><button class="btn sm" data-a="back">◀ Back</button><h2>'+title+'</h2>'+(save?'<span class="cr" title="'+DIFFS[save.diff].n+' wallet">'+fmtGold(dGold(save))+'</span>':'')+fsBtn()+'</div>';}
 function reachedOf(s){if(s.free)return 500;let m=0;for(const d in s.prog.campaign){const o=s.prog.campaign[d];for(const k in o)if(o[k].stars>0&&+k>m)m=+k;}return Math.min(500,m+1);}
 function slotCount(){if(!save)return 1;if(save.free)return 5;const r=reachedOf(save);return 1+(r>100?1:0)+(r>200?1:0)+(r>300?1:0)+(r>400?1:0);}
@@ -3695,21 +3717,30 @@ const SCREENS={
   '<span class="tag">Build '+BUILD_NO+' · Renderer: '+rendererLabel()+'</span>'+fsBtn('corner')+'</div>';
  },
  pilots(){
+  /* build 106: compact pilot list. One row per pilot (name, career, furthest mission, credits) with Fly and small
+     rename / export / delete buttons, inside the marked scroll box; New Pilot, Import and Free Roam in one bar on top */
   let h='<div class="scr">'+'<div class="hdr"><button class="btn sm" data-a="back">◀ Back</button><h2>Pilot Select</h2>'+fsBtn()+'</div>';
   const ids=pilotIds();
-  h+='<div class="grid g2" style="max-width:980px;margin-bottom:.6em"><div class="card"><span class="tag">'+ids.length+' pilot'+(ids.length===1?'':'s')+'</span><h3>New Pilot</h3><input type="text" id="nmnew" maxlength="16" placeholder="Callsign" autocomplete="off" data-enter="newp">'+
-   '<div class="row"><button class="btn primary" data-a="newp">Create</button><button class="btn sm" data-a="imp">Import</button></div></div>'+
-   '<div class="card"><span class="tag g">Sandbox</span><h3>Free Roam</h3><p class="dim sml">Every ship, colour, trail and mission unlocked. Nothing here is ever saved.</p><div class="row"><button class="btn gold" data-a="free">Enter Free Roam</button></div></div></div>';
-  h+='<div class="pwrap"><div class="grid g2 plist" style="max-width:980px">';
+  h+='<div class="panel pbar"><div class="pnew"><input type="text" id="nmnew" maxlength="16" placeholder="New pilot callsign" autocomplete="off" data-enter="newp" aria-label="New pilot callsign">'+
+   '<button class="btn primary" data-a="newp">Create</button><button class="btn" data-a="imp">Import</button></div>'+
+   '<button class="btn gold pfree" data-a="free" data-tip="Every ship, colour, trail and mission unlocked. Nothing here is ever saved.">Free Roam</button></div>';
+  h+='<div class="pwrap"><div class="plist">';
+  h+='<div class="phd"><span>'+ids.length+' pilot'+(ids.length===1?'':'s')+'</span><span>Furthest mission</span><span>Credits</span><span></span></div>';
   for(const i of ids){
    const d=LS.get('pc_save_'+i);
    if(d){
-    const s=sanitize(d),r=reachedOf(s);
-    h+='<div class="card"><span class="tag">Pilot '+(i+1)+'</span>'+(UI.ren===i?'<input type="text" id="rn'+i+'" maxlength="16" value="'+esc(s.name)+'" autocomplete="off" data-enter="rensave" data-v="'+i+'">':'<h3>'+esc(s.name)+'</h3>')+
-     '<div class="kv"><span>Credits ('+DIFFS[s.diff].n+')</span><b>'+dGold(s).toLocaleString('en-US')+'</b></div>'+
-     '<div class="kv"><span>Furthest mission</span><b>'+((r-1)/50+1|0)+'-'+((r-1)%50+1)+' · '+SEAS[(r-1)/50|0].n+'</b></div>'+
-     '<div class="kv"><span>Ship</span><b>'+SHIPS[dGet(s,'ship',0)].n+'</b></div><div class="kv"><span>Voyages / kills</span><b>'+s.cnt.voy+' / '+s.cnt.kills+'</b></div>'+
-     '<div class="row"><button class="btn primary" data-a="fly" data-v="'+i+'">Fly</button><button class="btn sm" data-a="exp" data-v="'+i+'">Export</button>'+(UI.ren===i?'<button class="btn sm primary" data-a="rensave" data-v="'+i+'">Save name</button><button class="btn sm" data-a="rencan">Cancel</button>':'<button class="btn sm" data-a="ren" data-v="'+i+'">Rename</button>')+'<button class="btn sm warn" data-a="del" data-v="'+i+'">'+(UI.pdel===i?'Confirm delete?':'Delete')+'</button></div></div>';
+    const s=sanitize(d),r=reachedOf(s),ren=UI.ren===i,del=UI.pdel===i;
+    h+='<div class="prow'+(ren?' ren':'')+(del?' pdelq':'')+'">'+
+     '<div class="pnm">'+(ren?'<input type="text" id="rn'+i+'" maxlength="16" value="'+esc(s.name)+'" autocomplete="off" data-enter="rensave" data-v="'+i+'" aria-label="New name">':'<b>'+esc(s.name)+'</b>')+
+      '<span>'+DIFFS[s.diff].n+' · '+SHIPS[dGet(s,'ship',0)].n+' · '+s.cnt.kills+' kills</span></div>'+
+     '<div class="pmis"><b>'+((r-1)/50+1|0)+'-'+((r-1)%50+1)+'</b><span>'+SEAS[(r-1)/50|0].n+'</span></div>'+
+     '<div class="pcr">◈ '+dGold(s).toLocaleString('en-US')+'</div>'+
+     '<div class="pact">'+(ren?'<button class="btn sm primary" data-a="rensave" data-v="'+i+'">Save</button><button class="btn sm" data-a="rencan">Cancel</button>':
+      del?'<button class="btn sm warn" data-a="del" data-v="'+i+'">Delete?</button><button class="btn sm" data-a="rencan">Keep</button>':
+      '<button class="btn primary pfly" data-a="fly" data-v="'+i+'">Fly</button>'+
+      '<button class="btn sm pic" data-a="ren" data-v="'+i+'" title="Rename" aria-label="Rename '+esc(s.name)+'">✎</button>'+
+      '<button class="btn sm pic" data-a="exp" data-v="'+i+'" title="Export" aria-label="Export '+esc(s.name)+'">⇪</button>'+
+      '<button class="btn sm pic warn" data-a="del" data-v="'+i+'" title="Delete" aria-label="Delete '+esc(s.name)+'">✕</button>')+'</div></div>';
    }
   }
   if(!ids.length)h+='<p class="dim sml">No pilots yet. Enter a callsign above and press Create.</p>';
@@ -4136,7 +4167,7 @@ const ACT={
  fly(v){const d=LS.get('pc_save_'+v);if(!d)return;save=sanitize(d);slotIdx=+v;deedPing();show('hangar');},
  del(v){const i=+v;if(UI.pdel!==i){UI.pdel=i;refresh();return;}LS.del('pc_save_'+i);UI.pdel=-1;if(UI.ren===i)UI.ren=-1;refresh();toast('Pilot deleted');},
  ren(v){UI.ren=+v;UI.pdel=-1;refresh();const e=$('rn'+v);if(e){try{e.focus({preventScroll:true});e.select();}catch(_){}}},
- rencan(){UI.ren=-1;refresh();},
+ rencan(){UI.ren=-1;UI.pdel=-1;refresh();},
  rensave(v){const i=+v,e=$('rn'+i),d=LS.get('pc_save_'+i),nm=e&&e.value.trim();if(!d){UI.ren=-1;refresh();return;}if(nm){d.name=nm.slice(0,16);if(!LS.set('pc_save_'+i,d)){storeFull();return;}toast('Renamed to '+d.name);}UI.ren=-1;refresh();},
  exp(v){show('io',{mode:'export',i:+v});},
  imp(){show('io',{mode:'import'});},
