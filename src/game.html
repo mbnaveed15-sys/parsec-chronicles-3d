@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#05070c">
-<title>Parsec Chronicles 3D · Build 101</title>
+<title>Parsec Chronicles 3D · Build 102</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
@@ -666,7 +666,7 @@ function shipVar(i){const c=SHIPS[i];return c&&c.v?1:0;}
 function shipWings(i){return(shipVar(i)?WINGS_V:WINGS)[shipRole(i)];}
 function shipBase(i,role){const c=SHIPS[i]||SHIPS[0];return c.tier*3+(role==null?0:role);}
 const MODS=[{n:'Plating',d:'+10% hull points',cost:900,at:100,rank:0},{n:'Thrusters',d:'+6% top speed',cost:800,at:200,rank:0},{n:'Coils',d:'+8% weapon damage',cost:1000,at:300,rank:1},{n:'Reactive Armour',d:'−10% collision damage',cost:900,at:400,rank:1}];
-const UPK=['weapons','hull','engines','cap','target','arc','squad','station','wing'];
+const UPK=['weapons','hull','engines','cap','target','arc','squad','station','wing','smag'];
 const UPG={
  weapons:{n:'Weapons',base:150,max:60,d:'Raises weapon damage, and the laser fire rate and charge speed.'},
  hull:{n:'Hull',base:120,max:60,d:'+20 hull, +12 shield, +3 ram damage.'},
@@ -678,8 +678,15 @@ const UPG={
  /* build 100: home station track. Full track = +120% station health (turrets and shield generator too) and +80% turret, field and station-gun damage on every difficulty,
     so each level is worth 6%/4% on Cadet (20 levels), 3%/2% on Pilot (40), 2%/1.33% on Ace (60). Gated by the same sector ceiling as the other tracks. */
  station:{n:'Home Station',base:170,max:60,d:'Your home station gains health and turret damage.'},
- wing:{n:'Wing Size',base:1600,max:6,d:'Adds one wingmate to your flight. New slots unlock after boss victories.'}
+ wing:{n:'Wing Size',base:1600,max:6,d:'Adds one wingmate to your flight. New slots unlock after boss victories.'},
+ /* build 102: singularity magazine. 3 levels on every difficulty, +1 charge each (3 -> 6). Opens in Sector 5 / 7 / 10 (the gear-ceiling
+    formula scaled to 3 levels, never before the Singularity unlocks). Flat cost like Wing Size. */
+ smag:{n:'Sing Charges',base:6000,max:3,d:'+1 singularity magazine slot per level. Unused charges carry over.'}
 };
+const SMAG_COST=[6000,12000,20000],SING_BASE=3;
+/* build 102: per-track level cap (Sing Magazine has 3 levels; the others use the difficulty ceiling 20 / 40 / 60) */
+function upCap(k,d){return k==='smag'?3:DMAX[d||(save&&save.diff)||'cadet'];}
+function singMaxOf(){return SING_BASE+Math.min(3,(save&&dUp(save).smag)|0);}
 const WING_AT=[10,50,100,200,300,400],WING_COST=[1000,2500,5000,9000,14000,20000];
 const HULLS=[['Steel','#7a8898',0,0],['Void','#2c3240',250,0],['Crimson','#d0283a',350,0],['Ion Teal','#14b8a6',350,0],['Aurum','#e0a820',600,0],['Plasma','#8a3ad0',500,0],['Arctic','#b8dcf0',300,25],['Ember','#e8561c',350,50],['Jade','#1fb865',400,75],['Midnight','#1c2c5e',450,100],['Rose','#e0507e',500,125],['Bronze','#b8803c',550,150],['Sapphire','#2a62d8',650,200],['Obsidian','#101216',750,250],
  ['Neon Lime','#9cff2e',400,25],['Electric Blue','#1e90ff',450,40],['Hot Pink','#ff3ca8',500,60],['Sunburst','#ffc21a',550,80],['Toxic Green','#3dff6e',650,120],['Royal Violet','#7b3cff',750,160],['Pearl White','#f2f4f8',850,200],['Cobalt','#0047ff',950,250],['Tangerine','#ff8a1e',1100,300],['Chrome','#d8dee6',1500,400,'chrome']].map(a=>({n:a[0],c:a[1],cost:a[2],at:a[3],fin:a[4]||'',rank:(a[3]>=250||a[2]>=900)?2:(a[3]>=25||a[2]>=550)?1:0}));
@@ -828,7 +835,7 @@ function deedT(){if(DT)return DT;
  const c=()=>save.cnt,du=()=>dUp(save),G=d=>(save.gear&&save.gear[d])||{},n=k=>dList(save,k).length;
  const secN=d=>{let x=0;for(let s=0;s<10;s++)if(sectorCleared(s,d))x++;return x;};
  const gold3=s=>DRANKS.some(d=>{for(let m=1;m<=50;m++)if(starsOf(s*50+m,d)<3)return false;return true;});
- const maxed=d=>UPK.filter(u=>u!=='wing'&&(G(d)[u]|0)>=DMAX[d]).length,best=()=>Math.max.apply(null,DRANKS.map(maxed));
+ const maxed=d=>UPK.filter(u=>u!=='wing'&&u!=='smag'&&(G(d)[u]|0)>=DMAX[d]).length,best=()=>Math.max.apply(null,DRANKS.map(maxed));
  DT={first:()=>[c().wins,1],ram:()=>[c().ram,10],boss:()=>[c().boss,1],sector:()=>[c().sectors,1],sec10:()=>[c().sectors,10],
   mEsc:()=>[c().wEsc,1],mHun:()=>[c().wHun,1],mDef:()=>[c().wDef,1],mTot:()=>[c().wTot,1],dPil:()=>[c().wPil,1],dAce:()=>[c().wAce,1],dAceB:()=>[c().bAce,1],flaw10:()=>[c().flaw,10],
   sh5:()=>[n('ships'),5],sh15:()=>[n('ships'),SHIPS.length],pt10:()=>[n('hulls'),10],ptAll:()=>[n('hulls'),HULLS.length],tr5:()=>[n('trails'),5],trAll:()=>[n('trails'),TRAILS.length],
@@ -836,7 +843,7 @@ function deedT(){if(DT)return DT;
   pSec1:()=>[secN('pilot'),1],pSec5:()=>[secN('pilot'),5],pSec10:()=>[secN('pilot'),10],aSec1:()=>[secN('ace'),1],aSec5:()=>[secN('ace'),5],aSec10:()=>[secN('ace'),10],
   aw50:()=>[c().wAce,50],aw250:()=>[c().wAce,250],aw500:()=>[c().wAce,500],ab10:()=>[c().bAce,10],ab50:()=>[c().bAce,50],
   sh10:()=>[n('ships'),10],sh20:()=>[n('ships'),20],pt20:()=>[n('hulls'),20],tr10:()=>[n('trails'),10],tm6:()=>[n('trims'),6],tmAll:()=>[n('trims'),TRIMS.length],
-  up3:()=>[best(),3],upAll:()=>[best(),UPK.length-1],stMax:()=>[DRANKS.some(d=>(G(d).station|0)>=DMAX[d])?1:0,1],
+  up3:()=>[best(),3],upAll:()=>[best(),UPK.length-2],stMax:()=>[DRANKS.some(d=>(G(d).station|0)>=DMAX[d])?1:0,1],
   modAll:()=>{const md=(save.mods&&save.mods[save.diff])||{};let b=0;for(const k in md)if(Array.isArray(md[k]))b=Math.max(b,md[k].length);return[b,MODS.length];},
   wmAll:()=>[Object.keys((save.wmods&&save.wmods[save.diff])||{}).length,WEAPONS.length]};
  for(let i=1;i<=10;i++){DT['cap'+i]=()=>[DRANKS.some(d=>starsOf(i*50,d)>0)?1:0,1];DT['clr'+i]=()=>[DRANKS.some(d=>sectorCleared(i-1,d))?1:0,1];DT['gold'+i]=()=>[gold3(i-1)?1:0,1];}
@@ -909,7 +916,7 @@ function loadSettings(){
 function applyTouchAlpha(){try{const a=clamp(+settings.tbAlpha||1,.2,1);document.documentElement.style.setProperty('--tbo',a);}catch(e){}}
 function saveSettings(){applyTouchAlpha();let o=settings;if(SOFT_AUTO&&settings.gfx==='classic'&&!LS.get('pc_force3d')){o=Object.assign({},settings);o.gfx=SOFT_PREV||'high';}LS.set('pc_settings',o);LS.set('pc_audio',audioSet);try{document.body.classList.toggle('hc',!!settings.hc);document.documentElement.lang=settings.lang||'en';window.tailFixed=settings.tailCam==='fixed';}catch(e){}}
 function newSave(name){const s={v:2,name:name||'Pilot',gold:{cadet:0,pilot:0,ace:0},up:{},prog:{campaign:{cadet:{},pilot:{},ace:{}}},diff:'cadet',ach:{},hulls:{},trails:{},trims:{},hull:{},trail:{},trim:{},sq:{},sqCap:{},ship:{},ships:{},best:{},mods:{},wmods:{},gear:{},lore:{},loadout:[3],vulcanAuto:false,contracts:{},climb:0,memorial:0,squadXP:0,squadLvl:0,cnt:{kills:0,gold:0,wins:0,voy:0,ram:0,boss:0,sectors:0,hunt:0,elite:0,flaw:0,wEsc:0,wHun:0,wDef:0,wTot:0,wPil:0,wAce:0,bAce:0,wBat:0,wRec:0,ctr:0,crit:0,stk:0,nh:0,sw:0,fw:0,streak:0,wStm:0,wFog:0,wRad:0,wDrf:0,wDer:0,defP:0,wk0:0,wk1:0,wk2:0,wk3:0,wk4:0,wk5:0},touch:{mirror:false,scale:1,stick:true,pos:{}}};initGear(s);for(const d of DRANKS){s.ships[d]=[0];s.hulls[d]=[0];s.trails[d]=[0];s.trims[d]=[0];s.ship[d]=0;s.hull[d]=0;s.trail[d]=0;s.trim[d]=0;s.sq[d]=0;s.sqCap[d]=0;s.best[d]=0;s.wmods[d]={};}return s;}
-function initGear(s){if(!s.gear)s.gear={};for(const d of DRANKS){const g=s.gear[d]||(s.gear[d]=UPK.reduce((o,k)=>(o[k]=0,o),{weapons:0,hull:0,engines:0,cap:0,target:0,arc:0,squad:0,station:0,wing:0}));const cap=DMAX[d];for(const k of UPK)g[k]=clamp((+g[k])|0,0,cap);}}
+function initGear(s){if(!s.gear)s.gear={};for(const d of DRANKS){const g=s.gear[d]||(s.gear[d]=UPK.reduce((o,k)=>(o[k]=0,o),{weapons:0,hull:0,engines:0,cap:0,target:0,arc:0,squad:0,station:0,wing:0}));for(const k of UPK)g[k]=clamp((+g[k])|0,0,upCap(k,d));}}
 function fixLoadout(s,d){
  const src=Array.isArray(d&&d.loadout)?d.loadout:null,out=[];
  if(src)for(const w of src){const i=+w;if(Number.isInteger(i)&&i>0&&i<WEAPONS.length&&!out.includes(i)&&out.length<5)out.push(i);}
@@ -947,7 +954,7 @@ function sanitize(d){
  if(!legacy){
   s.ships={};s.hulls={};s.trails={};s.trims={};s.ship={};s.hull={};s.trail={};s.trim={};s.sq={};s.sqCap={};s.best={};s.mods={};
   for(const r of DRANKS){
-  s.gear[r]={};const g=d.gear&&d.gear[r]||{};for(const k of UPK)s.gear[r][k]=clamp((+g[k])|0,0,DMAX[r]);
+  s.gear[r]={};const g=d.gear&&d.gear[r]||{};for(const k of UPK)s.gear[r][k]=clamp((+g[k])|0,0,upCap(k,r));
   const wcap=Math.min(6,s.gear[r].wing|0);s.sq[r]=clamp((d.sq&&d.sq[r]!==undefined)?(+d.sq[r]|0):wcap,0,wcap);s.sqCap[r]=wcap;
   s.ships[r]=list(d.ships&&d.ships[r],SHIPS.length);
   s.hulls[r]=list(d.hulls&&d.hulls[r],HULLS.length);
@@ -968,6 +975,8 @@ function sanitize(d){
  }
  migrate(s,d);initGear(s);
  if(d.lore)for(const k in d.lore)s.lore[k]=1;
+ /* build 102: carried singularity charges per difficulty */
+ if(d.singC&&typeof d.singC==='object'){s.singC={};for(const r of DRANKS)if(d.singC[r]!==undefined)s.singC[r]=clamp((+d.singC[r])|0,0,SING_BASE+3);}
  s.vulcanAuto=!!d.vulcanAuto;s.dmg=cleanDmg(d.dmg);
  if(d.cnt)for(const k in s.cnt)s.cnt[k]=Math.max(0,+d.cnt[k]||0);
  /* build 101: Battle wins and no-damage wins were never counted before. Seed them from what the save does record: one Battle win per
@@ -976,7 +985,7 @@ function sanitize(d){
  if(d.touch&&typeof d.touch==='object'){s.touch.mirror=!!d.touch.mirror;s.touch.scale=clamp(+d.touch.scale||1,.6,1.6);s.touch.stick=d.touch.stick!==false;if(d.touch.pos)for(const k in d.touch.pos){const p=d.touch.pos[k];if(Array.isArray(p)&&p.length===2)s.touch.pos[k]=[clamp(+p[0]||0,0,1),clamp(+p[1]||0,0,1)];}}
  return s;
 }
-function freeSave(){const s=newSave('FREE ROAM');s.free=true;s.gold={cadet:9999999,pilot:9999999,ace:9999999};for(const r of DRANKS){s.ships[r]=SHIPS.map(x=>x.i);s.hulls[r]=HULLS.map((x,i)=>i);s.trails[r]=TRAILS.map((x,i)=>i);s.trims[r]=TRIMS.map((x,i)=>i);s.ship[r]=14;s.best[r]=14;s.trim[r]=0;s.sq[r]=6;s.sqCap[r]=6;s.gear[r]=UPK.reduce((o,k)=>(o[k]=DMAX[r],o),{});s.mods[r]={};for(const x of SHIPS)(s.mods[r][x.i]||(s.mods[r][x.i]=[])).push(0,1,2,3);}return s;}
+function freeSave(){const s=newSave('FREE ROAM');s.free=true;s.gold={cadet:9999999,pilot:9999999,ace:9999999};for(const r of DRANKS){s.ships[r]=SHIPS.map(x=>x.i);s.hulls[r]=HULLS.map((x,i)=>i);s.trails[r]=TRAILS.map((x,i)=>i);s.trims[r]=TRIMS.map((x,i)=>i);s.ship[r]=14;s.best[r]=14;s.trim[r]=0;s.sq[r]=6;s.sqCap[r]=6;s.gear[r]=UPK.reduce((o,k)=>(o[k]=upCap(k,r),o),{});s.mods[r]={};for(const x of SHIPS)(s.mods[r][x.i]||(s.mods[r][x.i]=[])).push(0,1,2,3);}return s;}
 function persist(){if(save&&!save.free&&slotIdx>=0)LS.set('pc_save_'+slotIdx,save);}
 /* build 94: unlimited pilots. Saves stay at pc_save_<n>; the list is every such key, so the old slots 0-2 load as before */
 function pilotIds(){const a=[];try{for(let i=0;i<localStorage.length;i++){const m=/^pc_save_(\d+)$/.exec(localStorage.key(i)||'');if(m)a.push(+m[1]);}}catch(e){}return a.sort(function(x,y){return x-y;});}
@@ -987,7 +996,7 @@ function reached(){if(save.free)return 500;let m=0;const o=save.prog.campaign[sa
 function isOpen(lv){return save.free||lv===1||starsOf(lv-1)>0;}
 function sectorStars(sea){let n=0;for(let m=1;m<=50;m++)n+=starsOf(sea*50+m);return n;}
 function sectorCleared(sea,diff){for(let m=1;m<=50;m++)if(!starsOf(sea*50+m,diff))return false;return true;}
-function upCost(k){const l=dUp(save)[k];if(k==='wing')return WING_COST[Math.min(l,WING_COST.length-1)];return Math.round(UPG[k].base*(l+1)*(1+l*.15));}
+function upCost(k){const l=dUp(save)[k];if(k==='smag')return SMAG_COST[Math.min(l|0,SMAG_COST.length-1)];if(k==='wing')return WING_COST[Math.min(l,WING_COST.length-1)];return Math.round(UPG[k].base*(l+1)*(1+l*.15));}
 function wingCount(){return Math.min(6,dUp(save).wing);}
 function wingCap(){return Math.min(6,(dUp(save).wing|0));}
 function squadHealthy(){if(!save)return 0;const d=save.diff,cap=wingCap();if(!save.sq)save.sq={};if(!save.sqCap)save.sqCap={};if(save.sq[d]===undefined)save.sq[d]=cap;if(save.sqCap[d]===undefined)save.sqCap[d]=cap;if(cap>save.sqCap[d]){save.sq[d]=(save.sq[d]|0)+(cap-save.sqCap[d]);save.sqCap[d]=cap;}save.sq[d]=clamp(save.sq[d]|0,0,cap);return save.sq[d];}
@@ -996,7 +1005,8 @@ function rebuildFee(){const b=SHIPS[shipBase(dGet(save,'ship',0))]||SHIPS[0];ret
    Gear already owned above it is kept; it only stops buying further. Wing Size keeps its own mission unlocks. */
 function gearSector(){if(!save)return 1;if(save.free)return 10;return Math.min(10,((reached()-1)/50|0)+1);}
 function gearCeil(){if(!save)return 20;const D=DMAX[save.diff];if(save.free)return D;return Math.round(D*gearSector()/10);}
-function upLock(k){const u=dUp(save),l=u[k],cap=DMAX[save.diff];if(l>=cap)return'';
+function upLock(k){const u=dUp(save),l=u[k],cap=upCap(k);if(l>=cap)return'';
+ if(k==='smag'){if(!singUnlocked())return'Lv '+(l+1)+' unlocks in Sector 5';const need=Math.max(5,Math.ceil((l+1)*10/cap));if(!save.free&&gearSector()<need)return'Lv '+(l+1)+' unlocks in Sector '+need;return'';}
  if(k!=='wing'&&l>=gearCeil())return'Lv '+(l+1)+' unlocks in Sector '+Math.min(10,Math.ceil((l+1)/(cap/10)));if(k==='wing'&&l<cap&&reached()<=WING_AT[l])return'Unlocks after mission '+WING_AT[l];if(k==='squad'&&u.wing<1)return'Needs a wingmate first';return'';}
 function diffLock(o){const r=DIFFS[save.diff].rank,n=o.rank||0;return r<n?'Requires '+DIFFS[DRANKS[n]].n+' difficulty':'';}
 function modeFor(m){return m%10===0?'boss':m%10===3?'escort':m%10===5?'hunted':m%10===7?'totalwar':m%10===9?'defend':'battle';}
@@ -1481,7 +1491,7 @@ function startMission(lv,hunt){
  for(let i=0;i<nPow;i++){const p=place(20,60);if(p)powerups.push(mkPower(p.x,p.y,pickPwr()));}
  /* fleets */
  const pa=Math.atan2(ES.y-PS.y,ES.x-PS.x);
- player=mkPlayer(PS.x+Math.cos(pa)*300,PS.y+Math.sin(pa)*300,pa);player.sing=singUnlocked()?1:0;
+ player=mkPlayer(PS.x+Math.cos(pa)*300,PS.y+Math.sin(pa)*300,pa);player.singMax=singMaxOf();player.sing=singUnlocked()?Math.max(1,Math.min(player.singMax,dGet(save,'singC',1)|0)):0;
  player.mslMax=4+Math.floor((player.wl||0)/12)+(player.role===2?1:0);player.msl=player.mslMax;
  player.plasmaMax=5+Math.floor((player.capLv||0)/20);player.plasma=player.plasmaMax;
  const lo=loadoutFor();player.loadout=lo;player.slot=0;player.wep=lo[0]||0;
@@ -2273,7 +2283,7 @@ function wingWants(a,type){
  if(type==='damage')return !(a.dbuff>0);
  if(type==='plasma'){const p=player;return !!(p&&!p.dead&&p.plasma<p.plasmaMax);}
  if(type==='msl'){const p=player;return !!(p&&!p.dead&&p.msl<(p.mslMax||4));}
- if(type==='sing'){const p=player;return !!(p&&!p.dead&&p.sing<3);}
+ if(type==='sing'){const p=player;return !!(p&&!p.dead&&p.sing<(p.singMax||SING_BASE)+1);}
  return true;
 }
 function wingTake(a,u){
@@ -2285,10 +2295,14 @@ function wingTake(a,u){
   case'damage':a.dbuff=600;return'DAMAGE ×1.5';
   case'plasma':if(p)p.plasma=p.plasmaMax;return'PLASMA RESTOCK (SENT TO YOU)';
   case'msl':if(p)p.msl=Math.min(p.mslMax||4,p.msl+2);return'MISSILE RELOAD +2 (SENT TO YOU)';
-  case'sing':if(p)p.sing=Math.min(3,p.sing+1);return'SINGULARITY CHARGE (SENT TO YOU)';
+  case'sing':return p?singAdd(p)+' (SENT TO YOU)':'SINGULARITY CHARGE';
   default:{const g=50+M.lv;M.gold+=g;return'+'+g+' CREDITS';}
  }
 }
+/* build 102: a charge picked up with a full magazine becomes one +1 overcharge (used first, dropped at mission end) */
+function singAdd(p){const mx=p.singMax||SING_BASE;if(p.sing<mx){p.sing++;return'SINGULARITY CHARGE';}if(p.sing<mx+1){p.sing=mx+1;p.singOv=90;return'SINGULARITY OVERCHARGE +1';}return'SINGULARITY MAGAZINE FULL';}
+/* build 102: unused charges (up to the magazine size, never the overcharge) carry to the next mission on this difficulty */
+function singBank(){const m=M,p=player;if(!m||m.singBanked||!save||m.mode==='range'||m.tutOn||!p||!singUnlocked())return;m.singBanked=1;dSet(save,'singC',clamp(p.sing|0,0,p.singMax||SING_BASE));persist();}
 function stepPickups(){
  const p=player&&!player.dead?player:null;
  for(let i=flotsams.length-1;i>=0;i--){
@@ -2322,7 +2336,7 @@ function stepPickups(){
      case'boost':p.boost=600;t='SPEED BOOST';break;
      case'damage':p.dbuff=600;t='DAMAGE ×1.5';break;
      case'shield':p.sh=p.maxSh*1.5;p.shF=1;t='SHIELD OVERCHARGE';break;
-     case'sing':p.sing=Math.min(3,p.sing+1);t='SINGULARITY CHARGE';break;
+     case'sing':t=singAdd(p);break;
      case'msl':p.msl=Math.min(p.mslMax||4,p.msl+2);t='MISSILE RELOAD +2';break;
      default:{const g=50+M.lv;M.gold+=g;t='+'+g+' CREDITS';}
     }
@@ -3271,10 +3285,15 @@ function drawHUD(){
   else if(wi===2){f=1-p.cd[2]/70;sub=p.plasma+'/'+p.plasmaMax;}
   else if(wi===3){f=p.vover>0?0:1-p.vheat/75;sub=p.vover>0?'COOL':save.vulcanAuto?'AUTO':'';}
   else if(wi===4){f=clamp(p.msl/(p.mslMax||1),0,1);sub=p.msl+'/'+p.mslMax;}
-  else if(wi===5){f=1-p.singCd/420;sub=p.sing+'/3';}
+  else if(wi===5){const sm=p.singMax||SING_BASE;f=1-p.singCd/420;sub=Math.min(p.sing,sm)+'/'+sm;}
   ring(x,y,WR,f,wi===3&&p.vover>0?'#ff5a4a':w.c,sel);
   c.textAlign='center';c.fillStyle=sel?w.c:'#a9bdcc';c.font='800 '+(touchOn?8:7)+'px Orbitron';c.fillText(AB[wi]||w.n.slice(0,3),x,y-4);
   c.fillStyle='#ffffff';c.font='700 '+(touchOn?10:8.5)+'px "Exo 2"';c.fillText(sub,x,y+(touchOn?6:5));
+  /* build 102: overcharge pip (gold +1 on the badge rim, pulses for 1.5 s when gained) */
+  if(wi===5&&p.sing>(p.singMax||SING_BASE)){const pr=touchOn?7.5:6.5,px=x+WR*.74,py=y-WR*.74,pu=p.singOv>0?(p.singOv--,1+.35*Math.sin(p.singOv*.35)):1;
+   c.lineWidth=1.6;c.strokeStyle='rgba(255,209,102,.75)';c.beginPath();c.arc(x,y,WR+3,0,TAU);c.stroke();
+   c.fillStyle='#ffd166';c.beginPath();c.arc(px,py,pr*pu,0,TAU);c.fill();c.lineWidth=1.2;c.strokeStyle='#3a2a00';c.stroke();
+   c.fillStyle='#1a1200';c.font='900 '+(touchOn?8:7)+'px Orbitron';c.fillText('+1',px,py+.5);}
  }
  const chips=[['CM',1-p.flakCd/500,settings.assistCm?'#ffd700':'#8a7a3a'],['BRC',p.brace>0?1:1-p.braceCd/600,'#ff9a3c']];
  if(save.vulcanAuto)chips.push(['VA',1,'#7de3ff']);
@@ -3563,7 +3582,7 @@ function fsBtn(cls){if(!fsOK())return'';const on=fsOn();return'<button class="bt
 function fsSync(){const on=fsOn();document.querySelectorAll('.fsb').forEach(b=>{const t=on?'Exit fullscreen':'Fullscreen';b.title=t;b.setAttribute('aria-label',t);const l=b.querySelector('.fsl');if(l)l.textContent=t;});}
 document.addEventListener('fullscreenchange',fsSync);document.addEventListener('webkitfullscreenchange',fsSync);
 /* build 100: the build number is shown on the title screen, in Systems and on the pause menu; bump it with every build */
-const BUILD_NO=101;
+const BUILD_NO=102;
 function hdr(title){return'<div class="hdr"><button class="btn sm" data-a="back">◀ Back</button><h2>'+title+'</h2>'+(save?'<span class="cr" title="'+DIFFS[save.diff].n+' wallet">'+fmtGold(dGold(save))+'</span>':'')+fsBtn()+'</div>';}
 function reachedOf(s){if(s.free)return 500;let m=0;for(const d in s.prog.campaign){const o=s.prog.campaign[d];for(const k in o)if(o[k].stars>0&&+k>m)m=+k;}return Math.min(500,m+1);}
 function slotCount(){if(!save)return 1;if(save.free)return 5;const r=reachedOf(save);return 1+(r>100?1:0)+(r>200?1:0)+(r>300?1:0)+(r>400?1:0);}
@@ -3623,7 +3642,7 @@ const SCREENS={
   const sqc=wingCap(),sqh=squadHealthy(),sqFee=rebuildFee(),sqMiss=Math.max(0,sqc-sqh);let dots='';for(let i=0;i<sqc;i++)dots+='<span class="'+(i<sqh?'':'down')+'">'+(i<sqh?'WING':'DOWN')+'</span>';
   const nl=nextLv(),nsea=Math.min(9,(nl-1)/50|0),nm=(nl-1)%50+1,nmode=modeFor(nm),NS=SEAS[nsea],MO=MODES[nmode];
   const hull=Math.round((sh.hp+u.hull*20)*(1+smodK(dGet(s,'ship',0),0))),shield=Math.round(sh.hp*.4+u.hull*12);
-  const tech=UPK.reduce((a,k)=>a+(u[k]||0),0),techMax=DMAX[s.diff]*UPK.length;
+  const tech=UPK.reduce((a,k)=>a+(u[k]||0),0),techMax=UPK.reduce((a,k)=>a+upCap(k),0);
   const load=loadoutFor(),pct=(v,m)=>Math.max(4,Math.min(100,Math.round(v/m*100)));
   return'<div class="scr">'+hdr('Hangar · '+esc(s.name))+
   '<div class="bayhero panel">'+
@@ -3725,10 +3744,11 @@ const SCREENS={
   if(t==='up'){
    h+='<div class="ugrid">';
    const cap=DMAX[s.diff];
-   for(const k of UPK){const u=UPG[k],l=du[k],mx=l>=cap,c=upCost(k),lk=mx?'':upLock(k);
+   for(const k of UPK){const u=UPG[k],l=du[k],kc=upCap(k),mx=l>=kc,c=upCost(k),lk=mx?'':upLock(k);
+    const smx=k==='smag'?'<span class="sml umg">Magazine <b>'+(SING_BASE+l)+'</b>'+(mx?'':' <b>→&nbsp;'+(SING_BASE+l+1)+'</b>')+' charges</span>':'';
     const mg=k==='cap'?['Pickup magnet',magR(l),magR(l+1)]:k==='squad'?['Wingmate magnet',110+2.5*l,110+2.5*(l+1)]:null;
     const stx=k==='station'?'<span class="sml umg">Health <b>+'+Math.round(120*l/cap)+'%</b>'+(mx?'':' <b>→&nbsp;+'+Math.round(120*(l+1)/cap)+'%</b>')+' · Damage <b>+'+Math.round(80*l/cap)+'%</b></span>':'';
-    h+='<div class="card ucard"><h3>'+u.n+'</h3><span class="tag">Lv '+l+' / '+cap+'</span><span class="dim sml ud">'+u.d+'</span>'+(mg?'<span class="sml umg">'+mg[0]+' <b>'+mg[1]+'&nbsp;m</b>'+(mx?'':' <b>→&nbsp;'+mg[2]+'&nbsp;m</b>')+'</span>':'')+stx+'<div class="statbar"><i style="width:'+Math.min(100,l/cap*100)+'%"></i></div>'+
+    h+='<div class="card ucard"><h3>'+u.n+'</h3><span class="tag">Lv '+l+' / '+kc+'</span><span class="dim sml ud">'+u.d+'</span>'+(mg?'<span class="sml umg">'+mg[0]+' <b>'+mg[1]+'&nbsp;m</b>'+(mx?'':' <b>→&nbsp;'+mg[2]+'&nbsp;m</b>')+'</span>':'')+stx+smx+'<div class="statbar"><i style="width:'+Math.min(100,l/kc*100)+'%"></i></div>'+
      '<button class="btn sm'+(mx||lk?' dis':(!s.free&&dGold(s)<c?' warn':''))+'" data-a="buyup" data-v="'+k+'"'+(lk?' data-tip="'+esc(u.n+': '+lk)+'"':'')+'>'+(mx?'Maxed':lk?'🔒 '+lk:'Upgrade · ◈ '+fmtNum(c))+'</button></div>';}
    h+='</div>';
   }else if(t==='dock'){
@@ -3882,7 +3902,7 @@ const SCREENS={
   '<tr><td style="color:#ff7043">PLASMA</td><td>Slow heavy bolt that burns over time. Limited charges, restocked by docking.</td></tr>'+
   '<tr><td style="color:#ffd700">VULCAN</td><td>Bullet stream, best inside 380 m. Overheats. V lets it fire by itself.</td></tr>'+
   '<tr><td style="color:#ffb36b">MISSILE</td><td>Guided warhead: homes on your lock or the nearest hostile, 29+ damage with a small splash. Rack holds 4 per sortie and rearms while you dock or from missile pickups. Carry it in a loadout slot.</td></tr>'+
-  '<tr><td style="color:#b06bff">SING</td><td>Singularity bomb: a 215 m well that drags ships in, slows their engines and holds them at the core, where it grinds hardest (up to 2.5× damage at the centre) — bosses resist part of the pull, allies take a light pull and 25% damage. One charge a mission once you reach Sector 5; rare purple pickups add charges. Captains, elites and bosses can throw one back at you.</td></tr></table>'+
+  '<tr><td style="color:#b06bff">SING</td><td>Singularity bomb: a 215 m well that drags ships in, slows their engines and holds them at the core, where it grinds hardest (up to 2.5× damage at the centre) — bosses resist part of the pull, allies take a light pull and 25% damage. Unlocks in Sector 5. Holds 3 charges (up to 6 with the Sing Charges upgrade); unused charges carry over to your next mission and you always launch with at least 1. Rare purple pickups add charges; one picked up with a full magazine becomes a gold +1 overcharge that is used first and is lost at mission end. Captains, elites and bosses can throw one back at you.</td></tr></table>'+
   '<p><b>Ammo fallback:</b> when plasma, missile or singularity charges run out, the weapon selector automatically returns to your main lasers. Main lasers are permanent and sit outside the loadout; ammo pickups are filtered to the secondary weapons actually fitted.</p>'+
   '<p><b>Flak</b> is a point-defence countermeasure, not a slot weapon: it bursts automatically at incoming plasma when the assist is on, or on G. Nine pellets, 8 s cooldown.</p>'+
   '<p>Shots auto-aim at targets inside your <b>fire arc</b> (widen it with the Fire Arc upgrade). A ghost diamond shows where ion and plasma will land. Targeting upgrades add critical hits, shown in gold.</p>'+
@@ -3960,7 +3980,7 @@ function checkDeeds(r){
 }
 /* collection deeds can be earned in the hangar: check after each purchase */
 function deedPing(){if(!save||save.free)return;const g=checkDeeds();if(g.length){persist();sfx('buy');toast((g.length>3?g.length+' deeds earned':'Deed earned: '+g.map(d=>d.n).join(', '))+' (+◈ '+fmtNum(g.reduce((a,d)=>a+d.g,0))+')');}}
-function showEnd(){
+function showEnd(){singBank();
  const m=M,win=m.win,hunt=m.hunt,secs=m.clock/60;let stars=0,reward=0,deeds=[];const sqLost=Math.max(0,m.wingLost||0);if(!save.free&&!m.tutOn&&m.mode!=='range'){const o=dmgOf(),f=s=>s?(s.dead?.5:clamp(1-s.hp/s.maxHp,0,.75)):0;o.p=f(player);o.w=allies.filter(a=>a.ai&&a.ai.slot&&!a.dead).map(f);}if(sqLost>0&&!save.free&&!m.tutOn){save.sq[save.diff]=Math.max(0,(save.sq[save.diff]|0)-sqLost);save.memorial=(save.memorial||0)+sqLost;persist();}
  if(win){const st=starTimes(m.mode,m.sea,m.lv);stars=secs<st[0]?3:secs<st[1]?2:1;reward=hunt?Math.round((m.kills*10+150)*m.D.r):missionReward(m.lv,m.mode,m.diff);
   if(m.contract){reward=Math.round(reward*m.contract.pay);save.contracts[m.contract.key+'-'+m.contract.i]={score:m.kills,stars};}
@@ -3992,7 +4012,7 @@ function showEnd(){
 const ACT={
  nav(v){if((v==='settings'||v==='help')&&UI.cur!=='settings'&&UI.cur!=='help')UI.ret=UI.cur;UI.confirm=-1;UI.pvS=-1;UI.pvH=UI.pvT=UI.pvR=-1;show(v);},
  contract(v){const c=contractList()[+v];if(!c)return;PENDING_CONTRACT=c;QA_MODE=c.mode;launchMission(c.lv,false);},
- ngplus(){if(UI.confirm!==7){UI.confirm=7;refresh();toast('Press again to reset this difficulty');return;}const d=save.diff;save.prog.campaign[d]={};for(const k of UPK)save.gear[d][k]=0;save.climb=(save.climb||0)+1;UI.confirm=-1;persist();toast('NEW GAME+ '+(save.climb+1)+' — modifiers rise');show('hangar');},
+ ngplus(){if(UI.confirm!==7){UI.confirm=7;refresh();toast('Press again to reset this difficulty');return;}const d=save.diff;save.prog.campaign[d]={};for(const k of UPK)save.gear[d][k]=0;if(save.singC)delete save.singC[d];save.climb=(save.climb||0)+1;UI.confirm=-1;persist();toast('NEW GAME+ '+(save.climb+1)+' — modifiers rise');show('hangar');},
  load(v){
   if(!save)return;const i=+v;
   if(i===0){sfx('deny');toast('Main lasers are always fitted');return;}
@@ -4040,11 +4060,11 @@ const ACT={
  cont(){show('brief',{lv:nextLv()});},
  launch(){const a=UI.arg;launchMission(a.lv,a.hunt);},
  resume(){if(state!=='pause')return;UI.abortConfirm=false;state='play';show('');acc=0;layoutTouch();},
- restart(){if(M&&M.mode==='range'){if(M.fs)startSchool();else startPracticeRange();return;}launchMission(M.lv,M.hunt);},
+ restart(){if(M&&M.mode==='range'){if(M.fs)startSchool();else startPracticeRange();return;}singBank();launchMission(M.lv,M.hunt);},
  retry(){launchMission(M.lv,M.hunt);},
  abort(){UI.abortConfirm=true;show('confirmAbort');},
  abortNo(){UI.abortConfirm=false;show('pause');},
- abortYes(){UI.abortConfirm=false;if(M&&M.mode==='range'){leaveMission();show('hangar');return;}if(!save.free){save.cnt.voy++;persist();}leaveMission();show('hangar');},
+ abortYes(){UI.abortConfirm=false;if(M&&M.mode==='range'){leaveMission();show('hangar');return;}singBank();if(!save.free){save.cnt.voy++;persist();}leaveMission();show('hangar');},
  next(){const lv=M.lv+1;leaveMission();show('brief',{lv});},
  home(){leaveMission();show('hangar');},
  tab(v){UI.tab=v;show('shop');},
@@ -4058,7 +4078,7 @@ const ACT={
  dtab(v){UI.dtab=v;{const sp=document.querySelector('#ui .dscroll');if(sp)sp.scrollTop=0;}refresh();},
  settab(v){UI.setTab=v;UI.setQ='';{const sp=document.querySelector('#ui .setpane');if(sp)sp.scrollTop=0;}refresh();},
  setclear(){UI.setQ='';refresh();},
- buyup(k){const u=UPG[k],du=dUp(save);if(!u||du[k]>=DMAX[save.diff]||upLock(k))return;if(!spend(upCost(k)))return;du[k]++;persist();sfx('buy');deedPing();refresh();},
+ buyup(k){const u=UPG[k],du=dUp(save);if(!u||du[k]>=upCap(k)||upLock(k))return;if(!spend(upCost(k)))return;du[k]++;persist();sfx('buy');deedPing();refresh();},
  repair(){if(!save||save.free)return;const c=repCost();if(c<=0)return;if(!spend(c))return;const o=dmgOf();o.p=0;o.w=[];persist();sfx('buy');toast('Repairs complete · ◈ '+fmtNum(c));refresh();},
  repairfree(){if(!save||save.free)return;const c=repCost();if(c<=0||dGold(save)>=c)return;const o=dmgOf();o.p=0;o.w=[];persist();sfx('buy');toast('Emergency repair · no charge');refresh();},
  rebuild(){const cap=wingCap();if(!save||save.free)return;if((save.sq[save.diff]|0)>=cap){toast('Squadron at full strength');return;}const fee=rebuildFee();if(!spend(fee))return;save.sq[save.diff]=(save.sq[save.diff]|0)+1;persist();sfx('buy');toast('Wing rebuilt');refresh();},
