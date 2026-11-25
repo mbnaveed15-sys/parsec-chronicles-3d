@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#05070c">
-<title>Parsec Chronicles 3D</title>
+<title>Parsec Chronicles 3D · Build 100</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
@@ -507,22 +507,28 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
 #ui .setdense .setbar{padding:.35em .5em;margin-bottom:.3em}
 #ui .setdense .setnav{gap:.2em}
 #ui .setdense .setnav .btn{padding:.34em .5em}
-#ui .setpane.scrolly{overflow-y:auto!important;overscroll-behavior:contain;
+#ui div.scrolly{overflow-y:auto!important;overscroll-behavior:contain;
  border:1px solid rgba(125,227,255,.55);border-radius:10px;padding:.15em .7em 0 .6em;background:rgba(5,12,22,.55);
  box-shadow:inset 0 0 0 1px rgba(0,0,0,.4),0 0 12px rgba(125,227,255,.12);position:relative}
-#app.rot #ui .setpane.scrolly{touch-action:none}
+#app.rot #ui div.scrolly{touch-action:none}
 #ui .setwrap{position:relative}
-#ui .setpane.scrolly{padding-right:1.1em}
+#ui div.scrolly{padding-right:1.1em}
 #ui .srail{position:absolute;width:10px;margin-left:-5px;border-radius:5px;background:rgba(125,227,255,.14);z-index:3;cursor:pointer;touch-action:none}
 #ui .srail::before{content:"";position:absolute;inset:-6px -8px}
 #ui .srail i{position:absolute;left:1px;right:1px;top:0;border-radius:4px;background:#7de3ff;box-shadow:0 0 8px rgba(125,227,255,.6);cursor:grab}
 #ui .setdense .setsearch{padding:.3em .6em;font-size:.88em}
-#ui .setpane.scrolly::before{content:"";position:sticky;top:0;display:block;height:0;z-index:2;box-shadow:0 0 14px 10px rgba(5,12,22,.95);opacity:0;transition:opacity .2s}
-#ui .setpane.scrolly.scrolled::before{opacity:1}
+#ui .cscroll.scrolly{flex-wrap:nowrap}
+#ui .cscroll .morecue{flex:none}
+#ui .buildno{display:block;margin-top:auto;padding:.4em .2em 0;font-size:.62em;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
+/* build 100: Cosmetics keeps the preview and its three columns in one row on landscape screens */
+@media (min-width:560px){#ui .cosgrid:not(.dockgrid){grid-template-columns:minmax(0,1.05fr) repeat(3,minmax(0,1fr))}}
+@media (min-width:560px) and (max-width:760px){#ui .cosgrid:not(.dockgrid){grid-template-columns:minmax(0,.8fr) repeat(3,minmax(0,1fr));gap:.4em}#ui .cosgrid:not(.dockgrid) .csw{flex-wrap:wrap;gap:.15em .4em}#ui .cosgrid:not(.dockgrid) .csw .cnm{flex:1 1 100%}#ui .cosgrid:not(.dockgrid) .csw .cst{flex:1 1 100%;min-width:0}}
+#ui div.scrolly::before{content:"";position:sticky;top:0;display:block;height:0;z-index:2;box-shadow:0 0 14px 10px rgba(5,12,22,.95);opacity:0;transition:opacity .2s}
+#ui div.scrolly.scrolled::before{opacity:1}
 #ui .morecue{position:sticky;bottom:0;height:0;z-index:2;pointer-events:none}
 #ui .morecue span{position:absolute;left:-.6em;right:-.7em;bottom:0;padding:1.4em 0 .3em;text-align:center;font-size:.72em;letter-spacing:.14em;color:#7de3ff;
  background:linear-gradient(rgba(5,12,22,0),rgba(5,12,22,.96) 70%);transition:opacity .2s}
-#ui .setpane.atend .morecue span{opacity:0}
+#ui div.scrolly.atend .morecue span{opacity:0}
 #ui .ugrid,#ui .dockcols,#ui .setcols{height:auto!important;max-height:none!important;overflow:visible!important}
 .pgbar{display:flex;align-items:center;justify-content:center;gap:.6em;grid-column:1/-1;margin:.35em 0 0;font-size:.9em}
 .pgbar .btn{min-width:2.6em}
@@ -3240,8 +3246,8 @@ function uiPrep(ui){
  const mark=(el,key)=>{if(el&&!el.dataset.pg)el.dataset.pg=key;};
  mark(scr.querySelector('.plist'),'pilots');
  if(cur==='deeds'){const g=scr.querySelector('.grid.g2');if(g){g.classList.add('dgrid');mark(g,'deeds');}}
- scr.querySelectorAll('.cscroll').forEach((c,i)=>mark(c,cur+(UI.tab||'')+'-c'+i));
- /* build 100: Shop upgrades, Hangar cards and Systems no longer page (Systems fits, or scrolls in a marked box: see setFit) */
+ if(cur!=='cosm')scr.querySelectorAll('.cscroll').forEach((c,i)=>mark(c,cur+(UI.tab||'')+'-c'+i));
+ /* build 100: Shop upgrades, Hangar cards, Systems and Cosmetics no longer page (they fit, or scroll in a marked box: see setFit) */
  if(cur==='missions')scr.querySelectorAll('.mlist,.mgrid2').forEach((c,i)=>mark(c,'mis'+i));
  const hp=scr.querySelector('.panel.help');
  if(hp){/* manual: one section at a time (the buttons above switch), long tables page by rows */
@@ -3261,20 +3267,23 @@ function uiPrep(ui){
 /* build 100: Systems submenus. 1) full size; 2) denser rows; 3) a gentle scale (down to 0.85); 4) only then the settings
    list scrolls inside a marked box (border, visible scrollbar, fades and a "more below" cue). */
 function setFit(scr,H,need){
- const sp=scr.querySelector('.setpane');if(!sp)return;
- scr.classList.remove('setdense');sp.classList.remove('scrolly','scrolled','atend');sp.style.maxHeight='';
- const cue=sp.querySelector(':scope>.morecue');if(cue)cue.remove();
- const wrap=sp.parentNode,oldRail=wrap.querySelector(':scope>.srail');if(oldRail)oldRail.remove();
+ const B=Array.prototype.slice.call(scr.querySelectorAll(UI.cur==='cosm'?'.cosgrid .cscroll':'.setpane'));if(!B.length)return;
+ scr.classList.remove('setdense');
+ B.forEach(sp=>{sp.classList.remove('scrolly','scrolled','atend');sp.style.maxHeight='';const c=sp.querySelector(':scope>.morecue');if(c)c.remove();const r=sp.parentNode.querySelector(':scope>.srail');if(r)r.remove();});
  if(need()<=1)return;
  scr.classList.add('setdense');if(need()<=1/.85)return;
- const room=sp.offsetHeight-(scr.offsetHeight-H)-4;
- sp.style.maxHeight=Math.max(110,Math.floor(room))+'px';sp.classList.add('scrolly');
- const m=document.createElement('div');m.className='morecue';m.innerHTML='<span>▼ More below · scroll</span>';sp.appendChild(m);
- /* our own scroll rail: phone browsers hide scrollbars until you scroll, so draw one that is always there */
- const rl=document.createElement('div');rl.className='srail';rl.innerHTML='<i></i>';wrap.appendChild(rl);
- if(!sp._scl){sp._scl=1;sp.addEventListener('scroll',()=>setCue(sp),{passive:true});}
- setCue(sp);
+ /* every box in the row gets the same height: the tallest one shrinks by what the screen overflows */
+ const ex=scr.offsetHeight-H+4,mh=Math.max(110,Math.floor(Math.max.apply(null,B.map(b=>b.offsetHeight))-ex));
+ for(const sp of B){if(sp.offsetHeight<=mh)continue;
+  sp.style.maxHeight=mh+'px';sp.classList.add('scrolly');
+  const m=document.createElement('div');m.className='morecue';m.innerHTML='<span>▼ More below · scroll</span>';sp.appendChild(m);
+  /* our own scroll rail: phone browsers hide scrollbars until you scroll, so draw one that is always there */
+  const rl=document.createElement('div');rl.className='srail';rl.innerHTML='<i></i>';sp.parentNode.appendChild(rl);
+  if(!sp._scl){sp._scl=1;sp.addEventListener('scroll',()=>setCue(sp),{passive:true});}
+  setCue(sp);}
 }
+/* a list that scrolls opens with the current pick in view (Cosmetics) */
+function boxSel(el){el.querySelectorAll('.scrolly').forEach(b=>{const s=b.querySelector('.sel');if(!s)return;b.scrollTop=Math.max(0,s.offsetTop-b.offsetTop-b.clientHeight/3);setCue(b);});}
 function setCue(sp){const t=sp.scrollTop,mx=Math.max(1,sp.scrollHeight-sp.clientHeight);sp.classList.toggle('scrolled',t>2);sp.classList.toggle('atend',t>=mx-3);
  const rl=sp.parentNode&&sp.parentNode.querySelector(':scope>.srail');if(!rl)return;
  const top=sp.offsetTop+6,h=Math.max(30,sp.offsetHeight-12),th=Math.max(26,h*sp.clientHeight/sp.scrollHeight);
@@ -3284,7 +3293,7 @@ function setCue(sp){const t=sp.scrollTop,mx=Math.max(1,sp.scrollHeight-sp.client
 const SRL={p:-1,y:0,t:0,el:null};
 document.addEventListener('pointerdown',function(e){
  const rl=e.target&&e.target.closest?e.target.closest('#ui .srail'):null;if(!rl)return;
- const sp=rl.parentNode.querySelector(':scope>.setpane.scrolly');if(!sp)return;e.preventDefault();SWIPE.on=false;
+ const sp=rl.parentNode.querySelector(':scope>.scrolly');if(!sp)return;e.preventDefault();SWIPE.on=false;
  const k=rl.firstChild,mx=sp.scrollHeight-sp.clientHeight,y=evApp(e)[1];
  if(e.target===k){SRL.p=e.pointerId;SRL.y=y;SRL.t=sp.scrollTop;SRL.el=sp;SRL.r=mx/Math.max(1,(rl.offsetHeight-k.offsetHeight)*(+(sp.closest('.scr').style.scale)||1));return;}
  const b=k.getBoundingClientRect(),ky=evApp({clientX:b.left+b.width/2,clientY:b.top+b.height/2})[1];
@@ -3296,7 +3305,7 @@ document.addEventListener('pointerup',function(e){if(e.pointerId===SRL.p){SRL.p=
    touch scrolling follows the screen, not the turned menu, so we scroll it ourselves in menu coordinates */
 const SDR={p:-1,y:0,t:0,on:false,el:null,v:0,ly:0,lt:0,raf:0};
 document.addEventListener('pointerdown',function(e){
- if(!ROT||e.pointerType==='mouse')return;const sp=e.target&&e.target.closest?e.target.closest('#ui .setpane.scrolly'):null;
+ if(!ROT||e.pointerType==='mouse')return;const sp=e.target&&e.target.closest?e.target.closest('#ui .scrolly'):null;
  if(!sp||e.target.closest('select,textarea,input[type=text]'))return;
  cancelAnimationFrame(SDR.raf);const a=evApp(e);SDR.p=e.pointerId;SDR.el=sp;SDR.x=a[0];SDR.y=SDR.ly=a[1];SDR.t=sp.scrollTop;SDR.on=false;SDR.v=0;SDR.lt=performance.now();
  /* a swipe that starts on a slider scrolls the list and leaves the slider where it was */
@@ -3354,7 +3363,7 @@ function show(name,arg,keep){syncAssist();
  if(state==='menu'&&HUBNAME[name])html=html.replace(/(<div class="scr[^>]*>)/,'$1'+hubNav(name));
  el.innerHTML=html;
  el.className='on'+((state==='pause'||state==='end')?' clear':'')+(name==='layout'?' float':'')+(keep?'':' in');
- el.scrollTop=st;fitScrolls();if(mem)uiRestore(el,mem);
+ el.scrollTop=st;fitScrolls();if(mem)uiRestore(el,mem);else boxSel(el);
  if(name==='sectors')secPortraits();
  {const z=el.querySelector('.scr.zoomout');if(z){const p=uiNodePos(z.querySelector('.snode[data-v="'+z.dataset.z+'"]'));if(p)z.style.transformOrigin=p[0]+'px '+p[1]+'px';}}
  {const fh=document.getElementById('fthint');if(fh&&name!=='hangar')fh.remove();}if(name==='hangar'&&state==='menu')setTimeout(firstRunHints,600);
@@ -3387,6 +3396,8 @@ function fsOn(){const d=document;return !!(d.fullscreenElement||d.webkitFullscre
 function fsBtn(cls){if(!fsOK())return'';const on=fsOn();return'<button class="btn sm fsb'+(cls?' '+cls:'')+'" data-a="fs" title="'+(on?'Exit fullscreen':'Fullscreen')+'" aria-label="'+(on?'Exit fullscreen':'Fullscreen')+'"><svg viewBox="0 0 24 24" width="1.25em" height="1.25em" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M4 9V4h5M15 4h5v5M20 15v5h-5M9 20H4v-5"/></svg><span class="fsl">'+(on?'Exit fullscreen':'Fullscreen')+'</span></button>';}
 function fsSync(){const on=fsOn();document.querySelectorAll('.fsb').forEach(b=>{const t=on?'Exit fullscreen':'Fullscreen';b.title=t;b.setAttribute('aria-label',t);const l=b.querySelector('.fsl');if(l)l.textContent=t;});}
 document.addEventListener('fullscreenchange',fsSync);document.addEventListener('webkitfullscreenchange',fsSync);
+/* build 100: the build number is shown on the title screen, in Systems and on the pause menu; bump it with every build */
+const BUILD_NO=100;
 function hdr(title){return'<div class="hdr"><button class="btn sm" data-a="back">◀ Back</button><h2>'+title+'</h2>'+(save?'<span class="cr" title="'+DIFFS[save.diff].n+' wallet">'+fmtGold(dGold(save))+'</span>':'')+fsBtn()+'</div>';}
 function reachedOf(s){if(s.free)return 500;let m=0;for(const d in s.prog.campaign){const o=s.prog.campaign[d];for(const k in o)if(o[k].stars>0&&+k>m)m=+k;}return Math.min(500,m+1);}
 function slotCount(){if(!save)return 1;if(save.free)return 5;const r=reachedOf(save);return 1+(r>100?1:0)+(r>200?1:0)+(r>300?1:0)+(r>400?1:0);}
@@ -3405,7 +3416,7 @@ const SCREENS={
   '<canvas class="pv tpv" data-idx="13" data-hull="#2a4d8a" data-trail="#7de3ff" width="416" height="256" style="max-width:280px;background:none"></canvas>'+'<p class="tagline">Ten sectors. Five hundred sorties. One renegade waiting at the edge of the map.</p>'+
   '<button class="btn primary" data-a="nav" data-v="pilots" style="font-size:1.05em;padding:1em 2.8em">Launch</button>'+
   '<div class="row c"><button class="btn sm" data-a="nav" data-v="settings">Settings</button><button class="btn sm" data-a="nav" data-v="help">Manual</button></div>'+
-  '<span class="tag">Renderer: '+rendererLabel()+'</span>'+fsBtn('corner')+'</div>';
+  '<span class="tag">Build '+BUILD_NO+' · Renderer: '+rendererLabel()+'</span>'+fsBtn('corner')+'</div>';
  },
  pilots(){
   let h='<div class="scr">'+'<div class="hdr"><button class="btn sm" data-a="back">◀ Back</button><h2>Pilot Select</h2>'+fsBtn()+'</div>';
@@ -3654,7 +3665,7 @@ const SCREENS={
    body='<div class="setgroup">'+g[2]+'</div>';
   }
   const bodyHtml='<div class="setpane">'+body+'</div>';
-  const nav='<div class="setnav">'+TABS.map(([k,l])=>'<button class="btn sm'+((!q&&tab===k)?' on':'')+'" data-a="settab" data-v="'+k+'">'+l+'</button>').join('')+'</div>';
+  const nav='<div class="setnav">'+TABS.map(([k,l])=>'<button class="btn sm'+((!q&&tab===k)?' on':'')+'" data-a="settab" data-v="'+k+'">'+l+'</button>').join('')+'<span class="buildno">Build '+BUILD_NO+'</span></div>';
   const clear=q?'<button class="btn sm" data-a="setclear">Clear</button>':'';
   return'<div class="scr setscr">'+hdr('Ship Systems')+'<div class="panel col setpanel">'+
   '<div class="setbar"><div class="row" style="gap:.4em;align-items:stretch"><input type="text" class="setsearch" id="setq" style="flex:1" placeholder="Search all settings — “turn”, “flak”, “hud”…" value="'+esc(UI.setQ||'')+'" autocomplete="off">'+clear+'</div></div>'+
@@ -3707,7 +3718,7 @@ const SCREENS={
   '<button class="btn primary wide" data-a="resume">Resume</button>'+fsBtn('wide')+
   '<div class="qset"><div class="set"><span>Pilot assist</span><div class="seg"><button class="btn sm'+(settings.assist?' on':'')+'" data-a="set" data-k="assist" data-v="true">On</button><button class="btn sm'+(!settings.assist?' on':'')+'" data-a="set" data-k="assist" data-v="false">Off</button></div></div>'+
   qsl('s','hud','HUD size',.7,1.6,.05)+qsl('a','music','Music',0,1,.05)+qsl('a','sfx','SFX',0,1,.05)+'</div>'+
-  '<button class="btn wide" data-a="restart">'+(M&&M.mode==='range'?'Restart range':'Restart mission')+'</button><button class="btn wide" data-a="nav" data-v="settings">All settings</button><button class="btn wide" data-a="nav" data-v="help">Manual</button><button class="btn warn wide" data-a="abort">Abort to hangar</button></div></div>';
+  '<button class="btn wide" data-a="restart">'+(M&&M.mode==='range'?'Restart range':'Restart mission')+'</button><button class="btn wide" data-a="nav" data-v="settings">All settings</button><button class="btn wide" data-a="nav" data-v="help">Manual</button><button class="btn warn wide" data-a="abort">Abort to hangar</button><span class="dim sml" style="opacity:.7">Build '+BUILD_NO+'</span></div></div>';
  },
  confirmAbort(){
   const range=!!(M&&M.mode==='range');
