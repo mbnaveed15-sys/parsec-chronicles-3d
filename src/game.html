@@ -401,7 +401,7 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
 .bayprog{height:4px;border-radius:2px;background:rgba(255,255,255,.1);overflow:hidden;margin:.2em 0 .45em}
 .bayprog i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),#ff9e6b)}
 @media(max-width:1000px){.bayhero{grid-template-columns:1.1fr .9fr}.bayops{grid-column:1/-1}.baylower{grid-template-columns:1fr 1fr}}
-@media(max-width:700px){.bayhero{grid-template-columns:1fr}.bayops{grid-column:auto}.baylower{grid-template-columns:1fr}}
+@media(max-width:700px) and (min-height:431px){.bayhero{grid-template-columns:1fr}.bayops{grid-column:auto}.baylower{grid-template-columns:1fr}}
 @media(max-height:430px){.bayhero{grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr));gap:.5em;padding:.55em}.bayops{grid-column:1/-1;display:grid;grid-template-columns:auto 1fr;grid-auto-rows:min-content;column-gap:.6em;padding:.55em .65em}.bayops .eyebrow{grid-column:1/-1}.bayops .opsrow{grid-column:1;grid-row:2}.bayops .sector{font-size:1.8em}.bayops h3{grid-column:2;grid-row:2;align-self:center;margin:0}.bayops .opobj{grid-column:1/-1;min-height:0;font-size:.68em}.bayops .kv{display:none}.bayops .btn{grid-column:1/-1;margin-top:.1em}.bayops .row{grid-column:1/-1}.bayframe{min-height:150px;padding:.5em .5em 2.2em}.bayspecs{display:none}.baylower{grid-template-columns:repeat(auto-fit,minmax(min(240px,100%),1fr))}}
 #gameCanvas.cb-deut,#glCanvas.cb-deut{filter:url(#cbDeut)}
 #gameCanvas.cb-prot,#glCanvas.cb-prot{filter:url(#cbProt)}
@@ -472,7 +472,9 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
  .bayops .opsrow{gap:.3em}
  .bayops .opsrow .tag{font-size:.52em;padding:.2em .35em}
 }
-@media(max-width:700px){.bayhero{grid-template-columns:1fr!important}.bayops{grid-column:auto!important;display:flex!important;flex-direction:column!important}.baylower{grid-template-columns:1fr!important}}
+@media(max-width:700px) and (min-height:431px){.bayhero{grid-template-columns:1fr!important}.bayops{grid-column:auto!important;display:flex!important;flex-direction:column!important}.baylower{grid-template-columns:1fr!important}}
+/* build 100: landscape phones keep the Hangar in columns, three lower cards side by side */
+@media(max-height:430px){.bayhero{grid-template-columns:repeat(3,minmax(0,1fr))!important}.bayops{grid-column:auto!important}.baylower{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:.5em!important}#ui .ugrid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:.45em!important;max-width:1100px!important}}
 .mpc{max-width:1100px;margin:0 auto .5em;display:flex;flex-wrap:wrap;gap:.2em 1.1em;align-items:baseline;padding:.45em .9em}
 .mpc span{font-size:.85em;opacity:.85}
 .mpanel{max-width:1100px;margin:0 auto;padding:.6em .8em}
@@ -496,6 +498,31 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
 #ui .setpane{overflow:visible!important}
 /* build 99: the Systems page grows with its rows so uiFit sees them and pages them */
 #ui .setscr{height:auto!important;min-height:100%}
+/* build 100: Systems fits with denser rows first; only if that is not enough the list scrolls inside a marked box */
+#ui .setdense .setgroup>h3{margin:.1em 0 .15em;font-size:.92em}
+#ui .setdense .set{padding:.16em 0;gap:.55em}
+#ui .setdense .set input[type=range]{height:1.7em}
+#ui .setdense .seg .btn{padding:.3em .6em;min-height:1.75em;font-size:.92em}
+#ui .setdense .setnote,#ui .setdense .setgroup p{margin:.1em 0 .25em;font-size:.68em;line-height:1.25}
+#ui .setdense .setbar{padding:.35em .5em;margin-bottom:.3em}
+#ui .setdense .setnav{gap:.2em}
+#ui .setdense .setnav .btn{padding:.34em .5em}
+#ui .setpane.scrolly{overflow-y:auto!important;overscroll-behavior:contain;
+ border:1px solid rgba(125,227,255,.55);border-radius:10px;padding:.15em .7em 0 .6em;background:rgba(5,12,22,.55);
+ box-shadow:inset 0 0 0 1px rgba(0,0,0,.4),0 0 12px rgba(125,227,255,.12);position:relative}
+#app.rot #ui .setpane.scrolly{touch-action:none}
+#ui .setwrap{position:relative}
+#ui .setpane.scrolly{padding-right:1.1em}
+#ui .srail{position:absolute;width:10px;margin-left:-5px;border-radius:5px;background:rgba(125,227,255,.14);z-index:3;cursor:pointer;touch-action:none}
+#ui .srail::before{content:"";position:absolute;inset:-6px -8px}
+#ui .srail i{position:absolute;left:1px;right:1px;top:0;border-radius:4px;background:#7de3ff;box-shadow:0 0 8px rgba(125,227,255,.6);cursor:grab}
+#ui .setdense .setsearch{padding:.3em .6em;font-size:.88em}
+#ui .setpane.scrolly::before{content:"";position:sticky;top:0;display:block;height:0;z-index:2;box-shadow:0 0 14px 10px rgba(5,12,22,.95);opacity:0;transition:opacity .2s}
+#ui .setpane.scrolly.scrolled::before{opacity:1}
+#ui .morecue{position:sticky;bottom:0;height:0;z-index:2;pointer-events:none}
+#ui .morecue span{position:absolute;left:-.6em;right:-.7em;bottom:0;padding:1.4em 0 .3em;text-align:center;font-size:.72em;letter-spacing:.14em;color:#7de3ff;
+ background:linear-gradient(rgba(5,12,22,0),rgba(5,12,22,.96) 70%);transition:opacity .2s}
+#ui .setpane.atend .morecue span{opacity:0}
 #ui .ugrid,#ui .dockcols,#ui .setcols{height:auto!important;max-height:none!important;overflow:visible!important}
 .pgbar{display:flex;align-items:center;justify-content:center;gap:.6em;grid-column:1/-1;margin:.35em 0 0;font-size:.9em}
 .pgbar .btn{min-width:2.6em}
@@ -2497,7 +2524,7 @@ function resize(){
  else{cw=iw;ch=ih;app.style.width=cw+'px';app.style.height=ch+'px';app.style.transform='none';}
  $('rot').style.display=(portrait&&!settings.land)?'flex':'none';
  VS=Math.min(1,ch/680);W=cw/VS;H=ch/VS;updateViewportMetrics();
- rotMedia(ROT);size2D();fitScrolls();
+ app.classList.toggle('rot',!!ROT);rotMedia(ROT);size2D();fitScrolls();
  if(window.R3D&&R3D.resize){try{R3D.resize();}catch(e){}}
  layoutTouch();
 }
@@ -3214,9 +3241,7 @@ function uiPrep(ui){
  mark(scr.querySelector('.plist'),'pilots');
  if(cur==='deeds'){const g=scr.querySelector('.grid.g2');if(g){g.classList.add('dgrid');mark(g,'deeds');}}
  scr.querySelectorAll('.cscroll').forEach((c,i)=>mark(c,cur+(UI.tab||'')+'-c'+i));
- if(cur==='shop'&&UI.tab==='up')mark(scr.querySelector('.ugrid'),'up');
- scr.querySelectorAll('.setpane>.setgroup').forEach((c,i)=>mark(c,'set-'+(UI.setTab||'')+i));
- if(cur==='hangar')mark(scr.querySelector('.baylower'),'hangar');
+ /* build 100: Shop upgrades, Hangar cards and Systems no longer page (Systems fits, or scrolls in a marked box: see setFit) */
  if(cur==='missions')scr.querySelectorAll('.mlist,.mgrid2').forEach((c,i)=>mark(c,'mis'+i));
  const hp=scr.querySelector('.panel.help');
  if(hp){/* manual: one section at a time (the buttons above switch), long tables page by rows */
@@ -3233,6 +3258,63 @@ function uiPrep(ui){
  }
  return scr;
 }
+/* build 100: Systems submenus. 1) full size; 2) denser rows; 3) a gentle scale (down to 0.85); 4) only then the settings
+   list scrolls inside a marked box (border, visible scrollbar, fades and a "more below" cue). */
+function setFit(scr,H,need){
+ const sp=scr.querySelector('.setpane');if(!sp)return;
+ scr.classList.remove('setdense');sp.classList.remove('scrolly','scrolled','atend');sp.style.maxHeight='';
+ const cue=sp.querySelector(':scope>.morecue');if(cue)cue.remove();
+ const wrap=sp.parentNode,oldRail=wrap.querySelector(':scope>.srail');if(oldRail)oldRail.remove();
+ if(need()<=1)return;
+ scr.classList.add('setdense');if(need()<=1/.85)return;
+ const room=sp.offsetHeight-(scr.offsetHeight-H)-4;
+ sp.style.maxHeight=Math.max(110,Math.floor(room))+'px';sp.classList.add('scrolly');
+ const m=document.createElement('div');m.className='morecue';m.innerHTML='<span>▼ More below · scroll</span>';sp.appendChild(m);
+ /* our own scroll rail: phone browsers hide scrollbars until you scroll, so draw one that is always there */
+ const rl=document.createElement('div');rl.className='srail';rl.innerHTML='<i></i>';wrap.appendChild(rl);
+ if(!sp._scl){sp._scl=1;sp.addEventListener('scroll',()=>setCue(sp),{passive:true});}
+ setCue(sp);
+}
+function setCue(sp){const t=sp.scrollTop,mx=Math.max(1,sp.scrollHeight-sp.clientHeight);sp.classList.toggle('scrolled',t>2);sp.classList.toggle('atend',t>=mx-3);
+ const rl=sp.parentNode&&sp.parentNode.querySelector(':scope>.srail');if(!rl)return;
+ const top=sp.offsetTop+6,h=Math.max(30,sp.offsetHeight-12),th=Math.max(26,h*sp.clientHeight/sp.scrollHeight);
+ rl.style.top=top+'px';rl.style.height=h+'px';rl.style.left=(sp.offsetLeft+sp.offsetWidth-5)+'px';
+ const k=rl.firstChild;k.style.height=th+'px';k.style.transform='translateY('+((h-th)*Math.min(1,t/mx)).toFixed(1)+'px)';}
+/* the rail can be dragged (thumb) or tapped (track: a page up or down), with mouse or touch, turned or not */
+const SRL={p:-1,y:0,t:0,el:null};
+document.addEventListener('pointerdown',function(e){
+ const rl=e.target&&e.target.closest?e.target.closest('#ui .srail'):null;if(!rl)return;
+ const sp=rl.parentNode.querySelector(':scope>.setpane.scrolly');if(!sp)return;e.preventDefault();SWIPE.on=false;
+ const k=rl.firstChild,mx=sp.scrollHeight-sp.clientHeight,y=evApp(e)[1];
+ if(e.target===k){SRL.p=e.pointerId;SRL.y=y;SRL.t=sp.scrollTop;SRL.el=sp;SRL.r=mx/Math.max(1,(rl.offsetHeight-k.offsetHeight)*(+(sp.closest('.scr').style.scale)||1));return;}
+ const b=k.getBoundingClientRect(),ky=evApp({clientX:b.left+b.width/2,clientY:b.top+b.height/2})[1];
+ sp.scrollBy({top:(y<ky?-1:1)*sp.clientHeight*.85,behavior:'smooth'});
+});
+document.addEventListener('pointermove',function(e){if(e.pointerId!==SRL.p||!SRL.el)return;SRL.el.scrollTop=SRL.t+(evApp(e)[1]-SRL.y)*SRL.r;},{passive:true});
+document.addEventListener('pointerup',function(e){if(e.pointerId===SRL.p){SRL.p=-1;SRL.el=null;SWIPE.block=true;setTimeout(function(){SWIPE.block=false;},300);}},{passive:true});
+/* drag-to-scroll for the Systems box while the screen is turned (Force landscape on an upright phone): the browser's own
+   touch scrolling follows the screen, not the turned menu, so we scroll it ourselves in menu coordinates */
+const SDR={p:-1,y:0,t:0,on:false,el:null,v:0,ly:0,lt:0,raf:0};
+document.addEventListener('pointerdown',function(e){
+ if(!ROT||e.pointerType==='mouse')return;const sp=e.target&&e.target.closest?e.target.closest('#ui .setpane.scrolly'):null;
+ if(!sp||e.target.closest('select,textarea,input[type=text]'))return;
+ cancelAnimationFrame(SDR.raf);const a=evApp(e);SDR.p=e.pointerId;SDR.el=sp;SDR.x=a[0];SDR.y=SDR.ly=a[1];SDR.t=sp.scrollTop;SDR.on=false;SDR.v=0;SDR.lt=performance.now();
+ /* a swipe that starts on a slider scrolls the list and leaves the slider where it was */
+ const rg=e.target.closest('input[type=range]');SDR.rg=rg;SDR.rv=rg?rg.value:null;
+},{passive:true});
+function sdrRange(){const rg=SDR.rg;if(!rg||rg.value===SDR.rv)return;rg.value=SDR.rv;rg.dispatchEvent(new Event('input',{bubbles:true}));}
+document.addEventListener('pointermove',function(e){
+ if(e.pointerId!==SDR.p||!SDR.el)return;const a=evApp(e),y=a[1],dy=y-SDR.y,dx=a[0]-SDR.x;
+ if(!SDR.on){if(Math.abs(dy)>7&&Math.abs(dy)>Math.abs(dx)*1.2){SDR.on=true;SWIPE.on=false;tipHide();}else if(SDR.rg&&Math.abs(dx)>7){SDR.p=-1;SDR.el=null;return;}}
+ if(SDR.on){const now=performance.now(),dt=Math.max(1,now-SDR.lt);SDR.v=SDR.v*.5+((SDR.ly-y)/dt)*.5;SDR.ly=y;SDR.lt=now;SDR.el.scrollTop=SDR.t-dy;if(SDR.rg)setTimeout(sdrRange,0);}
+},{passive:true});
+function sdrEnd(e){
+ if(e.pointerId!==SDR.p)return;const el=SDR.el,was=SDR.on;SDR.p=-1;SDR.el=null;SDR.on=false;
+ if(was&&SDR.rg){setTimeout(sdrRange,0);setTimeout(function(){sdrRange();SDR.rg=null;},60);}
+ if(!el||!was)return;SWIPE.block=true;setTimeout(function(){SWIPE.block=false;},350);
+ let v=SDR.v*16;const step=()=>{if(Math.abs(v)<.5)return;el.scrollTop+=v;v*=.93;SDR.raf=requestAnimationFrame(step);};step();
+}
+document.addEventListener('pointerup',sdrEnd,{passive:true});document.addEventListener('pointercancel',sdrEnd,{passive:true});
 function uiFit(){
  const ui=document.getElementById('ui');if(!ui||!ui.classList.contains('on')||UI.cur==='layout')return;const scr=uiPrep(ui);if(!scr)return;UI.pg=UI.pg||{};
  scr.style.scale='';const H=ui.clientHeight,W=ui.clientWidth;if(!H||!W)return;
@@ -3240,6 +3322,7 @@ function uiFit(){
  C.forEach(c=>pgSet(c,Infinity));
  /* layout size, unaffected by the entrance animation or by our own scale */
  const need=()=>Math.max(scr.offsetHeight/H,scr.scrollWidth/W);
+ setFit(scr,H,need);
  let z=1/need();
  if(z<.8&&C.length){
   /* build 99: size pages while showing page 1, then go back to the page the player was on (sizing on a later, shorter
@@ -3287,7 +3370,7 @@ function syncAssist(){try{if(!save||!settings)return;const want=(save.diff==='ac
  if(first)toast('Ace: Pilot Assist starts off. Turn it on in Systems → Auto.');}catch(e){}}
 function refresh(){show(UI.cur,UI.arg,true);}
 /* build 94: a refresh rebuilds the menu, so remember every scrolled inner list (Cosmetics columns, Shop grid, Settings panes) and the focused button, and put them back */
-function uiKey(n){return n.tagName+'.'+(typeof n.className==='string'?n.className.replace(/\b(kb|on|in)\b/g,'').trim():'');}
+function uiKey(n){return n.tagName+'.'+(typeof n.className==='string'?n.className.replace(/\b(kb|on|in|scrolled|atend)\b/g,'').trim():'');}
 function uiMemo(el){const sc=[],cnt={};for(const n of el.querySelectorAll('*')){if(n.scrollHeight<=n.clientHeight+1&&n.scrollWidth<=n.clientWidth+1)continue;const k=uiKey(n);cnt[k]=(cnt[k]||0)+1;if(n.scrollTop||n.scrollLeft)sc.push([k,cnt[k],n.scrollTop,n.scrollLeft]);}
  const a=document.activeElement;let f=null;if(a&&a!==el&&el.contains(a)){f={id:a.id,a:a.getAttribute('data-a'),v:a.getAttribute('data-v'),k:a.getAttribute('data-k'),kb:a.classList.contains('kb'),n:uiFocusables().indexOf(a)};}return{sc:sc,f:f};}
 function uiRestore(el,m){if(m.sc.length){const cnt={},want={};for(const s of m.sc)want[s[0]+'#'+s[1]]=s;for(const n of el.querySelectorAll('*')){if(n.scrollHeight<=n.clientHeight+1&&n.scrollWidth<=n.clientWidth+1)continue;const k=uiKey(n);cnt[k]=(cnt[k]||0)+1;const s=want[k+'#'+cnt[k]];if(s){n.scrollTop=s[2];n.scrollLeft=s[3];}}}
@@ -3768,7 +3851,7 @@ const ACT={
  school(){startSchool();},
  rangeReset(){if(!M||M.mode!=='range')return;player.x=M.rangeCenter.x;player.y=M.rangeCenter.y;player.vx=player.vy=0;M.rdps=0;rangeSpawn(4,false);msg('RANGE RESET',60);},
  wmod(v){const i=+v;if(hasWmod(i)||!mpHas('w'+i))return;const cost=wmodCost(i);if(!save.free&&dGold(save)<cost){sfx('deny');toast('Not enough credits');return;}if(!save.wmods)save.wmods={};if(!save.wmods[save.diff])save.wmods[save.diff]={};if(!save.free)dGoldAdd(save,-cost);save.wmods[save.diff][i]=1;persist();sfx('buy');toast(WEAPONS[i].n+' mod installed');refresh();},
- settab(v){UI.setTab=v;UI.setQ='';refresh();},
+ settab(v){UI.setTab=v;UI.setQ='';{const sp=document.querySelector('#ui .setpane');if(sp)sp.scrollTop=0;}refresh();},
  setclear(){UI.setQ='';refresh();},
  buyup(k){const u=UPG[k],du=dUp(save);if(!u||du[k]>=DMAX[save.diff]||upLock(k))return;if(!spend(upCost(k)))return;du[k]++;persist();sfx('buy');deedPing();refresh();},
  repair(){if(!save||save.free)return;const c=repCost();if(c<=0)return;if(!spend(c))return;const o=dmgOf();o.p=0;o.w=[];persist();sfx('buy');toast('Repairs complete · ◈ '+fmtNum(c));refresh();},
