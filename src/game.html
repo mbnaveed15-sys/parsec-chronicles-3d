@@ -6,7 +6,7 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#05070c">
-<title>Parsec Chronicles 3D · Build 104</title>
+<title>Parsec Chronicles 3D · Build 105</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Exo+2:wght@300;400;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
@@ -523,8 +523,8 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
 #ui .cscroll .morecue{flex:none}
 #ui .buildno{display:block;margin-top:auto;padding:.4em .2em 0;font-size:.62em;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
 /* build 100: Cosmetics keeps the preview and its three columns in one row on landscape screens */
-@media (min-width:560px){#ui .cosgrid:not(.dockgrid){grid-template-columns:minmax(0,1.05fr) repeat(3,minmax(0,1fr))}}
-@media (min-width:560px) and (max-width:760px){#ui .cosgrid:not(.dockgrid){grid-template-columns:minmax(0,.8fr) repeat(3,minmax(0,1fr));gap:.4em}#ui .cosgrid:not(.dockgrid) .csw{flex-wrap:wrap;gap:.15em .4em}#ui .cosgrid:not(.dockgrid) .csw .cnm{flex:1 1 100%}#ui .cosgrid:not(.dockgrid) .csw .cst{flex:1 1 100%;min-width:0}}
+@media (min-width:560px){#ui .cosgrid{grid-template-columns:minmax(0,1.05fr) repeat(3,minmax(0,1fr))}}
+@media (min-width:560px) and (max-width:760px){#ui .cosgrid{grid-template-columns:minmax(0,.8fr) repeat(3,minmax(0,1fr));gap:.4em}#ui .cosgrid .csw{flex-wrap:wrap;gap:.15em .4em}#ui .cosgrid .csw .cnm{flex:1 1 100%}#ui .cosgrid .csw .cst{flex:1 1 100%;min-width:0}}
 #ui div.scrolly::before{content:"";position:sticky;top:0;display:block;height:0;z-index:2;box-shadow:0 0 14px 10px rgba(5,12,22,.95);opacity:0;transition:opacity .2s}
 #ui div.scrolly.scrolled::before{opacity:1}
 #ui .morecue{position:sticky;bottom:0;height:0;z-index:2;pointer-events:none}
@@ -538,6 +538,23 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
 #ui .dwrap{position:relative;width:100%;max-width:1200px}
 #ui .dscroll .dgrid{margin-top:0;padding-bottom:.4em}
 #ui .dhd{grid-column:1/-1;margin:.6em 0 0}
+/* build 105: Dockyard, Manual and Pilot Select fit first, then scroll in a marked box (no pages) */
+#ui .setdense .dockgrid{gap:.4em}
+#ui .setdense .dockgrid .csw{padding:.1em .3em}
+#ui .setdense .dockgrid .cgrp{padding:.3em .3em .2em}
+#ui .setdense .dockgrid .cosm-pv{gap:.25em}
+#ui .setdense .help h3{margin:.55em 0 .2em}
+#ui .setdense .help p{margin:.3em 0;line-height:1.32}
+#ui .setdense .help td{padding:.15em .45em}
+#ui .setdense .manualnav{padding:.3em;margin-bottom:.4em}
+#ui .scr.hcols>.panel.help{max-width:1280px}
+#ui .hcols .panel.help>.hsec{column-width:25em;column-gap:1.8em}
+#ui .hcols .help table,#ui .hcols .help p{break-inside:avoid}
+#ui .hcols .help h3{break-after:avoid}
+#ui .panel.help>.hsec.scrolly>h3:first-child{margin-top:.3em}
+#ui .pwrap{position:relative;width:100%;max-width:980px}
+#ui .pwrap>.plist.scrolly{align-content:start}
+#ui .pwrap>.plist.scrolly::before,#ui .pwrap>.plist.scrolly>.morecue{grid-column:1/-1}
 #ui .dgrid>.dhd:first-child{margin-top:.2em}
 #ui .dsum{width:100%;max-width:1200px}
 #ui .dtot{display:flex;justify-content:space-between;gap:1em;flex-wrap:wrap;margin-top:.35em;font-size:.92em}
@@ -3500,9 +3517,9 @@ function pgSet(c,n){
 function uiPrep(ui){
  const scr=ui.querySelector('.scr');if(!scr||scr.dataset.prep)return scr;scr.dataset.prep='1';const cur=UI.cur||'x';
  const mark=(el,key)=>{if(el&&!el.dataset.pg)el.dataset.pg=key;};
- mark(scr.querySelector('.plist'),'pilots');
+ /* build 105: Pilot Select no longer pages (setFit) */
  /* build 101: Deeds no longer page: the list scrolls in a marked box (setFit) */
- if(cur!=='cosm')scr.querySelectorAll('.cscroll').forEach((c,i)=>mark(c,cur+(UI.tab||'')+'-c'+i));
+ /* build 105: the Shop Dockyard no longer pages: its columns scroll in marked boxes like Cosmetics (setFit) */
  /* build 100: Shop upgrades, Hangar cards, Systems and Cosmetics no longer page (they fit, or scroll in a marked box: see setFit) */
  if(cur==='missions')scr.querySelectorAll('.mlist,.mgrid2').forEach((c,i)=>mark(c,'mis'+i));
  const hp=scr.querySelector('.panel.help');
@@ -3514,8 +3531,7 @@ function uiPrep(ui){
   for(const s of secs){const d=document.createElement('div');d.className='hsec';d.dataset.sec=s.id;if(s.id!==want)d.style.display='none';s.nodes.forEach(n=>d.appendChild(n));hp.appendChild(d);}
   hp.querySelectorAll('.hsec').forEach(d=>{if(d.style.display==='none')return;
    /* split each table into one-row tables so the section pages cleanly, then page the section */
-   d.querySelectorAll('table').forEach(t=>{const rows=t.querySelectorAll('tr');if(rows.length<2)return;const f=document.createDocumentFragment();rows.forEach(r=>{const nt=document.createElement('table');nt.className=(t.className+' hrow').trim();nt.appendChild(r);f.appendChild(nt);});t.replaceWith(f);});
-   mark(d,'help-'+d.dataset.sec);});
+   /* build 105: the section no longer pages; it fits, or scrolls in a marked box (setFit) */});
   scr.querySelectorAll('.manualnav [data-a="jump"]').forEach(b=>b.classList.toggle('on',b.dataset.v===want));
  }
  return scr;
@@ -3523,11 +3539,15 @@ function uiPrep(ui){
 /* build 100: Systems submenus. 1) full size; 2) denser rows; 3) a gentle scale (down to 0.85); 4) only then the settings
    list scrolls inside a marked box (border, visible scrollbar, fades and a "more below" cue). */
 function setFit(scr,H,need){
- const B=Array.prototype.slice.call(scr.querySelectorAll(UI.cur==='cosm'?'.cosgrid .cscroll':UI.cur==='deeds'?'.dscroll':'.setpane'));if(!B.length)return;
- scr.classList.remove('setdense');
+ const cur=UI.cur,SEL={cosm:'.cosgrid .cscroll',deeds:'.dscroll',shop:'.dockgrid .cscroll',help:'.panel.help>.hsec',pilots:'.pwrap>.plist'};/* build 105: + Dockyard, Manual, Pilot Select */
+ const B=Array.prototype.slice.call(scr.querySelectorAll(SEL[cur]||'.setpane')).filter(b=>b.style.display!=='none');if(!B.length)return;
+ scr.classList.remove('setdense','hcols');
  B.forEach(sp=>{sp.classList.remove('scrolly','scrolled','atend');sp.style.maxHeight='';const c=sp.querySelector(':scope>.morecue');if(c)c.remove();const r=sp.parentNode.querySelector(':scope>.srail');if(r)r.remove();});
  if(need()<=1)return;
- scr.classList.add('setdense');if(need()<=1/.85)return;
+ scr.classList.add('setdense');
+ /* build 105: the Manual tries two text columns on wide screens before scaling; columns cannot scroll, so they go if the box is needed */
+ if(cur==='help'&&need()>1&&B[0].clientWidth>=600){scr.classList.add('hcols');if(need()>1/.85)scr.classList.remove('hcols');}
+ if(need()<=1/.85)return;
  /* every box in the row gets the same height: the tallest one shrinks by what the screen overflows */
  const ex=scr.offsetHeight-H+4,mh=Math.max(110,Math.floor(Math.max.apply(null,B.map(b=>b.offsetHeight))-ex));
  for(const sp of B){if(sp.offsetHeight<=mh)continue;
@@ -3653,7 +3673,7 @@ function fsBtn(cls){if(!fsOK())return'';const on=fsOn();return'<button class="bt
 function fsSync(){const on=fsOn();document.querySelectorAll('.fsb').forEach(b=>{const t=on?'Exit fullscreen':'Fullscreen';b.title=t;b.setAttribute('aria-label',t);const l=b.querySelector('.fsl');if(l)l.textContent=t;});}
 document.addEventListener('fullscreenchange',fsSync);document.addEventListener('webkitfullscreenchange',fsSync);
 /* build 100: the build number is shown on the title screen, in Systems and on the pause menu; bump it with every build */
-const BUILD_NO=104;
+const BUILD_NO=105;
 function hdr(title){return'<div class="hdr"><button class="btn sm" data-a="back">◀ Back</button><h2>'+title+'</h2>'+(save?'<span class="cr" title="'+DIFFS[save.diff].n+' wallet">'+fmtGold(dGold(save))+'</span>':'')+fsBtn()+'</div>';}
 function reachedOf(s){if(s.free)return 500;let m=0;for(const d in s.prog.campaign){const o=s.prog.campaign[d];for(const k in o)if(o[k].stars>0&&+k>m)m=+k;}return Math.min(500,m+1);}
 function slotCount(){if(!save)return 1;if(save.free)return 5;const r=reachedOf(save);return 1+(r>100?1:0)+(r>200?1:0)+(r>300?1:0)+(r>400?1:0);}
@@ -3680,7 +3700,7 @@ const SCREENS={
   h+='<div class="grid g2" style="max-width:980px;margin-bottom:.6em"><div class="card"><span class="tag">'+ids.length+' pilot'+(ids.length===1?'':'s')+'</span><h3>New Pilot</h3><input type="text" id="nmnew" maxlength="16" placeholder="Callsign" autocomplete="off" data-enter="newp">'+
    '<div class="row"><button class="btn primary" data-a="newp">Create</button><button class="btn sm" data-a="imp">Import</button></div></div>'+
    '<div class="card"><span class="tag g">Sandbox</span><h3>Free Roam</h3><p class="dim sml">Every ship, colour, trail and mission unlocked. Nothing here is ever saved.</p><div class="row"><button class="btn gold" data-a="free">Enter Free Roam</button></div></div></div>';
-  h+='<div class="grid g2 plist" style="max-width:980px">';
+  h+='<div class="pwrap"><div class="grid g2 plist" style="max-width:980px">';
   for(const i of ids){
    const d=LS.get('pc_save_'+i);
    if(d){
@@ -3693,7 +3713,7 @@ const SCREENS={
    }
   }
   if(!ids.length)h+='<p class="dim sml">No pilots yet. Enter a callsign above and press Create.</p>';
-  return h+'</div></div>';
+  return h+'</div></div></div>';
  },
  io(a){
   if(a.mode==='export')return'<div class="scr">'+hdr('Export Pilot')+'<div class="panel narrow col"><p class="dim sml">Copy this text and keep it somewhere safe. Paste it into Import on any device to restore the pilot.</p><textarea id="iot" readonly>'+esc(JSON.stringify(LS.get('pc_save_'+a.i)||{}))+'</textarea><div class="row"><button class="btn primary" data-a="copy">Copy to clipboard</button></div></div></div>';
