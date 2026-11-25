@@ -516,6 +516,7 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
 #ui .srail::before{content:"";position:absolute;inset:-6px -8px}
 #ui .srail i{position:absolute;left:1px;right:1px;top:0;border-radius:4px;background:#7de3ff;box-shadow:0 0 8px rgba(125,227,255,.6);cursor:grab}
 #ui .setdense .setsearch{padding:.3em .6em;font-size:.88em}
+#bootseq .bootbuild{position:absolute;right:1.2em;bottom:1em;font:600 .72em Orbitron,sans-serif;letter-spacing:.2em;color:#7de3ff;opacity:.75}
 #ui .cscroll.scrolly{flex-wrap:nowrap}
 #ui .cscroll .morecue{flex:none}
 #ui .buildno{display:block;margin-top:auto;padding:.4em .2em 0;font-size:.62em;letter-spacing:.14em;color:var(--dim);text-transform:uppercase}
@@ -2252,12 +2253,12 @@ function startCine(){
  for(const a of allies){if(a.dead||a.cargo||squad.length>=7)continue;squad.push({ref:a,idx:a.idx,hull:a.hull,trail:a.trail});}
  CINE={kind:kind,t:0,dur:kind==='escort'?330:270,acc:0,stars:null,mode:use3d?'3d':'2d',squad:squad,ang:player?player.ang:0,ox:player?player.x:0,oy:player?player.y:0};
  state='cine';T.fire=T.burn=T.climb=T.brake=false;T.son=false;acc=0;show('');
- if(use3d){window.__cineHideHud=true;layoutCine3D(0);}
+ if(use3d){window.__cineHideHud=true;try{cinePlace(CINE);}catch(e){}layoutCine3D(0);}
 }
-function layoutCine3D(t){
+function layoutCine3D(t,K0){
  /* camera + formation moves for the victory cinematic (3D). flyby: fixed camera beside the route, squadron sweeps past and the wingmen peel off;
     return: head-on camera that dollies back and up while the formation tightens; salute: chase camera swinging to the side while each ship does a victory roll */
- const K=CINE;if(!K||!K.squad)return;const e=t*t*(3-2*t),A=K.ang,ca=Math.cos(A),sa=Math.sin(A),sm=(a,b,x)=>{x=clamp((x-a)/(b-a),0,1);return x*x*(3-2*x);};
+ const K=K0||CINE;if(!K||!K.squad)return;const e=t*t*(3-2*t),A=K.ang,ca=Math.cos(A),sa=Math.sin(A),sm=(a,b,x)=>{x=clamp((x-a)/(b-a),0,1);return x*x*(3-2*x);};
  const fb=K.kind==='flyby',sal=K.kind==='salute',ret=!fb&&!sal;
  const dist=fb?-480+1350*(t*.85+e*.15):sal?e*700:e*620,leadX=K.ox+ca*dist,leadY=K.oy+sa*dist;
  let camx,camy,camz,lx=leadX,ly=52,lz=leadY;
@@ -2275,8 +2276,33 @@ function layoutCine3D(t){
   if(sal){const r0=.18+i*.09,rp=sm(r0,r0+.2,t);bank+=rp*Math.PI*2/.95;}
   s.bank=bank;
  });
- window.CINE_CAM={x:camx,y:camy,z:camz,lx:lx,ly:ly,lz:lz};
+ const cam={x:camx,y:camy,z:camz,lx:lx,ly:ly,lz:lz};if(K0)K0.cam=cam;else window.CINE_CAM=cam;
 }
+/* build 100: before a 3D victory cinematic starts, test its whole route (every ship of the formation, the wingmen peeling off and the
+   camera) against planets (and their rings), black holes, moons, asteroids and stations, using the same sizes the 3D view draws them at
+   plus a margin. If the straight-ahead route clips anything, try other headings in 15 degree steps, then start points further away,
+   and fly the first one that is clear (or the one that clips least). */
+function cineObs(){const o=[];
+ for(const g of gravityWells)o.push([g.x,g.y,g.r*(g.ring?1.8:g.bh?2:1.12)+45,g.r*(g.bh?1.6:1.12)+15]);
+ for(const r of rocks){if(!r.dead)o.push([r.x,r.y,r.r*1.45+(r.moon?35:20),r.moon?r.r*1.45+10:0]);}
+ for(const st of stations){if(!st.dead)o.push([st.x,st.y,Math.max(220,st.r*4.5)]);} /* arms, panels and mast reach about 70 m; keep the camera well off */
+ return o;}
+function cineHit(K,O){
+ const S={kind:K.kind,ang:K.ang,ox:K.ox,oy:K.oy,t:0,dur:K.dur,squad:K.squad.map(()=>({ref:{}}))};let pen=0;
+ for(let i=0;i<=24;i++){const t=i/24;S.t=t*K.dur;layoutCine3D(t,S);const c=S.cam;
+  for(const o of O){const R=o[2];
+   for(const q of S.squad){const dx=q.ref.x-o[0],dy=q.ref.y-o[1],d2=dx*dx+dy*dy;if(d2<R*R)pen+=R-Math.sqrt(d2);}
+   const dx=c.x-o[0],dy=c.z-o[1],d2=dx*dx+dy*dy;if(d2<R*R)pen+=2*(R-Math.sqrt(d2));
+   /* and nothing big may hide the leader from the camera */
+   if(o[3]){const L=S.squad[0].ref,ux=L.x-c.x,uy=L.y-c.z,uu=ux*ux+uy*uy||1,k=clamp(((o[0]-c.x)*ux+(o[1]-c.z)*uy)/uu,0,1),ex=c.x+ux*k-o[0],ey=c.z+uy*k-o[1],e2=ex*ex+ey*ey;if(e2<o[3]*o[3])pen+=o[3]-Math.sqrt(e2);}}}
+ return pen;}
+function cinePlace(K){
+ const O=cineObs();if(!O.length||!K.squad.length)return 0;const A0=K.ang,x0=K.ox,y0=K.oy;let best=null;
+ const offs=[[0,0]];for(const d of [500,1000,1700])for(let k=0;k<8;k++)offs.push([Math.cos(k*Math.PI/4)*d,Math.sin(k*Math.PI/4)*d]);
+ for(const f of offs)for(let j=0;j<24;j++){
+  K.ang=A0+(j%2?1:-1)*Math.ceil(j/2)*Math.PI/12;K.ox=x0+f[0];K.oy=y0+f[1];
+  const p=cineHit(K,O);if(!best||p<best.p)best={p:p,a:K.ang,x:K.ox,y:K.oy};if(p===0)return 0;}
+ K.ang=best.a;K.ox=best.x;K.oy=best.y;return best.p;}
 function skipCine(){if(state!=='cine'||!CINE)return;CINE=null;window.CINE_CAM=null;window.__cineHideHud=false;showEnd();}
 function drawCine(){
  const K=CINE;if(!K)return;const t=Math.min(1,K.t/K.dur),e=t*t*(3-2*t),C=ctx;
@@ -3944,7 +3970,7 @@ function runLaunchBoot(){
   if(window.__booted)return;window.__booted=true;
   const lines=['PARSEC DRIVE ...... ONLINE','WEAPON BUS ........ ARMED','SENSOR ARRAY ...... CALIBRATED','NAV CONSOLE ....... SYNCED','PILOT LINK ........ READY'];
   const ov=document.createElement('div');ov.id='bootseq';
-  ov.innerHTML='<div class="bootinner"><div class="boottitle">PARSEC CHRONICLES</div><div class="bootsub">3D FLIGHT SYSTEM · BOOT</div><div class="bootlines"></div><div class="bootbar"><i></i></div><div class="bootskip">click or press any key to skip</div></div>';
+  ov.innerHTML='<div class="bootinner"><div class="boottitle">PARSEC CHRONICLES</div><div class="bootsub">3D FLIGHT SYSTEM · BOOT</div><div class="bootlines"></div><div class="bootbar"><i></i></div><div class="bootskip">click or press any key to skip</div></div><div class="bootbuild">BUILD '+(typeof BUILD_NO!=='undefined'?BUILD_NO:'')+'</div>';
   document.body.appendChild(ov);
   const le=ov.querySelector('.bootlines'),bar=ov.querySelector('.bootbar i');let i=0,closed=false;
   const finish=function(){if(closed)return;closed=true;ov.classList.add('out');setTimeout(function(){if(ov.parentNode)ov.remove();},420);window.removeEventListener('keydown',kh);};
