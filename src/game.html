@@ -540,6 +540,9 @@ body.hc #ui .panel{background:rgba(6,12,20,.92)}
 .manualnav .btn.on{border-color:var(--c);color:var(--c)}
 .help table.hrow{table-layout:fixed;width:100%;margin:0}
 .help table.hrow td:first-child{width:34%}
+/* build 100: 9 upgrade tracks sit 5 + 4 on landscape phones */
+@media(max-height:430px){#ui .ugrid{grid-template-columns:repeat(5,minmax(0,1fr))!important}}
+@media(max-width:520px) and (min-height:600px){#ui .ugrid{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 </style>
 </head>
 <body>
@@ -640,7 +643,7 @@ function shipVar(i){const c=SHIPS[i];return c&&c.v?1:0;}
 function shipWings(i){return(shipVar(i)?WINGS_V:WINGS)[shipRole(i)];}
 function shipBase(i,role){const c=SHIPS[i]||SHIPS[0];return c.tier*3+(role==null?0:role);}
 const MODS=[{n:'Plating',d:'+10% hull points',cost:900,at:100,rank:0},{n:'Thrusters',d:'+6% top speed',cost:800,at:200,rank:0},{n:'Coils',d:'+8% weapon damage',cost:1000,at:300,rank:1},{n:'Reactive Armour',d:'−10% collision damage',cost:900,at:400,rank:1}];
-const UPK=['weapons','hull','engines','cap','target','arc','squad','wing'];
+const UPK=['weapons','hull','engines','cap','target','arc','squad','station','wing'];
 const UPG={
  weapons:{n:'Weapons',base:150,max:60,d:'Raises weapon damage, and the laser fire rate and charge speed.'},
  hull:{n:'Hull',base:120,max:60,d:'+20 hull, +12 shield, +3 ram damage.'},
@@ -649,6 +652,9 @@ const UPG={
  target:{n:'Targeting',base:200,max:57,d:'+0.8% crit chance (cap 45%), +2.2% crit damage.'},
  arc:{n:'Fire Arc',base:220,max:10,d:'Widens the auto-aim cone by 9° per level.'},
  squad:{n:'Squadron',base:200,max:60,d:'Wingmates gain +25 hull, +0.2 speed, +2 damage, +2.5 m pickup magnet.'},
+ /* build 100: home station track. Full track = +120% station health (turrets and shield generator too) and +80% turret, field and station-gun damage on every difficulty,
+    so each level is worth 6%/4% on Cadet (20 levels), 3%/2% on Pilot (40), 2%/1.33% on Ace (60). Gated by the same sector ceiling as the other tracks. */
+ station:{n:'Home Station',base:170,max:60,d:'Your home station gains health and turret damage.'},
  wing:{n:'Wing Size',base:1600,max:6,d:'Adds one wingmate to your flight. New slots unlock after boss victories.'}
 };
 const WING_AT=[10,50,100,200,300,400],WING_COST=[1000,2500,5000,9000,14000,20000];
@@ -796,7 +802,7 @@ function loadSettings(){
 function applyTouchAlpha(){try{const a=clamp(+settings.tbAlpha||1,.2,1);document.documentElement.style.setProperty('--tbo',a);}catch(e){}}
 function saveSettings(){applyTouchAlpha();let o=settings;if(SOFT_AUTO&&settings.gfx==='classic'&&!LS.get('pc_force3d')){o=Object.assign({},settings);o.gfx=SOFT_PREV||'high';}LS.set('pc_settings',o);LS.set('pc_audio',audioSet);try{document.body.classList.toggle('hc',!!settings.hc);document.documentElement.lang=settings.lang||'en';window.tailFixed=settings.tailCam==='fixed';}catch(e){}}
 function newSave(name){const s={v:2,name:name||'Pilot',gold:{cadet:0,pilot:0,ace:0},up:{},prog:{campaign:{cadet:{},pilot:{},ace:{}}},diff:'cadet',ach:{},hulls:{},trails:{},trims:{},hull:{},trail:{},trim:{},sq:{},sqCap:{},ship:{},ships:{},best:{},mods:{},wmods:{},gear:{},lore:{},loadout:[3],vulcanAuto:false,contracts:{},climb:0,memorial:0,squadXP:0,squadLvl:0,cnt:{kills:0,gold:0,wins:0,voy:0,ram:0,boss:0,sectors:0,hunt:0,elite:0,flaw:0,wEsc:0,wHun:0,wDef:0,wTot:0,wPil:0,wAce:0,bAce:0},touch:{mirror:false,scale:1,stick:true,pos:{}}};initGear(s);for(const d of DRANKS){s.ships[d]=[0];s.hulls[d]=[0];s.trails[d]=[0];s.trims[d]=[0];s.ship[d]=0;s.hull[d]=0;s.trail[d]=0;s.trim[d]=0;s.sq[d]=0;s.sqCap[d]=0;s.best[d]=0;s.wmods[d]={};}return s;}
-function initGear(s){if(!s.gear)s.gear={};for(const d of DRANKS){const g=s.gear[d]||(s.gear[d]=UPK.reduce((o,k)=>(o[k]=0,o),{weapons:0,hull:0,engines:0,cap:0,target:0,arc:0,squad:0,wing:0}));const cap=DMAX[d];for(const k of UPK)g[k]=clamp((+g[k])|0,0,cap);}}
+function initGear(s){if(!s.gear)s.gear={};for(const d of DRANKS){const g=s.gear[d]||(s.gear[d]=UPK.reduce((o,k)=>(o[k]=0,o),{weapons:0,hull:0,engines:0,cap:0,target:0,arc:0,squad:0,station:0,wing:0}));const cap=DMAX[d];for(const k of UPK)g[k]=clamp((+g[k])|0,0,cap);}}
 function fixLoadout(s,d){
  const src=Array.isArray(d&&d.loadout)?d.loadout:null,out=[];
  if(src)for(const w of src){const i=+w;if(Number.isInteger(i)&&i>0&&i<WEAPONS.length&&!out.includes(i)&&out.length<5)out.push(i);}
@@ -1297,7 +1303,7 @@ function spawnEnemy(idx,x,y,ang,o){
 const STATION_SEC=[[],['laser'],['ion'],['plasma'],['msl'],['flak','laser'],['ion','plasma'],['msl','laser'],['plasma','msl','ion'],['laser','plasma','msl','ion']];
 /* weapon: [range m, cooldown frames] */
 const STATION_GUN={laser:[1000,180],ion:[900,130],plasma:[850,150],msl:[1150,240],flak:[300,90]};
-function stationGuns(st){const sea=M.sea|0,dm=(st.team?M.eDmg*(st.dk||1):1+sea*.11)*.9,wl=Math.min(20,(M.lv|0)/15);
+function stationGuns(st){const sea=M.sea|0,dm=(st.team?M.eDmg*(st.dk||1):(1+sea*.11)*(st.uk||1))*.9,wl=Math.min(20,(M.lv|0)/15);
  return{list:(STATION_SEC[sea]||[]).map((w,i)=>({w,cd:90+i*45})),g:{kind:'stgun',st:st,isPlayer:false,team:st.team,x:st.x,y:st.y,z:0,vx:0,vy:0,ang:0,r:30,dm,wl,crit:0,critM:1.5,cdm:1,arc:Math.PI,dbuff:0,oc:0,flakCd:0}};}
 function stepStationGuns(st,tg,dd){
  const S=st.sec;if(!S||!S.list.length||!tg||M.done)return;const g=S.g;g.x=st.x;g.y=st.y;
@@ -1316,6 +1322,8 @@ function mkStation(team,x,y,mul){
   burn:(1.2+lv*.015)*(team?M.eDmg:1+M.sea*.11),tdmg:(3+lv*.03)*(team?M.eDmg:1+M.sea*.11)};
  /* build 95: enemy stations scale with difficulty on top of M.eHull/M.eDmg, so they keep pace with the 2/4/6-per-sector upgrade ceilings:
     health and damage x0.7 / x1.2 / x1.8 overall (Cadet unchanged), +0/+1/+2 shots per burst, fire 0/10/20% faster, zones 0/10/20% wider */
+ /* build 100: Home Station upgrade track (see UPG.station) */
+ if(!team&&save){const sl=(dUp(save).station|0)/(DMAX[save.diff]||20);if(sl>0){const hk=1+1.2*sl,dk=1+.8*sl;S.hp=S.maxHp=Math.round(S.hp*hk);for(const t of S.turrets)t.hp=t.maxHp=Math.round(S.hp*.11);S.gen.hp=S.gen.maxHp=Math.round(S.hp*.18);S.burn*=dk;S.tdmg*=dk;S.uk=dk;}}
  const X=team?stDiff():null;
  if(X){const k=X.k;S.hp=S.maxHp=Math.round(S.hp*k);for(const t of S.turrets)t.hp=t.maxHp=Math.round(S.hp*.11);S.gen.hp=S.gen.maxHp=Math.round(S.hp*.18);S.burn*=k;S.tdmg*=k;S.burst+=X.b;S.tcd=Math.round(S.tcd*X.f);S.aura=Math.round(S.aura*X.z);S.atk=Math.round(S.atk*X.z);S.dk=k;S.gf=X.f;}
  /* build 96: enemy stations look as strong as they are. Size grows +3.5% per sector and +6% per difficulty step (Cadet/Pilot/Ace),
@@ -3587,7 +3595,8 @@ const SCREENS={
    const cap=DMAX[s.diff];
    for(const k of UPK){const u=UPG[k],l=du[k],mx=l>=cap,c=upCost(k),lk=mx?'':upLock(k);
     const mg=k==='cap'?['Pickup magnet',magR(l),magR(l+1)]:k==='squad'?['Wingmate magnet',110+2.5*l,110+2.5*(l+1)]:null;
-    h+='<div class="card ucard"><h3>'+u.n+'</h3><span class="tag">Lv '+l+' / '+cap+'</span><span class="dim sml ud">'+u.d+'</span>'+(mg?'<span class="sml umg">'+mg[0]+' <b>'+mg[1]+'&nbsp;m</b>'+(mx?'':' <b>→&nbsp;'+mg[2]+'&nbsp;m</b>')+'</span>':'')+'<div class="statbar"><i style="width:'+Math.min(100,l/cap*100)+'%"></i></div>'+
+    const stx=k==='station'?'<span class="sml umg">Health <b>+'+Math.round(120*l/cap)+'%</b>'+(mx?'':' <b>→&nbsp;+'+Math.round(120*(l+1)/cap)+'%</b>')+' · Damage <b>+'+Math.round(80*l/cap)+'%</b></span>':'';
+    h+='<div class="card ucard"><h3>'+u.n+'</h3><span class="tag">Lv '+l+' / '+cap+'</span><span class="dim sml ud">'+u.d+'</span>'+(mg?'<span class="sml umg">'+mg[0]+' <b>'+mg[1]+'&nbsp;m</b>'+(mx?'':' <b>→&nbsp;'+mg[2]+'&nbsp;m</b>')+'</span>':'')+stx+'<div class="statbar"><i style="width:'+Math.min(100,l/cap*100)+'%"></i></div>'+
      '<button class="btn sm'+(mx||lk?' dis':(!s.free&&dGold(s)<c?' warn':''))+'" data-a="buyup" data-v="'+k+'"'+(lk?' data-tip="'+esc(u.n+': '+lk)+'"':'')+'>'+(mx?'Maxed':lk?'🔒 '+lk:'Upgrade · ◈ '+fmtNum(c))+'</button></div>';}
    h+='</div>';
   }else if(t==='dock'){
